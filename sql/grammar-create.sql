@@ -7,7 +7,8 @@ GRANT ALL ON grammar.* TO 'grammaradm'@'localhost';
 
 CREATE TABLE IF NOT EXISTS syntactic_category (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  
+
+  category_type ENUM('lexical','phrasal'),
   
 ) ENGINE=INNODB, COMMENT='A syntactic category, be it lexical or phrasal';
 

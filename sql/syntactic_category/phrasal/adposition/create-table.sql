@@ -59,14 +59,14 @@ CREATE TRIGGER trigger_ins_adp BEFORE INSERT ON _adpositional_phrase
 FOR EACH ROW
 BEGIN
   DECLARE category_id INT;
-  DECLARE category_type VARCHAR(8);
+  DECLARE ctype VARCHAR(8);
 
-  SET category_type = 'phrasal';
+  SET ctype = 'phrasal';
 
-  CALL insertSyntacticCategory( category_type, category_id );
+  CALL insertSyntacticCategory( ctype, category_id );
   SET NEW.id = category_id;
 
-  CALL assert_category_consistency( category_type, NEW.id );
+  CALL assert_category_consistency( ctype, NEW.id );
 END;
 
 CREATE TRIGGER trigger_ins_prep BEFORE INSERT ON _prepositional_phrase

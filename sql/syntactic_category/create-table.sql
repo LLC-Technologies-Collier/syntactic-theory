@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS syntactic_category (
   label    VARCHAR(10) UNIQUE NOT NULL,
   longname VARCHAR(64) UNIQUE NOT NULL,
 
-  category_type ENUM('lexical','phrasal') NOT NULL
+  ctype    ENUM('lexical','phrasal') NOT NULL
   
 ) ENGINE=INNODB, COMMENT='A syntactic category of class lexical or phrasal';
 

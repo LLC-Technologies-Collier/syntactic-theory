@@ -8,18 +8,18 @@ DROP TRIGGER IF EXISTS trigger_ins_lcat;
 CREATE TRIGGER trigger_ins_lcat BEFORE INSERT ON lexical_category_
 FOR EACH ROW
 BEGIN
-  DECLARE category_type VARCHAR(8);
+  DECLARE ctype VARCHAR(8);
 
-  SET category_type = 'lexical';
+  SET ctype = 'lexical';
 
-  INSERT INTO syntactic_category ( `category_type`,`label`,`longname` )
-                           VALUES( category_type, NEW.label, NEW.longname );
+  INSERT INTO syntactic_category ( `ctype`,`label`,`longname` )
+                           VALUES( ctype, NEW.label, NEW.longname );
   SET NEW.id = LAST_INSERT_ID();
 
   INSERT INTO _lexical_category ( id )
                          VALUES ( NEW.id );
 
-  CALL assert_category_consistency( category_type, NEW.id );
+  CALL assert_category_consistency( ctype, NEW.id );
 END;
 
 DROP TRIGGER IF EXISTS trigger_upd_lcat;
@@ -34,17 +34,17 @@ DROP TRIGGER IF EXISTS trigger_ins_pcat;
 CREATE TRIGGER trigger_ins_pcat BEFORE INSERT ON phrasal_category_
 FOR EACH ROW
 BEGIN
-  DECLARE category_type VARCHAR(8);
-  SET category_type = 'phrasal';
+  DECLARE ctype VARCHAR(8);
+  SET ctype = 'phrasal';
 
-  INSERT INTO syntactic_category ( `category_type`,`label`,`longname` )
-                           VALUES( category_type, NEW.label, NEW.longname );
+  INSERT INTO syntactic_category ( `ctype`,`label`,`longname` )
+                           VALUES( ctype, NEW.label, NEW.longname );
   SET NEW.id = LAST_INSERT_ID();
   
   INSERT INTO _phrasal_category ( id, head_cat_id )
                          VALUES ( NEW.id, NEW.head_cat_id );
 
-  CALL assert_category_consistency( category_type, NEW.id );
+  CALL assert_category_consistency( ctype, NEW.id );
 END;
 
 DROP TRIGGER IF EXISTS trigger_upd_pcat;

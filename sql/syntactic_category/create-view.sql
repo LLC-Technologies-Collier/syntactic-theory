@@ -16,7 +16,7 @@ phrasal_category AS
   SELECT sc.id           as id,
   	 sc.label        as label,
 	 sc.longname     as longname,
-	 pc.head_lcat_id as head
+	 pc.head_cat_id as head
   FROM _phrasal_category pc
   LEFT JOIN syntactic_category sc
   ON pc.id = sc.id;

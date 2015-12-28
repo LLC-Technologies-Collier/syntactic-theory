@@ -41,8 +41,8 @@ BEGIN
                            VALUES( category_type, NEW.label, NEW.longname );
   SET NEW.id = LAST_INSERT_ID();
   
-  INSERT INTO _phrasal_category ( id, head_lcat_id )
-                         VALUES ( NEW.id, NEW.head_lcat_id );
+  INSERT INTO _phrasal_category ( id, head_cat_id )
+                         VALUES ( NEW.id, NEW.head_cat_id );
 
   CALL assert_category_consistency( category_type, NEW.id );
 END;

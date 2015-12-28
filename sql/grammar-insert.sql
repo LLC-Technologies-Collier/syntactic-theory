@@ -18,7 +18,7 @@ INSERT INTO lexical_category_ ( label, longname )
 		       	      ( 'P',   'Preposition' );
 
 INSERT INTO phrasal_category_
-       ( longname, label, head_lcat_id )
+       ( longname, label, head_cat_id )
 VALUES ( 'Adjective Phrase',     'AP',   ( SELECT catid_by_label('A')   ) ),
        ( 'Adverb Phrase',        'AdvP', ( SELECT catid_by_label('Adv') ) ),
        ( 'Noun Phrase',          'NP',   ( SELECT catid_by_label('N')   ) ),
@@ -27,7 +27,7 @@ VALUES ( 'Adjective Phrase',     'AP',   ( SELECT catid_by_label('A')   ) ),
        ( 'Sentence',             'S',    ( SELECT catid_by_label('N')   ) );
 
 
-INSERT INTO lexeme ( word, pos_id )
+INSERT INTO lexeme ( word, cat_id )
             VALUES ( 'the',     ( SELECT catid_by_label('D') ) ),
 	           ( 'some',    ( SELECT catid_by_label('D') ) ),
 		   ( 'big',     ( SELECT catid_by_label('A') ) ),
@@ -49,7 +49,7 @@ INSERT INTO phrase_structure_rule ( target_id, node_count )
 
 SET @this_rule_id = LAST_INSERT_ID();
 
-INSERT INTO rule_node ( rule_id,       position, scat_id,                         optional, rpt )
+INSERT INTO rule_node ( rule_id,       position, cat_id,                          optional, rpt )
                VALUES ( @this_rule_id, '1',      ( SELECT catid_by_label('P')  ), b'0',     b'0' ),
                       ( @this_rule_id, '2',      ( SELECT catid_by_label('NP') ), b'0',     b'0' );
 
@@ -58,7 +58,7 @@ INSERT INTO phrase_structure_rule ( target_id, node_count )
 
 SET @this_rule_id = LAST_INSERT_ID();
 
-INSERT INTO rule_node ( rule_id,       position, scat_id,                         optional, rpt )
+INSERT INTO rule_node ( rule_id,       position, cat_id,                          optional, rpt )
                VALUES ( @this_rule_id, '1',      ( SELECT catid_by_label('V')  ), b'0',     b'0' ),
                       ( @this_rule_id, '2',      ( SELECT catid_by_label('NP') ), b'1',     b'0' ),
                       ( @this_rule_id, '3',      ( SELECT catid_by_label('PP') ), b'1',     b'0' );
@@ -68,7 +68,7 @@ INSERT INTO phrase_structure_rule ( target_id, node_count )
 
 SET @this_rule_id = LAST_INSERT_ID();
 
-INSERT INTO rule_node ( rule_id,       position, scat_id,                         optional, rpt )
+INSERT INTO rule_node ( rule_id,       position, cat_id,                          optional, rpt )
                VALUES ( @this_rule_id, '1',      ( SELECT catid_by_label('D')  ), b'1',     b'0' ),
                       ( @this_rule_id, '2',      ( SELECT catid_by_label('A')  ), b'1',     b'1' ),
                       ( @this_rule_id, '3',      ( SELECT catid_by_label('N')  ), b'0',     b'0' ),
@@ -79,6 +79,6 @@ INSERT INTO phrase_structure_rule ( target_id, node_count )
 
 SET @this_rule_id = LAST_INSERT_ID();
 
-INSERT INTO rule_node ( rule_id,       position, scat_id,                         optional, rpt )
+INSERT INTO rule_node ( rule_id,       position, cat_id,                          optional, rpt )
                VALUES ( @this_rule_id, '1',      ( SELECT catid_by_label('NP') ), b'0',     b'0' ),
                       ( @this_rule_id, '2',      ( SELECT catid_by_label('VP') ), b'0',     b'0' );

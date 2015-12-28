@@ -28,10 +28,10 @@ CREATE TABLE IF NOT EXISTS lexical_category_ (
 CREATE TABLE IF NOT EXISTS _phrasal_category (
   id           INT PRIMARY KEY,
 
-  head_lcat_id INT NOT NULL,
+  head_cat_id  INT NOT NULL,
 
   CONSTRAINT fk_pcat_scat FOREIGN KEY (id) REFERENCES syntactic_category(id),
-  CONSTRAINT fk_pcat_lcat FOREIGN KEY (head_lcat_id) REFERENCES _lexical_category(id)
+  CONSTRAINT fk_pcat_lcat FOREIGN KEY (head_cat_id) REFERENCES _lexical_category(id)
 ) ENGINE=INNODB, COMMENT='A syntactic category for phrases';
 
 CREATE TABLE IF NOT EXISTS phrasal_category_ (
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS phrasal_category_ (
   label        VARCHAR(10) NOT NULL,
   longname     VARCHAR(64) NOT NULL,
 
-  head_lcat_id INT NOT NULL
+  head_cat_id  INT NOT NULL
 
 ) ENGINE=MEMORY, COMMENT='An abstract table for use in triggering updates to the _phrasal_category and syntactic_category tables';
 

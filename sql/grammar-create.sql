@@ -3,9 +3,9 @@
 use grammar;
 
 source syntactic_category/create-table.sql;
-/* source syntactic_category/create-routine.sql; */
+source syntactic_category/create-routine.sql;
 source syntactic_category/create-view.sql;
-/* source syntactic_category/create-trigger.sql; */
+source syntactic_category/create-trigger.sql;
 
 
 CREATE TABLE IF NOT EXISTS lexeme (

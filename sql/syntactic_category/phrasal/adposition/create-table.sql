@@ -31,8 +31,8 @@ CREATE TABLE IF NOT EXISTS _circumpositional_phrase (
 
 DELIMETER «
 
-CREATE PROCEDURE assert_adpos_phrase_validity( IN phrase_type VARCHAR(8),
-                                               IN phrase_id INT)
+CREATE PROCEDURE assert_adpos_phrase_consistency( IN phrase_type VARCHAR(8),
+                                                  IN phrase_id INT)
 BEGIN
   IF( phrase_type != 'preposition' ) THEN
     /* TODO: Log warning if select count(*) FROM _prepositional_phrase WHERE id=category_id */
@@ -52,7 +52,7 @@ CREATE PROCEDURE insertAdpositionalPhrase( IN phrase_type VARCHAR(16), INOUT phr
 BEGIN
   INSERT INTO _adpositional_phrase ( phrase_type ) VALUES( type );
   SET phrase_id = LAST_INSERT_ID();
-  CALL assert_adpos_phrase_validity( phrase_type, category_id );
+  CALL assert_adpos_phrase_consistency( phrase_type, category_id );
 END;
 
 CREATE TRIGGER trigger_ins_adp BEFORE INSERT ON _adpositional_phrase
@@ -66,7 +66,7 @@ BEGIN
   CALL insertSyntacticCategory( category_type, category_id );
   SET NEW.id = category_id;
 
-  CALL assert_category_validity( category_type, NEW.id );
+  CALL assert_category_consistency( category_type, NEW.id );
 END;
 
 CREATE TRIGGER trigger_ins_prep BEFORE INSERT ON _prepositional_phrase
@@ -77,7 +77,7 @@ BEGIN
   SET phrase_type = 'preposition';
   CALL insertAdpositionalPhrase( phrase_type, phrase_id );
   SET NEW.id = phrase_id;
-  CALL assert_adpos_phrase_validity( phrase_type, phrase_id );
+  CALL assert_adpos_phrase_consistency( phrase_type, phrase_id );
 END;
 
 CREATE TRIGGER trigger_ins_postp BEFORE INSERT ON _postpositional_phrase
@@ -87,7 +87,7 @@ BEGIN
   SET phrase_type = 'postposition';
   CALL insertAdpositionalPhrase( 'postposition', phrase_id );
   SET NEW.id = phrase_id;
-  CALL assert_adpos_phrase_validity( phrase_type, phrase_id );
+  CALL assert_adpos_phrase_consistency( phrase_type, phrase_id );
 END;
 
 CREATE TRIGGER trigger_ins_circump BEFORE INSERT ON _circumpositional_phrase
@@ -98,7 +98,7 @@ BEGIN
   SET phrase_type = 'circumposition';
   CALL insertAdpositionalPhrase( phrase_type, phrase_id );
   SET NEW.id = phrase_id;
-  CALL assert_adpos_phrase_validity( phrase_type, phrase_id );
+  CALL assert_adpos_phrase_consistency( phrase_type, phrase_id );
 END;
 
 «

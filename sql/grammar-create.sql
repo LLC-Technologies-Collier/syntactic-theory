@@ -16,8 +16,10 @@ CREATE TABLE IF NOT EXISTS lexeme (
 ) ENGINE=INNODB, COMMENT='Words available for use and their associated properties';
 
 CREATE TABLE IF NOT EXISTS phrase_structure_rule (
-  id        INT AUTO_INCREMENT PRIMARY KEY,
-  target_id INT NOT NULL,
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  target_id  INT NOT NULL,
+
+  node_count INT NOT NULL,
 
   CONSTRAINT fk_phstrule_pcat FOREIGN KEY (target_id) REFERENCES _phrasal_category(id)
 ) ENGINE=INNODB, COMMENT='Rules indicating valid grammatical constructs';

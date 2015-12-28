@@ -59,4 +59,4 @@ END;
 
 DELIMITER ;
 
-/* End stored procedures and insert, update, delete triggers */
+/* End insert, update, delete triggers */

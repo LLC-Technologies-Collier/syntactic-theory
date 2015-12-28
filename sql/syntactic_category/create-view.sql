@@ -21,4 +21,4 @@ phrasal_category AS
   LEFT JOIN syntactic_category sc
   ON pc.id = sc.id;
 
-/* Begin syntactic category subclass view definitions */
+/* End syntactic category subclass view definitions */

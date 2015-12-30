@@ -7,7 +7,6 @@ source syntactic_category/create-routine.sql;
 source syntactic_category/create-view.sql;
 source syntactic_category/create-trigger.sql;
 
-
 CREATE TABLE IF NOT EXISTS lexeme (
   id     INT AUTO_INCREMENT PRIMARY KEY,
   word   VARCHAR(64),
@@ -32,8 +31,8 @@ CREATE TABLE IF NOT EXISTS rule_node (
 
   cat_id    INT NOT NULL,
 
-  optional  BIT NOT NULL DEFAULT b'0',
-  rpt       BIT NOT NULL DEFAULT b'0', /* short for repeat, but that is a keyword */
+  optional  TINYINT NOT NULL DEFAULT 0,
+  rpt       TINYINT NOT NULL DEFAULT 0, /* short for repeat, but that is a keyword */
 
   CONSTRAINT uniq_rule_position UNIQUE (rule_id,position),
   CONSTRAINT fk_rcp_rule FOREIGN KEY (rule_id) REFERENCES phrase_structure_rule(id),

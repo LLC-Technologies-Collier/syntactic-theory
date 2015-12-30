@@ -55,7 +55,9 @@ my $schema = Syntactic::Practice::Schema->connect($dsn, $user, $pass);
 
 my $rule_rs = $schema->resultset('PhraseStructureRule')->
   search({},
-         {prefetch => ['target', { 'rule_nodes' => ['cat'] } ] });
+         {
+          prefetch   => ['target', { 'rule_nodes' => ['cat'] } ]
+         });
 
 #SELECT r.id, r.node_count, c.label, c.longname, c.head
 #        FROM phrase_structure_rule r LEFT JOIN phrasal_category c ON r.target_id=c.id
@@ -111,41 +113,49 @@ sub license_leaf_node {
 
   return unless @$word_list;
 
-  my @node = ();
+  my @licensed = ();
   my $w = shift( @$word_list );
-  print STDERR "$w\n";
   my $lexeme = $word->{$w};
-  if( $lexeme->cat->label eq $n->cat->label ){
-    push(@node, $lexeme);
-    if( $n->rpt ){
-      push(@node, license_leaf_node( $n, $word_list ));
+  my $node_label = $n->cat->label;
+  if( $lexeme->cat->label eq $node_label ){
+    push(@licensed, $lexeme);
+    print STDERR "$node_label $w\n";
+    if( $n->rpt && ( $word->{$word_list->[0]}->cat->label eq $node_label ) ){
+      push(@licensed, license_leaf_node( $n, $word_list ));
     }
   }elsif( $n->optional ){
     unshift( @$word_list, $w );
+    print STDERR "$node_label «»\n";
     return ();
   }else{
 #    print STDERR "PARSE FAILURE!";
     unshift( @$word_list, $w );
     return();
   }
-  return @node;
+  return @licensed;
 }
 sub parse_phrase {
   my($r, $word_list) = @_;
   die Data::Dumper::Dumper( [keys %$r] ) unless defined $r->{rs};
 #  print STDERR Data::Dumper::Dumper( [keys %$r] );
 
-  my $tlabel = $r->{rs}->target->label;
+  my $tlabel = $r->{label};
   print STDERR "$tlabel\n";
   my $node = [];
-  $tree->{$tlabel} = $node;
+
   foreach my $child ( @{$r->{node}} ){
     my $label = $child->cat->label;
     my $cat_type = $child->cat->ctype;
     if( $cat_type eq 'phrasal' ){
       push( @$node, parse_phrase( $rule->{$label}, $word_list ) );
     }elsif($cat_type eq 'lexical'){
-      push( @$node, license_leaf_node( $child, $word_list ) );
+      if( $word->{$word_list->[0]}->cat->label eq $child->cat->label ){
+        push( @$node, license_leaf_node( $child, $word_list ) );
+      }elsif($child->optional){
+        next;
+      }else{
+        # TODO: complain
+      }
     }
   }
   return { $tlabel => $node };

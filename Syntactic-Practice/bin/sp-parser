@@ -1,0 +1,21 @@
+#!/usr/bin/perl -w
+use strict;
+
+my $content = join("", <STDIN>);
+
+use Syntactic::Practice::Schema;
+my $schema = Syntactic::Practice::Schema->connect('DBI:mysql:database=grammar', 'grammaruser', 'nunya');
+
+my $rule_rs = $schema->resultset('PhraseStructureRule');
+
+#SELECT r.id, r.node_count, c.label, c.longname, c.head
+#        FROM phrase_structure_rule r LEFT JOIN phrasal_category c ON r.target_id=c.id
+
+$rule_rs->search({},
+                 {join => ['target','rule_nodes']});
+
+my $rule = {};
+while( my $r = $rule_rs->next() ){
+  $rule->{$r->target->label} = $r;
+  print("Processing rule for target [",$r->target->label,"]\n");
+}

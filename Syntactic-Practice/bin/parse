@@ -1,0 +1,152 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Getopt::Long::Descriptive;
+use DBI;
+
+my $hostname = 'localhost';
+my $port     = '3306';
+my $database = 'grammar';
+my $user     = 'grammaruser';
+my $pass     = 'nunya';
+my $dsn      = "DBI:mysql:database=$database;host=$hostname;port=$port";
+my $dbh      = DBI->connect($dsn, $user, $pass);
+
+my $input;
+my $verbose;
+
+my ($opt, $usage) =
+  describe_options(
+                   'parse %o <some-arg>',
+                   [ 'file|f=s', "file containing text to parse", { required => 1  } ],
+                   [],
+                   [ 'verbose|v',  "print extra stuff"            ],
+                   [ 'help',       "print usage message and exit" ],
+                  );
+
+print($usage->text), exit if $opt->help;
+
+my $query =
+  {
+   word =>
+     'SELECT l.id, l.word, c.label, c.longname
+        FROM lexeme l LEFT JOIN lexical_category c ON l.cat_id=c.id',
+   rule =>
+     'SELECT r.id, r.node_count, c.label, c.longname, c.head
+        FROM phrase_structure_rule r LEFT JOIN phrasal_category c ON r.target_id=c.id',
+   rule_node =>
+     'SELECT n.id, n.rule_id, n.position,
+             c.ctype, c.label, c.longname, BIN(n.optional), BIN(n.rpt)
+        FROM rule_node n LEFT JOIN syntactic_category c ON n.cat_id=c.id WHERE n.rule_id=?
+      ORDER BY n.position',
+  };
+
+my $sth = {};
+while( my($k,$q) = each %$query ){
+  $sth->{$k} = $dbh->prepare( $q );
+}
+
+$sth->{rule}->execute();
+
+use Syntactic::Practice::Schema;
+my $schema = Syntactic::Practice::Schema->connect($dsn, $user, $pass);
+
+my $rule_rs = $schema->resultset('PhraseStructureRule')->
+  search({},
+         {prefetch => ['target', { 'rule_nodes' => ['cat'] } ] });
+
+#SELECT r.id, r.node_count, c.label, c.longname, c.head
+#        FROM phrase_structure_rule r LEFT JOIN phrasal_category c ON r.target_id=c.id
+
+my $rule = {};
+# Load the rules in to the $rule hashref
+while( my $r = $rule_rs->next() ){
+  my $tlabel = $r->target->label;
+  $rule->{$tlabel} =
+    { rs => $r,
+      label => $tlabel,
+      node => [],
+    };
+  print("Processing rule for target [$tlabel]\n");
+  my $nodes = $r->rule_nodes;
+  while( my $n = $nodes->next ){
+    my $nlabel = $n->cat->label;
+    my $position = $n->position;
+    print("  Node #$position: $nlabel\n");
+    $rule->{$tlabel}->{node}->[$position - 1] = $n;
+  }
+}
+
+my $word_rs = $schema->resultset('Lexeme')->
+  search({},{prefetch => ['cat'] });
+
+my $word = {};
+while( my $w = $word_rs->next() ){
+  $word->{$w->word} = $w;
+}
+
+my $content;
+
+{
+  open( my $fh, q{<}, $opt->file ) or die "could not open file [" . $opt->file . "]";
+  $content = join("", <$fh>);
+}
+
+my @word_list = map { lc $_ } split(/\s+/, $content);
+
+#use Data::Dumper;
+#die Data::Dumper::Dumper( $rule->{'S'} );
+
+use Data::Dumper;
+#die Data::Dumper::Dumper( @word_list );
+my $tree = parse_phrase( $rule->{'S'}, \@word_list );
+
+# TODO: Traverse phrase_structure_rule depth first and begin inserting
+# leaf nodes in to the tree
+
+sub license_leaf_node {
+  my( $n, $word_list ) = @_;
+
+  return unless @$word_list;
+
+  my @node = ();
+  my $w = shift( @$word_list );
+  print STDERR "$w\n";
+  my $lexeme = $word->{$w};
+  if( $lexeme->cat->label eq $n->cat->label ){
+    push(@node, $lexeme);
+    if( $n->rpt ){
+      push(@node, license_leaf_node( $n, $word_list ));
+    }
+  }elsif( $n->optional ){
+    unshift( @$word_list, $w );
+    return ();
+  }else{
+#    print STDERR "PARSE FAILURE!";
+    unshift( @$word_list, $w );
+    return();
+  }
+  return @node;
+}
+sub parse_phrase {
+  my($r, $word_list) = @_;
+  die Data::Dumper::Dumper( [keys %$r] ) unless defined $r->{rs};
+#  print STDERR Data::Dumper::Dumper( [keys %$r] );
+
+  my $tlabel = $r->{rs}->target->label;
+  print STDERR "$tlabel\n";
+  my $node = [];
+  $tree->{$tlabel} = $node;
+  foreach my $child ( @{$r->{node}} ){
+    my $label = $child->cat->label;
+    my $cat_type = $child->cat->ctype;
+    if( $cat_type eq 'phrasal' ){
+      push( @$node, parse_phrase( $rule->{$label}, $word_list ) );
+    }elsif($cat_type eq 'lexical'){
+      push( @$node, license_leaf_node( $child, $word_list ) );
+    }
+  }
+  return { $tlabel => $node };
+}

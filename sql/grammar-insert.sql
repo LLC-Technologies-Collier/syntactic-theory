@@ -50,8 +50,8 @@ INSERT INTO phrase_structure_rule ( target_id, node_count )
 SET @this_rule_id = LAST_INSERT_ID();
 
 INSERT INTO rule_node ( rule_id,       position, cat_id,                          optional, rpt )
-               VALUES ( @this_rule_id, '1',      ( SELECT catid_by_label('P')  ), 0,     0 ),
-                      ( @this_rule_id, '2',      ( SELECT catid_by_label('NP') ), 0,     0 );
+               VALUES ( @this_rule_id, '1',      ( SELECT catid_by_label('P')  ), 0,        0 ),
+                      ( @this_rule_id, '2',      ( SELECT catid_by_label('NP') ), 0,        0 );
 
 INSERT INTO phrase_structure_rule ( target_id, node_count )
                            VALUES ( ( SELECT catid_by_label('VP') ), 3 );
@@ -59,9 +59,9 @@ INSERT INTO phrase_structure_rule ( target_id, node_count )
 SET @this_rule_id = LAST_INSERT_ID();
 
 INSERT INTO rule_node ( rule_id,       position, cat_id,                          optional, rpt )
-               VALUES ( @this_rule_id, '1',      ( SELECT catid_by_label('V')  ), 0,     0 ),
-                      ( @this_rule_id, '2',      ( SELECT catid_by_label('NP') ), 1,     0 ),
-                      ( @this_rule_id, '3',      ( SELECT catid_by_label('PP') ), 1,     0 );
+               VALUES ( @this_rule_id, '1',      ( SELECT catid_by_label('V')  ), 0,        0 ),
+                      ( @this_rule_id, '2',      ( SELECT catid_by_label('NP') ), 1,        0 ),
+                      ( @this_rule_id, '3',      ( SELECT catid_by_label('PP') ), 1,        0 );
 
 INSERT INTO phrase_structure_rule ( target_id, node_count )
                            VALUES ( ( SELECT catid_by_label('NP') ), 4 );
@@ -69,10 +69,10 @@ INSERT INTO phrase_structure_rule ( target_id, node_count )
 SET @this_rule_id = LAST_INSERT_ID();
 
 INSERT INTO rule_node ( rule_id,       position, cat_id,                          optional, rpt )
-               VALUES ( @this_rule_id, '1',      ( SELECT catid_by_label('D')  ), 1,     0 ),
-                      ( @this_rule_id, '2',      ( SELECT catid_by_label('A')  ), 1,     1 ),
-                      ( @this_rule_id, '3',      ( SELECT catid_by_label('N')  ), 0,     0 ),
-                      ( @this_rule_id, '4',      ( SELECT catid_by_label('PP') ), 1,     1 );
+               VALUES ( @this_rule_id, '1',      ( SELECT catid_by_label('D')  ), 1,        0 ),
+                      ( @this_rule_id, '2',      ( SELECT catid_by_label('A')  ), 1,        1 ),
+                      ( @this_rule_id, '3',      ( SELECT catid_by_label('N')  ), 0,        0 ),
+                      ( @this_rule_id, '4',      ( SELECT catid_by_label('PP') ), 1,        1 );
 
 INSERT INTO phrase_structure_rule ( target_id, node_count )
                            VALUES ( ( SELECT catid_by_label('S') ), 2 );
@@ -80,5 +80,5 @@ INSERT INTO phrase_structure_rule ( target_id, node_count )
 SET @this_rule_id = LAST_INSERT_ID();
 
 INSERT INTO rule_node ( rule_id,       position, cat_id,                          optional, rpt )
-               VALUES ( @this_rule_id, '1',      ( SELECT catid_by_label('NP') ), 0,     0 ),
-                      ( @this_rule_id, '2',      ( SELECT catid_by_label('VP') ), 0,     0 );
+               VALUES ( @this_rule_id, '1',      ( SELECT catid_by_label('NP') ), 0,        0 ),
+                      ( @this_rule_id, '2',      ( SELECT catid_by_label('VP') ), 0,        0 );

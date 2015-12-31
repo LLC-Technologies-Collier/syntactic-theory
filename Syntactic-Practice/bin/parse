@@ -34,11 +34,8 @@ my $rule_rs = $schema->resultset('PhraseStructureRule')->
           prefetch   => ['target', { 'rule_nodes' => ['cat'] } ]
          });
 
-#SELECT r.id, r.node_count, c.label, c.longname, c.head
-#        FROM phrase_structure_rule r LEFT JOIN phrasal_category c ON r.target_id=c.id
-
 my $rule = {};
-# Load the rules in to the $rule hashref
+# Load the grammar rules in to the $rule hashref
 while( my $r = $rule_rs->next() ){
   my $tlabel = $r->target->label;
   $rule->{$tlabel} =

@@ -82,6 +82,8 @@ my $content;
   $content = join("", <$fh>);
 }
 
+chomp $content;
+
 my @word_list = map { lc $_ } split(/\s+/, $content);
 
 #use Data::Dumper;
@@ -90,6 +92,8 @@ my @word_list = map { lc $_ } split(/\s+/, $content);
 use Data::Dumper;
 #die Data::Dumper::Dumper( @word_list );
 
+print STDERR "$content\n=====\n";
+
 my $trees = license_phrase( {
                              rule      => $rule->{'S'},
                              word_list => \@word_list,
@@ -97,18 +101,16 @@ my $trees = license_phrase( {
                              minimal   => 0,
                             } );
 
+foreach my $tree ( @$trees ) {
+  print_tree( $tree, '' );
+}
+
 if( ref $trees eq 'HASH' && exists $trees->{error} ){
   print STDERR "$trees->{error}\n";
 }
 
-# TODO: Traverse phrase_structure_rule depth first and begin inserting
-# leaf nodes in to the tree
-
-sub is_lexeme_licensed {
-  my ( $w, $n ) = @_;
-  return 1 if( $lexeme->{$w}->cat->label eq $n->cat->label );
-  return 0;
-}
+# Traverse phrase_structure_rule depth first and begin inserting leaf
+# nodes in to the tree
 
 sub license_lexeme {
   my( $opt ) = @_;
@@ -118,24 +120,15 @@ sub license_lexeme {
     return {error => "insufficient words to license lexeme [$node_label]"};
   }
 
-  my @licensed = ();
   my $w = shift( @{ $opt->{word_list} } );
   my $l = $lexeme->{$w};
 
-  if($opt->{node}->optional){
-    if( $opt->{minimal} ){
-      return @licensed;
-    }
-  }
-
-  if( is_lexeme_licensed( $w, $opt->{node} ) ){
-    push(@licensed, $l);
-    print STDERR "$node_label $w\n";
+  if( $lexeme->{$w}->cat->label eq $opt->{node}->cat->label ){
+    return $lexeme->{$w};
   }else{
     unshift( @{ $opt->{word_list} }, $w );
     return({ error => "lexeme [$w] not licensed by [$node_label]" });
   }
-  return @licensed;
 }
 
 sub node_loop {
@@ -206,11 +199,11 @@ sub node_loop {
           my $wl = [ @{ $opt->{word_list} } ];
           my $mn = $opt->{min_nodes};
           $return = license_phrase( { rule      => $rule->{$label},
-                                      word_list => $wl,
-                                      min_nodes => $mn,
+                                      word_list => $opt->{word_list},
+                                      min_nodes => $opt->{min_nodes},
                                       minimal   => 0, } );
           if( ref $return eq 'HASH' && exists $return->{error} ){
-            $opt->{word_list} = $wl;
+#            $opt->{word_list} = $wl;
             $opt->{min_nodes} = $mn;
           }else{
             push( @{ $arg->{licensed} }, $return );
@@ -234,8 +227,9 @@ sub node_loop {
       }
 
       if( ref $return eq 'HASH' && exists $return->{error} ){
-        print STDERR "«backtrack»\n";
-        if( @alt_tree ){
+        if( $child->optional ){
+          # Do nothing.  It's fine.
+        }elsif( @alt_tree ){
           return \@alt_tree;
         }else{
           return $return;
@@ -256,7 +250,7 @@ sub license_phrase {
   my( $opt ) = @_;
 
   my $target_label = $opt->{rule}->{label};
-  print STDERR "${target_label} { \n";
+  my $wl = [ @{ $opt->{word_list} } ];
 
   # count nodes
   # subtract optional
@@ -275,6 +269,24 @@ sub license_phrase {
                             licensed   => [],
                           } );
 
-  print STDERR "}\n";
   return $return;
 }
+
+
+sub print_tree {
+  my( $tree, $indent ) = @_;
+  my( $target_label ) = (keys %$tree);
+  print STDERR "${indent}${target_label} { \n";
+
+  foreach my $licensed ( @{ $tree->{$target_label} } ){
+    if( ref $licensed eq 'ARRAY' ){
+      print_tree( $licensed->[0], "${indent}  " );
+    }else{
+      my $word = $licensed->word;
+      my $label = $licensed->cat->label;
+      print STDERR "${indent}  $label $word\n";
+    }
+  }
+  print STDERR "${indent}}\n";
+};
+

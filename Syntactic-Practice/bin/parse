@@ -12,12 +12,8 @@ my $database = 'grammar';
 my $user     = 'grammaruser';
 my $pass     = 'nunya';
 my $dsn      = "DBI:mysql:database=$database;host=$hostname;port=$port";
-my $dbh      = DBI->connect($dsn, $user, $pass);
 
-my $input;
-my $verbose;
-
-my ($opt, $usage) =
+my ($getOpt, $usage) =
   describe_options(
                    'parse %o <some-arg>',
                    [ 'file|f=s', "file containing text to parse", { required => 1  } ],
@@ -26,29 +22,8 @@ my ($opt, $usage) =
                    [ 'help',       "print usage message and exit" ],
                   );
 
-print($usage->text), exit if $opt->help;
+print($usage->text), exit if $getOpt->help;
 
-my $query =
-  {
-   word =>
-     'SELECT l.id, l.word, c.label, c.longname
-        FROM lexeme l LEFT JOIN lexical_category c ON l.cat_id=c.id',
-   rule =>
-     'SELECT r.id, r.node_count, c.label, c.longname, c.head
-        FROM phrase_structure_rule r LEFT JOIN phrasal_category c ON r.target_id=c.id',
-   rule_node =>
-     'SELECT n.id, n.rule_id, n.position,
-             c.ctype, c.label, c.longname, BIN(n.optional), BIN(n.rpt)
-        FROM rule_node n LEFT JOIN syntactic_category c ON n.cat_id=c.id WHERE n.rule_id=?
-      ORDER BY n.position',
-  };
-
-my $sth = {};
-while( my($k,$q) = each %$query ){
-  $sth->{$k} = $dbh->prepare( $q );
-}
-
-$sth->{rule}->execute();
 
 use Syntactic::Practice::Schema;
 my $schema = Syntactic::Practice::Schema->connect($dsn, $user, $pass);
@@ -71,16 +46,27 @@ while( my $r = $rule_rs->next() ){
       label => $tlabel,
       node => [],
     };
-#  print("Processing rule for target [$tlabel]\n");
+  print STDERR ("$tlabel ->");
+
   my $nodes = $r->rule_nodes;
   while( my $n = $nodes->next ){
     my $nlabel = $n->cat->label;
+    if( $n->optional ){
+      if( $n->rpt ){
+        $nlabel = "$nlabel*";
+      }else{
+        $nlabel = "($nlabel)";
+      }
+    }elsif( $n->rpt ){
+      $nlabel = "$nlabel+";
+    }
     my $position = $n->position;
-#    print("  Node #$position: $nlabel\n");
     $rule->{$tlabel}->{node}->[$position - 1] = $n;
+    print STDERR (" $nlabel");
   }
+  print STDERR ("\n");
 }
-
+print STDERR ("=====\n");
 my $lexeme_rs = $schema->resultset('Lexeme')->
   search({},{prefetch => ['cat'] });
 
@@ -92,7 +78,7 @@ while( my $l = $lexeme_rs->next() ){
 my $content;
 
 {
-  open( my $fh, q{<}, $opt->file ) or die "could not open file [" . $opt->file . "]";
+  open( my $fh, q{<}, $getOpt->file ) or die "could not open file [" . $getOpt->file . "]";
   $content = join("", <$fh>);
 }
 
@@ -103,7 +89,7 @@ my @word_list = map { lc $_ } split(/\s+/, $content);
 
 use Data::Dumper;
 #die Data::Dumper::Dumper( @word_list );
-my $min_nodes = 0;
+
 my $trees = license_phrase( {
                              rule      => $rule->{'S'},
                              word_list => \@word_list,
@@ -172,7 +158,7 @@ sub node_loop {
         if( ref $return eq 'HASH' && exists $return->{error} ){
           # Parse failed with minimal set
         }else{
-          # Parse succeeded.  Add to alternate parse tree list
+          # Parse succeeded with minimal set.  Add to alternate parse tree list
           push( @alt_tree, @$return );
         }
       }elsif( $cat_type eq 'lexical' ){
@@ -191,28 +177,48 @@ sub node_loop {
         if( ref $return eq 'HASH' && exists $return->{error} ){
           # Parse failed with minimal set
         }else{
-          # Parse succeeded.  Add to alternate parse tree list
-          push( @alt_tree, { $opt->{rule}->{label} => $return->{licensed} } );
+          # Parse succeeded with minimal set.  Add to alternate parse tree list
+          push( @alt_tree, @$return );
         }
       }
     }
 
     my $num_iterations = 1;
     if( $child->rpt ){
-      $num_iterations = 0;
-      # TODO: we need a way to create a tree for variable number of
-      # iterations, not just min and max
 
-      foreach my $lbl ( map { $lexeme->{$_}->cat->label } @{ $opt->{word_list} } ){
-        if( $lbl eq $label ){
-          $num_iterations++
-        }else{
-          last;
+      if( $cat_type eq 'lexical' ){
+        # TODO: we need a way to create a tree for variable number of
+        # iterations, not just min and max
+        my $return = [];
+        while( ! (ref $return eq 'HASH' && exists $return->{error} ) ){
+          $return = license_lexeme( { node      => $child,
+                                      word_list => $opt->{word_list},
+                                      minimal   => $arg->{minimal},
+                                    } );
+          if( ref $return eq 'HASH' && exists $return->{error} ){
+          }else{
+            push( @{ $arg->{licensed} }, $return );
+          }
+        }
+      }elsif( $cat_type eq 'phrasal' ){
+        my $return = [];
+        while( ! (ref $return eq 'HASH' && exists $return->{error} ) ){
+          my $wl = [ @{ $opt->{word_list} } ];
+          my $mn = $opt->{min_nodes};
+          $return = license_phrase( { rule      => $rule->{$label},
+                                      word_list => $wl,
+                                      min_nodes => $mn,
+                                      minimal   => 0, } );
+          if( ref $return eq 'HASH' && exists $return->{error} ){
+            $opt->{word_list} = $wl;
+            $opt->{min_nodes} = $mn;
+          }else{
+            push( @{ $arg->{licensed} }, $return );
+          }
         }
       }
-    }
+    }else{
 
-    for( my $i = 0; $i < $num_iterations; $i++ ){
       my $return;
       if( $cat_type eq 'phrasal' ){
         $return = license_phrase( { rule      => $rule->{$label},
@@ -228,6 +234,7 @@ sub node_loop {
       }
 
       if( ref $return eq 'HASH' && exists $return->{error} ){
+        print STDERR "«backtrack»\n";
         if( @alt_tree ){
           return \@alt_tree;
         }else{
@@ -249,7 +256,7 @@ sub license_phrase {
   my( $opt ) = @_;
 
   my $target_label = $opt->{rule}->{label};
-  print STDERR "$target_label\n";
+  print STDERR "${target_label} { \n";
 
   # count nodes
   # subtract optional
@@ -263,10 +270,11 @@ sub license_phrase {
 
   my $return = node_loop( { phrase_opt => $opt,
                             min_nodes  => $min_nodes,
-                            node_list  => $opt->{rule}->{node},
+                            node_list  => [ @{$opt->{rule}->{node}} ],
                             parsed     => [],
                             licensed   => [],
                           } );
 
+  print STDERR "}\n";
   return $return;
 }

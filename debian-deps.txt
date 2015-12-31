@@ -1,1 +1,1 @@
-git-core perl-doc libdbix-class-schema-loader-perl mariadb-server libdbd-mysql-perl libgetopt-long-descriptive-perl
+git-core perl-doc libdbix-class-schema-loader-perl mariadb-server libdbd-mysql-perl libgetopt-long-descriptive-perl libdata-compare-perl

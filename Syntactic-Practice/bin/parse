@@ -5,6 +5,7 @@ use warnings;
 
 use Getopt::Long::Descriptive;
 use DBI;
+use Data::Compare;
 
 my $hostname = 'localhost';
 my $port     = '3306';
@@ -83,31 +84,30 @@ chomp $content;
 
 my @word_list = map { lc $_ } split(/\s+/, $content);
 
-#use Data::Dumper;
-#die Data::Dumper::Dumper( $rule->{'S'} );
 
 use Data::Dumper;
-#die Data::Dumper::Dumper( @word_list );
 
 print STDERR "$content\n=====\n";
+
+# Traverse phrase_structure_rule depth first and begin inserting leaf
+# nodes in to the tree
 
 my $trees = license_phrase( {
                              rule      => $rule->{'S'},
                              word_list => \@word_list,
                              min_nodes => 0,
-                             minimal   => 0,
+                             minimal   => 1,
                             } );
 
 foreach my $tree ( @$trees ) {
-  print_tree( $tree, '' );
+	foreach my $t ( denormalize_tree( $tree ) ){
+		print_tree( $t, '' );
+	}
 }
 
 if( ref $trees eq 'HASH' && exists $trees->{error} ){
   print STDERR "$trees->{error}\n";
 }
-
-# Traverse phrase_structure_rule depth first and begin inserting leaf
-# nodes in to the tree
 
 sub license_lexeme {
   my( $opt ) = @_;
@@ -162,7 +162,6 @@ sub node_loop {
                                  node_list  => [ $child, @{ $arg->{node_list} } ],
                                  parsed     => [ @{ $arg->{parsed} } ],
                                  licensed   => [ @{ $arg->{licensed} } ],
-                                 minimal    => 1
                                 } );
         if( ref $return eq 'HASH' && exists $return->{error} ){
           # Parse failed with minimal set
@@ -183,7 +182,7 @@ sub node_loop {
         while( ! (ref $return eq 'HASH' && exists $return->{error} ) ){
           $return = license_lexeme( { node      => $child,
                                       word_list => $opt->{word_list},
-                                      minimal   => $arg->{minimal},
+                                      minimal   => 0,
                                     } );
           if( ref $return eq 'HASH' && exists $return->{error} ){
           }else{
@@ -270,14 +269,56 @@ sub license_phrase {
 }
 
 
+sub denormalize_tree {
+	my( $tree ) = @_;
+
+  my( $target_label, $nodes ) = (each %$tree);
+	my @tree = ( {$target_label => []} );
+
+  foreach my $licensed ( @$nodes ){
+    if( ref $licensed eq 'ARRAY' ){
+			my @node = @{$tree[-1]->{$target_label}};
+			my @subtree;
+			while( my $s = shift( @$licensed ) ){
+				push( @subtree, denormalize_tree( $s ) );
+			}
+			my $subtree = shift( @subtree );
+			foreach my $t ( @tree ){
+				push( @{ $t->{$target_label} }, $subtree );
+			}
+
+			foreach my $s ( @subtree ){
+				push( @tree, { $target_label => [ @node, $s ] } );
+			}
+    }else{
+			foreach my $t ( @tree ){
+				push( @{ $t->{$target_label} }, $licensed );
+			}
+    }
+  }
+	my( $first, @rest ) = ( @tree );
+	my @uniq = ( $first );
+	while( my $next = shift( @rest ) ){
+		my $is_unique = 1;
+		foreach my $u ( @uniq ){
+			if ( Compare( $u, $next ) ){
+				$is_unique = 0;
+				last;
+			}
+		}
+		push( @uniq, $next ) if $is_unique;
+	}
+	return @uniq;
+}
+
 sub print_tree {
   my( $tree, $indent ) = @_;
   my( $target_label ) = (keys %$tree);
   print STDERR "${indent}${target_label} { \n";
 
   foreach my $licensed ( @{ $tree->{$target_label} } ){
-    if( ref $licensed eq 'ARRAY' ){
-      print_tree( $licensed->[0], "${indent}  " );
+    if( ref $licensed eq 'HASH' ){
+      print_tree( $licensed, "${indent}  " );
     }else{
       my $word = $licensed->word;
       my $label = $licensed->cat->label;

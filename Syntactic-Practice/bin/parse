@@ -126,122 +126,119 @@ sub node_loop {
   my $opt = $arg->{phrase_opt};
   my ( @licensed, @error ) = ( @{ $arg->{licensed} } );
 
-  my @initial_node_list = @{ $arg->{node_list} };
-  my @initial_word_list = @{ $opt->{word_list} };
+  my @initial_node_list  = @{ $arg->{node_list} };
+  my @initial_word_list  = @{ $opt->{word_list} };
+  my $initial_iterations = $opt->{iterations};
 
   my $num_nodes = scalar @initial_node_list;
 
-  my @lic = ();
+  my $position = 0;
+  my @initial_set = ( { remainder => [@initial_word_list] } );
   while ( my $child = shift @{ $arg->{node_list} } ) {
-    my @err;
+    my @lic = ();
+
     my $label    = $child->cat->label;
     my $cat_type = $child->cat->ctype;
-    my $position = $child->position - 1;    # indexed from 1
-
-    my $num_words = scalar @{ $opt->{word_list} };
-    if ( $opt->{iterations} > $num_words ) {
-      $opt->{iterations} = $num_words;
+    if ( $child->position - 1 != $position ) {    # indexed from 1
+      die "something is wrong.  node position is not as expected.";
     }
+    my @set;
+    if ( $position == 0 ) {
+      @set = ( { remainder => [@initial_word_list] } );
+    } else {
+      @set = @{ $licensed[ $position - 1 ] };
+    }
+    foreach my $lic ( @set ) {
+      $opt->{word_list} = $lic->{remainder};
 
-    my ( $min_i, $max_i ) = ( 1, $opt->{iterations} );
-
-    if ( $child->optional ) {
-      if ( $opt->{iterations} == 0 ) {
+      my $num_words = scalar @{ $opt->{word_list} };
+      if ( $opt->{iterations} > $num_words ) {
         $opt->{iterations} = $num_words;
-        next;
       }
-      $min_i = 0;
-      unless ( $child->rpt ) {
-        $max_i = 1;
-      }
-    } elsif ( $child->rpt ) {
+
+      my ( $min_i, $max_i ) = ( 1, $opt->{iterations} );
+
       if ( $child->optional ) {
         $min_i = 0;
-      }
-    } else {
-      $max_i = 1;
-    }
-
-    if ( $opt->{iterations} < $min_i ) {
-      return ( { error => "cannot iterate $opt->{iterations} times" } );
-    }
-
-    my $return;
-    my ( $options, $function );
-    my $remainder_sub = sub { return @{ $_->{word_list} } };
-    if ( $cat_type eq 'phrasal' ) {
-      $options = { rule          => $rule->{$label},
-                   word_list     => $opt->{word_list},
-                   max_depth     => $opt->{max_depth},
-                   current_depth => $opt->{current_depth} + 1,
-                   iterations    => 1, };
-      $function = sub { license_phrase( @_ ) };
-    } elsif ( $cat_type eq 'lexical' ) {
-      $options = { node      => $child,
-                   word_list => $opt->{word_list} };
-      $function = sub { license_lexeme( @_ ) };
-    } else {
-      die( "category [$cat_type] unknown" );
-    }
-    for ( my $i = $min_i; $i <= $max_i; $i++ ) {
-      my @word_list = @{ $options->{word_list} };
-
-      if ( $i == 0 ) {
-        push( @lic,
-              { remainder  => [@word_list],
-                result     => undef,
-                iterations => $i,
-                cat_type   => $cat_type,
-              } );
-        next;
-      }
-
-      warn "category [$cat_type] has unrecognized CODE ref" unless ref $function eq 'CODE';
-      if ( $cat_type eq 'lexical' ) {
-        warn "node field not set" unless exists $options->{node} && ref $options->{node};
-      }
-      my $return    = $function->( $options );
-      my @remainder = @{ $options->{word_list} };
-
-      if( scalar @remainder >= scalar @word_list ){
-        warn "word list count was not decremented";
-      }
-
-      if ( ref $return eq 'HASH' && exists $return->{error} ) {
-        $opt->{word_list} = [@word_list];
-        last;
+        unless ( $child->rpt ) {
+          $max_i = 1;
+        }
+      } elsif ( $child->rpt ) {
       } else {
-        push( @lic,
-              { remainder  => \@remainder,
-                result     => $return,
-                iterations => $i,
-                cat_type   => $cat_type,
-              } );
+        $max_i = 1;
       }
 
+      if ( $opt->{iterations} < $min_i ) {
+        return ( { error => "cannot iterate $opt->{iterations} times" } );
+      }
+
+      my ( $options, $function );
+      my $remainder_sub = sub { return @{ $_->{word_list} } };
+      if ( $cat_type eq 'phrasal' ) {
+        $options = { rule          => $rule->{$label},
+                     word_list     => $opt->{word_list},
+                     max_depth     => $opt->{max_depth},
+                     current_depth => $opt->{current_depth} + 1,
+                     iterations    => 1, };
+        $function = sub { license_phrase( @_ ) };
+      } elsif ( $cat_type eq 'lexical' ) {
+        $options = { node      => $child,
+                     word_list => $opt->{word_list} };
+        $function = sub { license_lexeme( @_ ) };
+      } else {
+        die( "category [$cat_type] unknown" );
+      }
+      for ( my $i = $min_i; $i <= $max_i; $i++ ) {
+        my @word_list = @{ $options->{word_list} };
+        my @r = ();
+
+        for ( my $n = 1; $n <= $i; $n++ ) {
+          my $return = $function->( $options );
+
+          if ( ref $return eq 'HASH' && exists $return->{error} ) {
+            $opt->{word_list} = [@word_list];
+            last;
+          }
+
+          push( @r, $return );
+        }
+        if ( scalar @r == $i ) {
+          my @r_word = @{ $options->{word_list} };
+          if ( $i > 0 && scalar @r_word >= scalar @word_list ) {
+            warn "word list count was not decremented";
+          }
+
+          push( @lic,
+                { remainder  => \@r_word,
+                  result     => \@r,
+                  iterations => $i,
+                  node       => $child,
+                } );
+        }
+        $opt->{word_list} = @word_list;
+      }
+      if ( @lic ) {
+        $licensed[$position] = \@lic;
+      } else {
+        $licensed[$position] = [];
+      }
     }
-    if ( @lic ) {
-      $licensed[$position] = \@lic;
-    } else {
-      $opt->{word_list} = [@initial_word_list];
-      $opt->{node_list} = [@initial_node_list];
-      $licensed[$position] = [];
-    }
+    $position++;
   }
 
   my $valid = 1;
-  for(my $i = 0; $i <= $num_nodes; $i++){
-    if( ref $licensed[$i] ne 'ARRAY' ){
+  for ( my $i = 0; $i <= $num_nodes; $i++ ) {
+    if ( ref $licensed[$i] ne 'ARRAY' ) {
       $valid = 0;
       next;
     }
-    if( scalar @{$licensed[$i]} == 0 ){
+    if ( scalar @{ $licensed[$i] } == 0 ) {
       $valid = 0;
     }
   }
-  if( $valid ){
+  if ( $valid ) {
     return ( \@licensed );
-  }else{
+  } else {
     return { error => "Not all nodes are licensed" };
   }
 }

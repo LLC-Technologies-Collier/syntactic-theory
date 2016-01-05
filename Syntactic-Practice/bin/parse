@@ -16,76 +16,69 @@ my $user     = 'grammaruser';
 my $pass     = 'nunya';
 my $dsn      = "DBI:mysql:database=$database;host=$hostname;port=$port";
 
-my ($getOpt, $usage) =
-  describe_options(
-                   'parse %o <some-arg>',
-                   [ 'file|f=s', "file containing text to parse", { required => 1  } ],
-                   [],
-                   [ 'verbose|v',  "print extra stuff"            ],
-                   [ 'help',       "print usage message and exit" ],
-                  );
+my ( $getOpt, $usage ) =
+    describe_options( 'parse %o <some-arg>',
+                      [ 'file|f=s', "file containing text to parse", { required => 1 } ],
+                      [],
+                      [ 'verbose|v', "print extra stuff" ],
+                      [ 'help',      "print usage message and exit" ], );
 
-print($usage->text), exit if $getOpt->help;
-
+print( $usage->text ), exit if $getOpt->help;
 
 use Syntactic::Practice::Schema;
-my $schema = Syntactic::Practice::Schema->connect($dsn, $user, $pass);
+my $schema = Syntactic::Practice::Schema->connect( $dsn, $user, $pass );
 
-my $rule_rs = $schema->resultset('PhraseStructureRule')->
-  search({},
-         {
-          prefetch   => ['target', { 'rule_nodes' => ['cat'] } ]
-         });
+my $rule_rs = $schema->resultset( 'PhraseStructureRule' )
+    ->search( {}, { prefetch => [ 'target', { 'rule_nodes' => ['cat'] } ] } );
 
 my $rule = {};
-# Load the grammar rules in to the $rule hashref
-while( my $r = $rule_rs->next() ){
-  my $tlabel = $r->target->label;
-  $rule->{$tlabel} =
-    { rs => $r,
-      label => $tlabel,
-      node => [],
-    };
-  print STDERR ("$tlabel ->");
 
-  my $nodes = $r->rule_nodes;
-  while( my $n = $nodes->next ){
-    my $nlabel = $n->cat->label;
-    if( $n->optional ){
-      if( $n->rpt ){
-        $nlabel = "$nlabel*";
-      }else{
-        $nlabel = "($nlabel)";
-      }
-    }elsif( $n->rpt ){
-      $nlabel = "$nlabel+";
+# Load the grammar rules in to the $rule hashref
+while ( my $r = $rule_rs->next() ) {
+    my $tlabel = $r->target->label;
+    $rule->{$tlabel} = { rs    => $r,
+                         label => $tlabel,
+                         node  => [], };
+    print STDERR ( "$tlabel ->" );
+
+    my $nodes = $r->rule_nodes;
+    while ( my $n = $nodes->next ) {
+        my $nlabel = $n->cat->label;
+        if ( $n->optional ) {
+            if ( $n->rpt ) {
+                $nlabel = "$nlabel*";
+            }
+            else {
+                $nlabel = "($nlabel)";
+            }
+        }
+        elsif ( $n->rpt ) {
+            $nlabel = "$nlabel+";
+        }
+        my $position = $n->position;
+        $rule->{$tlabel}->{node}->[ $position - 1 ] = $n;
+        print STDERR ( " $nlabel" );
     }
-    my $position = $n->position;
-    $rule->{$tlabel}->{node}->[$position - 1] = $n;
-    print STDERR (" $nlabel");
-  }
-  print STDERR ("\n");
+    print STDERR ( "\n" );
 }
-print STDERR ("=====\n");
-my $lexeme_rs = $schema->resultset('Lexeme')->
-  search({},{prefetch => ['cat'] });
+print STDERR ( "=====\n" );
+my $lexeme_rs = $schema->resultset( 'Lexeme' )->search( {}, { prefetch => ['cat'] } );
 
 my $lexeme = {};
-while( my $l = $lexeme_rs->next() ){
-  $lexeme->{$l->word} = $l;
+while ( my $l = $lexeme_rs->next() ) {
+    $lexeme->{ $l->word } = $l;
 }
 
 my $content;
 
 {
-  open( my $fh, q{<}, $getOpt->file ) or die "could not open file [" . $getOpt->file . "]";
-  $content = join("", <$fh>);
+    open( my $fh, q{<}, $getOpt->file ) or die "could not open file [" . $getOpt->file . "]";
+    $content = join( "", <$fh> );
 }
 
 chomp $content;
 
-my @word_list = map { lc $_ } split(/\s+/, $content);
-
+my @word_list = map { lc $_ } split( /\s+/, $content );
 
 use Data::Dumper;
 
@@ -94,239 +87,264 @@ print STDERR "$content\n=====\n";
 # Traverse phrase_structure_rule depth first and begin inserting leaf
 # nodes in to the tree
 
-my $trees = license_phrase( {
-                             rule      => $rule->{'S'},
-                             word_list => \@word_list,
-                             min_nodes => 0,
-                             minimal   => 1,
+my $trees = license_phrase(
+                            { rule      => $rule->{'S'},
+                              word_list => \@word_list,
+                              min_nodes => 0,
+                              minimal   => 1,
                             } );
 
 foreach my $tree ( @$trees ) {
-	foreach my $t ( denormalize_tree( $tree ) ){
-		print_tree( $t, '' );
-	}
+    foreach my $t ( denormalize_tree( $tree ) ) {
+        print_tree( $t, '' );
+    }
 }
 
-if( ref $trees eq 'HASH' && exists $trees->{error} ){
-  print STDERR "$trees->{error}\n";
+if ( ref $trees eq 'HASH' && exists $trees->{error} ) {
+    print STDERR "$trees->{error}\n";
 }
 
 sub license_lexeme {
-  my( $opt ) = @_;
+    my ( $opt ) = @_;
 
-  my $node_label = $opt->{node}->cat->label;
-  unless( @{ $opt->{word_list} } ){
-    return {error => "insufficient words to license lexeme [$node_label]"};
-  }
+    my $node_label = $opt->{node}->cat->label;
+    unless ( @{ $opt->{word_list} } ) {
+        return { error => "insufficient words to license lexeme [$node_label]" };
+    }
 
-  my $w = shift( @{ $opt->{word_list} } );
-  my $l = $lexeme->{$w};
+    my $w = shift( @{ $opt->{word_list} } );
+    my $l = $lexeme->{$w};
 
-  if( $lexeme->{$w}->cat->label eq $opt->{node}->cat->label ){
-    return $lexeme->{$w};
-  }else{
-    unshift( @{ $opt->{word_list} }, $w );
-    return({ error => "lexeme [$w] not licensed by [$node_label]" });
-  }
+    if ( $lexeme->{$w}->cat->label eq $opt->{node}->cat->label ) {
+        return $lexeme->{$w};
+    }
+    else {
+        unshift( @{ $opt->{word_list} }, $w );
+        return ( { error => "lexeme [$w] not licensed by [$node_label]" } );
+    }
 }
 
 sub node_loop {
-  my( $arg ) = @_;
-  my $opt = $arg->{phrase_opt};
-  my( $tree, @alt_tree );
+    my ( $arg ) = @_;
+    my $opt = $arg->{phrase_opt};
+    my ( $tree, @alt_tree );
 
-  while( my $child = shift @{ $arg->{node_list} } ){
-    my $label = $child->cat->label;
-    my $cat_type = $child->cat->ctype;
+    while ( my $child = shift @{ $arg->{node_list} } ) {
+        my $label    = $child->cat->label;
+        my $cat_type = $child->cat->ctype;
 
-    if($child->optional){
-      next if( $opt->{minimal} );
-      # This will potentially produce a new parse tree.
-      if( $cat_type eq 'phrasal' ){
-        my $return = license_phrase( { rule      => $opt->{rule},
-                                       word_list => [ @{$opt->{word_list}} ],
-                                       min_nodes => $opt->{min_nodes},
-                                       minimal   => 1, } );
-        if( ref $return eq 'HASH' && exists $return->{error} ){
-          # Parse failed with minimal set
-        }else{
-          # Parse succeeded with minimal set.  Add to alternate parse tree list
-          push( @alt_tree, @$return );
+        if ( $child->optional ) {
+            next if ( $opt->{minimal} );
+
+            # This will potentially produce a new parse tree.
+            if ( $cat_type eq 'phrasal' ) {
+                my $return = license_phrase(
+                                             { rule      => $opt->{rule},
+                                               word_list => [ @{ $opt->{word_list} } ],
+                                               min_nodes => $opt->{min_nodes},
+                                               minimal   => 1,
+                                             } );
+                if ( ref $return eq 'HASH' && exists $return->{error} ) {
+
+                    # Parse failed with minimal set
+                }
+                else {
+                    # Parse succeeded with minimal set.  Add to alternate parse tree list
+                    push( @alt_tree, @$return );
+                }
+            }
+            elsif ( $cat_type eq 'lexical' ) {
+                my $return = node_loop( {
+                                          phrase_opt => { rule      => $opt->{rule},
+                                                          word_list => [ @{ $opt->{word_list} } ],
+                                                          min_nodes => $opt->{min_nodes},
+                                                          minimal   => 1,
+                                          },
+                                          node_list => [ $child, @{ $arg->{node_list} } ],
+                                          parsed    => [ @{ $arg->{parsed} } ],
+                                          licensed  => [ @{ $arg->{licensed} } ],
+                                        } );
+                if ( ref $return eq 'HASH' && exists $return->{error} ) {
+
+                    # Parse failed with minimal set
+                }
+                else {
+                    # Parse succeeded with minimal set.  Add to alternate parse tree list
+                    push( @alt_tree, @$return );
+                }
+            }
         }
-      }elsif( $cat_type eq 'lexical' ){
-        my $return = node_loop( {
-                                 phrase_opt => {
-                                                rule      => $opt->{rule},
-                                                word_list => [ @{$opt->{word_list}} ],
+
+        my $num_iterations = 1;
+        if ( $child->rpt ) {
+
+            if ( $cat_type eq 'lexical' ) {
+
+                # TODO: we need a way to create a tree for variable number of
+                # iterations, not just min and max
+                my $return = [];
+                while ( !( ref $return eq 'HASH' && exists $return->{error} ) ) {
+                    $return = license_lexeme(
+                                              { node      => $child,
+                                                word_list => $opt->{word_list},
+                                                minimal   => 0,
+                                              } );
+                    if ( ref $return eq 'HASH' && exists $return->{error} ) {
+                    }
+                    else {
+                        push( @{ $arg->{licensed} }, $return );
+                    }
+                }
+            }
+            elsif ( $cat_type eq 'phrasal' ) {
+                my $return = [];
+                while ( !( ref $return eq 'HASH' && exists $return->{error} ) ) {
+                    my $wl = [ @{ $opt->{word_list} } ];
+                    my $mn = $opt->{min_nodes};
+                    $return = license_phrase(
+                                              { rule      => $rule->{$label},
+                                                word_list => $opt->{word_list},
                                                 min_nodes => $opt->{min_nodes},
-                                                minimal   => 1,
-                                               },
-                                 node_list  => [ $child, @{ $arg->{node_list} } ],
-                                 parsed     => [ @{ $arg->{parsed} } ],
-                                 licensed   => [ @{ $arg->{licensed} } ],
-                                } );
-        if( ref $return eq 'HASH' && exists $return->{error} ){
-          # Parse failed with minimal set
-        }else{
-          # Parse succeeded with minimal set.  Add to alternate parse tree list
-          push( @alt_tree, @$return );
+                                                minimal   => 0,
+                                              } );
+                    if ( ref $return eq 'HASH' && exists $return->{error} ) {
+
+                        #            $opt->{word_list} = $wl;
+                        $opt->{min_nodes} = $mn;
+                    }
+                    else {
+                        push( @{ $arg->{licensed} }, $return );
+                    }
+                }
+            }
         }
-      }
+        else {
+
+            my $return;
+            if ( $cat_type eq 'phrasal' ) {
+                $return = license_phrase(
+                                          { rule      => $rule->{$label},
+                                            word_list => $opt->{word_list},
+                                            min_nodes => $opt->{min_nodes},
+                                            minimal   => 0,
+                                          } );
+            }
+            elsif ( $cat_type eq 'lexical' ) {
+                $return = license_lexeme(
+                                          { node      => $child,
+                                            word_list => $opt->{word_list},
+                                            minimal   => $arg->{minimal},
+                                          } );
+            }
+
+            if ( ref $return eq 'HASH' && exists $return->{error} ) {
+                if ( $child->optional ) {
+
+                    # Do nothing.  It's fine.
+                }
+                elsif ( @alt_tree ) {
+                    return \@alt_tree;
+                }
+                else {
+                    return $return;
+                }
+            }
+            else {
+                push( @{ $arg->{licensed} }, $return );
+            }
+        }
+        push( @{ $arg->{parsed} }, $child );
+        $opt->{minimal} = $arg->{minimal} = 0;
     }
 
-    my $num_iterations = 1;
-    if( $child->rpt ){
-
-      if( $cat_type eq 'lexical' ){
-        # TODO: we need a way to create a tree for variable number of
-        # iterations, not just min and max
-        my $return = [];
-        while( ! (ref $return eq 'HASH' && exists $return->{error} ) ){
-          $return = license_lexeme( { node      => $child,
-                                      word_list => $opt->{word_list},
-                                      minimal   => 0,
-                                    } );
-          if( ref $return eq 'HASH' && exists $return->{error} ){
-          }else{
-            push( @{ $arg->{licensed} }, $return );
-          }
-        }
-      }elsif( $cat_type eq 'phrasal' ){
-        my $return = [];
-        while( ! (ref $return eq 'HASH' && exists $return->{error} ) ){
-          my $wl = [ @{ $opt->{word_list} } ];
-          my $mn = $opt->{min_nodes};
-          $return = license_phrase( { rule      => $rule->{$label},
-                                      word_list => $opt->{word_list},
-                                      min_nodes => $opt->{min_nodes},
-                                      minimal   => 0, } );
-          if( ref $return eq 'HASH' && exists $return->{error} ){
-#            $opt->{word_list} = $wl;
-            $opt->{min_nodes} = $mn;
-          }else{
-            push( @{ $arg->{licensed} }, $return );
-          }
-        }
-      }
-    }else{
-
-      my $return;
-      if( $cat_type eq 'phrasal' ){
-        $return = license_phrase( { rule      => $rule->{$label},
-                                    word_list => $opt->{word_list},
-                                    min_nodes => $opt->{min_nodes},
-                                    minimal   => 0,
-                                  } );
-      }elsif($cat_type eq 'lexical'){
-        $return = license_lexeme( { node      => $child,
-                                    word_list => $opt->{word_list},
-                                    minimal   => $arg->{minimal},
-                                  } );
-      }
-
-      if( ref $return eq 'HASH' && exists $return->{error} ){
-        if( $child->optional ){
-          # Do nothing.  It's fine.
-        }elsif( @alt_tree ){
-          return \@alt_tree;
-        }else{
-          return $return;
-        }
-      }else{
-        push( @{ $arg->{licensed} }, $return );
-      }
-    }
-    push(@{ $arg->{parsed} }, $child);
-    $opt->{minimal} = $arg->{minimal} = 0;
-  }
-
-  return( [ { $opt->{rule}->{label} => $arg->{licensed} },
-            @alt_tree ] );
+    return ( [ { $opt->{rule}->{label} => $arg->{licensed} }, @alt_tree ] );
 }
 
 sub license_phrase {
-  my( $opt ) = @_;
+    my ( $opt ) = @_;
 
-  my $target_label = $opt->{rule}->{label};
-  my $wl = [ @{ $opt->{word_list} } ];
+    my $target_label = $opt->{rule}->{label};
+    my $wl           = [ @{ $opt->{word_list} } ];
 
-  # count nodes
-  # subtract optional
-  my $min_nodes = $opt->{min_nodes};
-  my $num_optional_nodes = scalar grep { $_->optional } @{$opt->{rule}->{node}};
-  $min_nodes += ( scalar @{$opt->{rule}->{node}} - $num_optional_nodes );
+    # count nodes
+    # subtract optional
+    my $min_nodes = $opt->{min_nodes};
+    my $num_optional_nodes = scalar grep { $_->optional } @{ $opt->{rule}->{node} };
+    $min_nodes += ( scalar @{ $opt->{rule}->{node} } - $num_optional_nodes );
 
-  if( $min_nodes > scalar @{$opt->{word_list}} ){
-    return {error => 'insufficient words to license phrase [$target_label]'};
-  }
+    if ( $min_nodes > scalar @{ $opt->{word_list} } ) {
+        return { error => 'insufficient words to license phrase [$target_label]' };
+    }
 
-  my $return = node_loop( { phrase_opt => $opt,
-                            min_nodes  => $min_nodes,
-                            node_list  => [ @{$opt->{rule}->{node}} ],
-                            parsed     => [],
-                            licensed   => [],
-                          } );
+    my $return = node_loop(
+                            { phrase_opt => $opt,
+                              min_nodes  => $min_nodes,
+                              node_list  => [ @{ $opt->{rule}->{node} } ],
+                              parsed     => [],
+                              licensed   => [],
+                            } );
 
-  return $return;
+    return $return;
 }
 
-
 sub denormalize_tree {
-	my( $tree ) = @_;
+    my ( $tree ) = @_;
 
-  my( $target_label, $nodes ) = (each %$tree);
-	my @tree = ( {$target_label => []} );
+    my ( $target_label, $nodes ) = ( each %$tree );
+    my @tree = ( { $target_label => [] } );
 
-  foreach my $licensed ( @$nodes ){
-    if( ref $licensed eq 'ARRAY' ){
-			my @node = @{$tree[-1]->{$target_label}};
-			my @subtree;
-			while( my $s = shift( @$licensed ) ){
-				push( @subtree, denormalize_tree( $s ) );
-			}
-			my $subtree = shift( @subtree );
-			foreach my $t ( @tree ){
-				push( @{ $t->{$target_label} }, $subtree );
-			}
+    foreach my $licensed ( @$nodes ) {
+        if ( ref $licensed eq 'ARRAY' ) {
+            my @node = @{ $tree[-1]->{$target_label} };
+            my @subtree;
+            while ( my $s = shift( @$licensed ) ) {
+                push( @subtree, denormalize_tree( $s ) );
+            }
+            my $subtree = shift( @subtree );
+            foreach my $t ( @tree ) {
+                push( @{ $t->{$target_label} }, $subtree );
+            }
 
-			foreach my $s ( @subtree ){
-				push( @tree, { $target_label => [ @node, $s ] } );
-			}
-    }else{
-			foreach my $t ( @tree ){
-				push( @{ $t->{$target_label} }, $licensed );
-			}
+            foreach my $s ( @subtree ) {
+                push( @tree, { $target_label => [ @node, $s ] } );
+            }
+        }
+        else {
+            foreach my $t ( @tree ) {
+                push( @{ $t->{$target_label} }, $licensed );
+            }
+        }
     }
-  }
-	my( $first, @rest ) = ( @tree );
-	my @uniq = ( $first );
-	while( my $next = shift( @rest ) ){
-		my $is_unique = 1;
-		foreach my $u ( @uniq ){
-			if ( Compare( $u, $next ) ){
-				$is_unique = 0;
-				last;
-			}
-		}
-		push( @uniq, $next ) if $is_unique;
-	}
-	return @uniq;
+    my ( $first, @rest ) = ( @tree );
+    my @uniq = ( $first );
+    while ( my $next = shift( @rest ) ) {
+        my $is_unique = 1;
+        foreach my $u ( @uniq ) {
+            if ( Compare( $u, $next ) ) {
+                $is_unique = 0;
+                last;
+            }
+        }
+        push( @uniq, $next ) if $is_unique;
+    }
+    return @uniq;
 }
 
 sub print_tree {
-  my( $tree, $indent ) = @_;
-  my( $target_label ) = (keys %$tree);
-  print STDERR "${indent}${target_label} { \n";
+    my ( $tree, $indent ) = @_;
+    my ( $target_label ) = ( keys %$tree );
+    print STDERR "${indent}${target_label} { \n";
 
-  foreach my $licensed ( @{ $tree->{$target_label} } ){
-    if( ref $licensed eq 'HASH' ){
-      print_tree( $licensed, "${indent}  " );
-    }else{
-      my $word = $licensed->word;
-      my $label = $licensed->cat->label;
-      print STDERR "${indent}  $label $word\n";
+    foreach my $licensed ( @{ $tree->{$target_label} } ) {
+        if ( ref $licensed eq 'HASH' ) {
+            print_tree( $licensed, "${indent}  " );
+        }
+        else {
+            my $word  = $licensed->word;
+            my $label = $licensed->cat->label;
+            print STDERR "${indent}  $label $word\n";
+        }
     }
-  }
-  print STDERR "${indent}}\n";
-};
+    print STDERR "${indent}}\n";
+}
 

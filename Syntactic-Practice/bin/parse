@@ -7,6 +7,8 @@ use Getopt::Long::Descriptive;
 use DBI;
 use Data::Compare;
 
+# TODO: variable glossary
+
 my $hostname = 'localhost';
 my $port     = '3306';
 my $database = 'grammar';

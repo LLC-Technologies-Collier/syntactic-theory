@@ -132,23 +132,33 @@ sub node_loop {
 
   my $num_nodes = scalar @initial_node_list;
 
+  my $indent = ' ' x ( $opt->{current_depth} - 1 );
+  print STDERR "${indent}Attempting to license $opt->{rule}->{label}\n";
+
   my $position = 0;
   my @initial_set = ( { remainder => [@initial_word_list] } );
   while ( my $child = shift @{ $arg->{node_list} } ) {
-    my @lic = ();
 
     my $label    = $child->cat->label;
     my $cat_type = $child->cat->ctype;
     if ( $child->position - 1 != $position ) {    # indexed from 1
       die "something is wrong.  node position is not as expected.";
     }
-    my @set;
+    my $set;
     if ( $position == 0 ) {
-      @set = ( { remainder => [@initial_word_list] } );
+      $set = [
+               { remainder  => [@initial_word_list],
+                 result     => undef,
+                 iterations => undef,
+                 node       => undef,
+                 position   => undef,
+                 precursor  => undef,
+               } ];
     } else {
-      @set = @{ $licensed[ $position - 1 ] };
+      $set = $licensed[ $position - 1 ];    # the nodes licensed by the previous pass
+      $licensed[ $position - 1 ] = [];
     }
-    foreach my $lic ( @set ) {
+    while ( my $lic = shift @$set ) {
       $opt->{word_list} = $lic->{remainder};
 
       my $num_words = scalar @{ $opt->{word_list} };
@@ -156,15 +166,23 @@ sub node_loop {
         $opt->{iterations} = $num_words;
       }
 
-      my ( $min_i, $max_i ) = ( 1, $opt->{iterations} );
-
+      my ( $min_i, $max_i );
+      my $nlabel = $label;
       if ( $child->optional ) {
         $min_i = 0;
-        unless ( $child->rpt ) {
-          $max_i = 1;
+        if ( $child->rpt ) {
+          $nlabel = "$nlabel*";
+          $max_i  = $opt->{iterations};
+        } else {
+          $nlabel = "($nlabel)";
+          $max_i  = 1;
         }
       } elsif ( $child->rpt ) {
+        $min_i  = 1;
+        $max_i  = $opt->{iterations};
+        $nlabel = "$nlabel+";
       } else {
+        $min_i = 1;
         $max_i = 1;
       }
 
@@ -174,72 +192,106 @@ sub node_loop {
 
       my ( $options, $function );
       my $remainder_sub = sub { return @{ $_->{word_list} } };
+      my $wl = [ @{ $opt->{word_list} } ];
       if ( $cat_type eq 'phrasal' ) {
         $options = { rule          => $rule->{$label},
-                     word_list     => $opt->{word_list},
+                     word_list     => $wl,
                      max_depth     => $opt->{max_depth},
                      current_depth => $opt->{current_depth} + 1,
-                     iterations    => 1, };
-        $function = sub { license_phrase( @_ ) };
+                     iterations    => $opt->{iterations}, };
+        $function = sub {
+          my ( $opt ) = @_;
+          my $tree = license_phrase( $opt );
+          return [ denormalize_tree( $tree, "FULL" ) ];
+        };
       } elsif ( $cat_type eq 'lexical' ) {
         $options = { node      => $child,
-                     word_list => $opt->{word_list} };
+                     word_list => $wl };
         $function = sub { license_lexeme( @_ ) };
       } else {
         die( "category [$cat_type] unknown" );
       }
+      my @lic = ();
+
+      print STDERR (
+            "${indent}attempting $max_i time(s) to license ($cat_type) $nlabel with words [@{$lic->{remainder}}]\n" );
       for ( my $i = $min_i; $i <= $max_i; $i++ ) {
-        my @word_list = @{ $options->{word_list} };
-        my @r = ();
+        my @word_list = @{ $opt->{word_list} };
+        my @r         = ();
 
-        for ( my $n = 1; $n <= $i; $n++ ) {
-          my $return = $function->( $options );
+        my @r_word = ( [@word_list] );
+        while ( my $rwl = shift( @r_word ) ) {
+          for ( my $n = 1; $n <= $i; $n++ ) {
+            my $return = $function->( $options );
 
-          if ( ref $return eq 'HASH' && exists $return->{error} ) {
-            $opt->{word_list} = [@word_list];
-            last;
+            if ( ref $return eq 'HASH' && exists $return->{error} ) {
+              $#{$wl} = -1;
+              push( @$wl, @{ $opt->{word_list} } );
+              last;
+            } elsif ( $cat_type eq 'phrasal' ) {
+              foreach my $tree ( @$return ) {
+                push( @r_word, [ @{ $tree->{remainder} } ] );
+              }
+            }
+
+            push( @r, $return );
           }
+          if ( scalar @r == $i ) {
+            my @r_word = @{ $options->{word_list} };
+            if ( $i > 0 && scalar @r_word >= scalar @word_list ) {
+              warn "word list count was not decremented";
+            }
 
-          push( @r, $return );
-        }
-        if ( scalar @r == $i ) {
-          my @r_word = @{ $options->{word_list} };
-          if ( $i > 0 && scalar @r_word >= scalar @word_list ) {
-            warn "word list count was not decremented";
+            push( @lic,
+                  { remainder  => \@r_word,
+                    result     => \@r,
+                    iterations => $i,
+                    node       => $child,
+                    position   => $position,
+                    precursor  => $lic,
+                  } );
           }
-
-          push( @lic,
-                { remainder  => \@r_word,
-                  result     => \@r,
-                  iterations => $i,
-                  node       => $child,
-                } );
+          $#{$wl} = -1;
+          push( @$wl, @{ $opt->{word_list} } );
         }
-        $opt->{word_list} = @word_list;
-      }
-      if ( @lic ) {
-        $licensed[$position] = \@lic;
-      } else {
-        $licensed[$position] = [];
+        if ( @lic ) {
+          my $count = scalar @lic;
+          print STDERR "${indent}$nlabel successfully licensed ($count matches):\n";
+          foreach my $l ( @lic ) {
+            print STDERR "${indent}  $l->{iterations} iteration(s) with remaining words: [@{ $l->{remainder} }]\n";
+          }
+          push( @{ $licensed[$position] }, @lic );
+
+          # if any nodes have been licensed, place precursor back on
+          # list of licensed nodes
+          push( @{ $licensed[ $position - 1 ] }, $lic );
+        } else {
+          print STDERR "${indent}failed to license $nlabel with words [ @{$lic->{remainder}} ]\n";
+        }
       }
     }
     $position++;
   }
 
   my $valid = 1;
-  for ( my $i = 0; $i <= $num_nodes; $i++ ) {
+  for ( my $i = 0; $i < $num_nodes; $i++ ) {
+    my $node = $initial_node_list[$i];
     if ( ref $licensed[$i] ne 'ARRAY' ) {
       $valid = 0;
-      next;
+      return {   error => "List of parses at position $i ("
+               . $node->cat->label
+               . ") in rule $opt->{rule}->{label} not an array" };
     }
     if ( scalar @{ $licensed[$i] } == 0 ) {
       $valid = 0;
+      return { error => "Node number $i in rule $opt->{rule}->{label} not licensed" };
     }
   }
   if ( $valid ) {
     return ( \@licensed );
   } else {
-    return { error => "Not all nodes are licensed" };
+    print STDERR "${indent}Not all nodes in rule $opt->{rule}->{label} are licensed\n";
+    return { error => "Not all nodes in rule $opt->{rule}->{label} are licensed" };
   }
 }
 
@@ -331,7 +383,7 @@ sub dedup_list {
 }
 
 sub denormalize_tree {
-  my ( $tree ) = @_;
+  my ( $tree, $full ) = @_;
 
   if ( ref $tree eq 'HASH' && exists $tree->{error} ) {
     warn( "error: $tree->{error}" );
@@ -347,16 +399,31 @@ sub denormalize_tree {
 
     my $lic = shift( @$node );
 
-    my $licensed = $lic->{result};
+    my $result = $lic->{result};
+    my $licensed;
+    if ( $full ) {
+      $licensed = $lic;
+    } else {
+      $licensed = $result;
+    }
 
-    if ( ref $licensed eq 'HASH' && exists $licensed->{error} ) {
-      die "error processing nodes: $licensed->{error}";
-    } elsif ( ref $licensed eq 'Syntactic::Practice::Schema::Result::Lexeme' ) {
+    if ( ref $result eq 'HASH' && exists $result->{error} ) {
+      die "error processing nodes: $result->{error}";
+    } elsif ( ref $result eq 'Syntactic::Practice::Schema::Result::Lexeme' ) {
       foreach my $t ( @tree ) {
         push( @{ $t->{$target_label} }, $licensed );
       }
-    } elsif ( ref $licensed eq 'HASH' ) {
-      my @subtree = denormalize_tree( $licensed );
+    } elsif ( ref $result eq 'HASH' ) {
+      my @subtree = denormalize_tree( $result, $full );
+      my $subtree = shift( @subtree );
+      foreach my $t ( @tree ) {
+        push( @{ $t->{$target_label} }, $subtree );
+      }
+      foreach my $subtree ( @subtree ) {
+        push( @tree, { $target_label => [ @node, $subtree ] } );
+      }
+    } elsif ( ref $result eq 'ARRAY' ) {
+      my @subtree = @$result;
       my $subtree = shift( @subtree );
       foreach my $t ( @tree ) {
         push( @{ $t->{$target_label} }, $subtree );
@@ -367,17 +434,48 @@ sub denormalize_tree {
     }
 
     foreach my $lic ( @$node ) {
-      my $licensed = $lic->{result};
-      if ( ref $licensed eq 'Syntactic::Practice::Schema::Result::Lexeme' ) {
+      my $result = $lic->{result};
+      my $licensed;
+      if ( $full ) {
+        $licensed = $lic;
+      } else {
+        $licensed = $result;
+      }
+      if ( ref $result eq 'HASH' && exists $result->{error} ) {
+        die "error processing nodes: $result->{error}";
+      } elsif ( ref $result eq 'Syntactic::Practice::Schema::Result::Lexeme' ) {
         push( @tree, { $target_label => [ @node, $licensed ] } );
-      } elsif ( ref $licensed eq 'HASH' ) {
-        foreach my $subtree ( denormalize_tree( $licensed ) ) {
+      } elsif ( ref $result eq 'HASH' ) {
+        foreach my $subtree ( denormalize_tree( $result, $full ) ) {
+          push( @tree, { $target_label => [ @node, $subtree ] } );
+        }
+      } elsif ( ref $result eq 'ARRAY' ) {
+        my @subtree = @$result;
+        my $subtree = shift( @subtree );
+        foreach my $t ( @tree ) {
+          push( @{ $t->{$target_label} }, $subtree );
+        }
+        foreach my $subtree ( @subtree ) {
           push( @tree, { $target_label => [ @node, $subtree ] } );
         }
       }
     }
   }
-  return ( dedup_list( @tree ) );
+  my @dedup_tree = dedup_list( @tree );
+  my @return;
+  if ( $full ) {
+    foreach my $t ( @dedup_tree ) {
+      my ( $lbl, $nlist ) = %$t;
+      my @rword = @{ $nlist->[-1]->{remainder} };
+      push( @return,
+            { result    => $t,
+              remainder => @rword,
+            } );
+    }
+  } else {
+    @return = @dedup_tree;
+  }
+  return ( @return );
 }
 
 sub print_tree {

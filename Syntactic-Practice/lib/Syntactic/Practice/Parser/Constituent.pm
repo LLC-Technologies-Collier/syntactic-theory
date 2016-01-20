@@ -27,5 +27,9 @@ has frompos => ( is  => 'ro',
 has topos => ( is  => 'ro',
                isa => 'PositiveInt' );
 
+enum 'SynCatType', [qw(phrasal lexical)];
+has cat_type => ( is => 'ro',
+                  isa => 'SynCatType' );
+
 no Moose;
 __PACKAGE__->meta->make_immutable;

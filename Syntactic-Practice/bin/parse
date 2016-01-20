@@ -181,7 +181,8 @@ sub license_lexical_rule {
                      decomposition => [],
                      sentence      => $sentence,
                      frompos       => $from,
-                     topos         => $from + 1 );
+                     topos         => $from + 1,
+                     cat_type      => 'lexical', );
 
   my $word         = $sentence->[$from];
   my $l            = $lexeme->{$word};
@@ -253,12 +254,15 @@ sub license_phrasal_rule {
   my ( $sentence, $from, $phrasal_rule, $max_depth, $current_depth ) = @_;
   confess( "bad phrase rule!" ) unless $phrasal_rule;
   return ( { error => "exceeded maximum recursion depth ($max_depth)" } ) if ( $current_depth > $max_depth );
-  return ( { error => "insufficient words to license phrase" } ) unless ( @$sentence );
+
+  my $num_words = scalar( @$sentence );
+  return ( { error => "insufficient words to license phrase" } )
+    if ( $from >= $num_words );
 
   my $target_label = $phrasal_rule->{label};
 
   #  print STDERR "phrase ($target_label)\n";
-  my $num_words = scalar( @$sentence );
+
   confess( "invalid sentence ($num_words): [ @$sentence ]" ) if grep { !defined $_ } @$sentence;
   my $s = join( ' ', @$sentence );
 
@@ -266,7 +270,7 @@ sub license_phrasal_rule {
            Data::Dumper::Dumper(
                                  { sentence         => $sentence,
                                    current_position => $from,
-                                   cat_type         => $phrasal_rule->{rs}->cat->ctype,
+                                   cat_type         => $phrasal_rule->{rs}->target->ctype,
                                    target_label     => $phrasal_rule->{label},
                                    max_depth        => $max_depth,
                                    current_depth    => $current_depth,
@@ -322,6 +326,16 @@ sub license_phrasal_rule {
 
       $curpos = $decomp->[-1]->topos if scalar @$decomp;
 
+      if( $curpos == $num_words ){
+        # Yay!  We're done!  This decomposition rocks!
+        $decomp_num++;
+        next;
+      }
+
+      if( $curpos == 6 && $current_depth == 0 && $node_label eq 'VP'){
+        my $foo = 'bar';
+      }
+
       $arg[1] = $curpos;
 
       my @decomp_copy = @$decomp;
@@ -334,6 +348,7 @@ sub license_phrasal_rule {
                                                          sentence      => $sentence,
                                                          frompos       => $curpos,
                                                          topos         => $curpos,
+                                                         cat_type      => $cat_type,
                                                          decomposition => [], );
 
         $optAtPos->{$curpos} = $constituent;
@@ -373,7 +388,8 @@ sub license_phrasal_rule {
 
   my %const_args = ( label    => $target_label,
                      sentence => $sentence,
-                     frompos  => $from, );
+                     frompos  => $from,
+                     cat_type => 'phrasal' );
 
   my @return = ();
   while ( my $d = shift( @decomp ) ) {
@@ -392,10 +408,26 @@ sub license_phrasal_rule {
   my $num_parses = scalar @return;
   print STDERR ( "($target_label) resulted in $num_parses parse(s)\n" ) if $num_parses;
 
-  foreach my $r ( @return ) {
-    my @word = ( @$sentence )[ $r->frompos .. $r->topos - 1 ];
-    print( "@word\n" );
+  my $print_tree;
+  $print_tree = sub {
+    my ( $constituent, $depth ) = @_;
+    $depth = 0 unless $depth;
+    my $indent = " " x ( $depth * 2 );
+    print( $indent, $constituent->name, "\n" ) unless $depth > 0;
+    foreach my $d ( @{ $constituent->decomposition } ) {
+      if( $d->frompos == $d->topos ){
+        next;
+      }
+      my @word = ( @$sentence )[ $d->frompos .. $d->topos - 1 ];
+      print( $indent, $d->name, ": @word\n" );
+      if ( $d->cat_type eq 'phrasal' ) {
+        $print_tree->( $d, $depth + 1 );
+      }
+    }
+  };
 
+  foreach my $r ( @return ) {
+    $print_tree->( $r );
   }
 
   return @return if scalar @return;

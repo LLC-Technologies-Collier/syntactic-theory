@@ -197,19 +197,11 @@ sub license_phrasal_rule {
     for ( my $decomp_num = 0; $decomp_num < scalar @decomp; $decomp_num++ ) {
       my $decomp = $decomp[$decomp_num];
 
-      next unless ref $decomp eq 'ARRAY';
-      my $curpos = $from;
+      my $curpos = ( scalar @$decomp ? $decomp->[-1]->topos : $from );
 
-      $curpos = $decomp->[-1]->topos if scalar @$decomp;
-
-      if ( $curpos == $num_words ) {
-        # Yay!  We're done!  This decomposition rocks!
-        next;
-      }
+      next if $curpos == $num_words;
 
       $arg[1] = $curpos;
-
-      my @decomp_copy = @$decomp;
 
       if ( $optional && !exists $optAtPos->{$curpos} ) {
         my $num = scalar @$const_list;
@@ -224,7 +216,7 @@ sub license_phrasal_rule {
 
         $optAtPos->{$curpos} = $constituent;
         push( @$const_list, $constituent );
-        splice( @decomp, $decomp_num++, 0, [ @decomp_copy, $constituent ] );
+        splice( @decomp, $decomp_num++, 0, [ @$decomp, $constituent ] );
       }
 
       my ( @result ) = $method->{$cat_type}->( @arg );
@@ -239,8 +231,8 @@ sub license_phrasal_rule {
       }
 
       foreach my $d ( @result ) {
-        splice( @decomp, $decomp_num, 0, [ @decomp_copy, $d ] );
-        splice( @decomp, $decomp_num, 0, [ @decomp_copy, $d ] ) if ( $repeat );
+        splice( @decomp, $decomp_num, 0, [ @$decomp, $d ] );
+        splice( @decomp, $decomp_num, 0, [ @$decomp, $d ] ) if ( $repeat );
       }
     }
   }
@@ -269,8 +261,44 @@ sub license_phrasal_rule {
     push( @return,      $constituent );
   }
 
+  # De-duplicate
+  my @return_copy = @return;
+  my @second_copy = @return_copy;
+  my @unique;
+  while( my $l = shift( @second_copy ) ){
+    my @dup = grep { compare_constituents( $l, $_ ) == 0 } @return_copy;
+    my @sorted = sort { $a->name cmp $b->name } ( @dup );
+    $l = $sorted[0];
+    @unique = grep { compare_constituents( $_, $l ) != 0 } @return_copy;
+    @return_copy = ( @unique, $l );
+  }
+  @return = @return_copy;
+
   return @return if scalar @return;
   return @error;
+}
+
+sub compare_constituents {
+  my ( $a, $b ) = @_;
+
+  my $result;
+  foreach my $attribute ( qw(label frompos topos cat_type) ){
+    $result = $a->$attribute cmp $b->$attribute;
+    return $result unless $result == 0;
+  }
+
+  my @a_decomp = grep { $_->frompos != $_->topos } @{ $a->decomposition };
+  my @b_decomp = grep { $_->frompos != $_->topos } @{ $b->decomposition };
+
+  $result = scalar @a_decomp <=> scalar @b_decomp;
+  return $result unless $result == 0;
+
+  for( my $num_decomp = 0; $num_decomp < scalar @a_decomp; $num_decomp++ ){
+    $result = compare_constituents( $a_decomp[$num_decomp], $b_decomp[$num_decomp] );
+    return $result unless $result == 0;
+  }
+
+  return 0;
 }
 
 sub print_tree {
@@ -279,14 +307,10 @@ sub print_tree {
   my $indent = " " x ( $depth * 2 );
   print( $indent, $constituent->name, "\n" ) unless $depth > 0;
   foreach my $d ( @{ $constituent->decomposition } ) {
-    if ( $d->frompos == $d->topos ) {
-      next;
-    }
+    next if ( $d->frompos == $d->topos );
     my @word = ( @{ $constituent->sentence } )[ $d->frompos .. $d->topos - 1 ];
     print( $indent, $d->name, ": @word\n" );
-    if ( $d->cat_type eq 'phrasal' ) {
-      print_tree( $d, $depth + 1 );
-    }
+    print_tree( $d, $depth + 1 ) if $d->cat_type eq 'phrasal';
   }
 }
 

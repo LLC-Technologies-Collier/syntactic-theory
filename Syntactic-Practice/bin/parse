@@ -6,7 +6,6 @@ use Carp;
 
 use Getopt::Long::Descriptive;
 use DBI;
-use Data::Compare;
 
 use Syntactic::Practice::Parser::Constituent;
 use Syntactic::Practice::Schema;
@@ -72,18 +71,15 @@ while ( my $l = $lexeme_rs->next() ) {
   $lexeme->{ $l->word } = $l;
 }
 
-my $content;
-
-{
+my $content = do {
+  local undef $/;
   open( my $fh, q{<}, $getOpt->file ) or die "could not open file [" . $getOpt->file . "]";
-  $content = join( "", <$fh> );
-}
+  <$fh>
+};
 
 chomp $content;
 
 my @word_list = map { lc $_ } split( /\s+/, $content );
-
-use Data::Dumper;
 
 print STDERR "$content\n=====\n";
 
@@ -97,7 +93,6 @@ sub license_lexical_rule {
   my ( $sentence, $from, $lexical_rule ) = @_;
 
   my $num_words = scalar( @$sentence );
-  confess( "invalid sentence ($num_words): [ @$sentence ]" ) if grep { !defined $_ } @$sentence;
   return ( { error => "insufficient words to license additional lexical rule" } )
     if ( $from >= $num_words );
 
@@ -111,14 +106,6 @@ sub license_lexical_rule {
 
   my $num = scalar @$const_list;
 
-  my %const_args = ( name          => "${target_label}${num}",
-                     label         => $target_label,
-                     decomposition => [],
-                     sentence      => $sentence,
-                     frompos       => $from,
-                     topos         => $from + 1,
-                     cat_type      => 'lexical', );
-
   my $word         = $sentence->[$from];
   my $l            = $lexeme->{$word};
   my $lexeme_label = $l->cat->label;
@@ -127,7 +114,14 @@ sub license_lexical_rule {
     return ( { error => "[$word] (position [$from]) with label [$lexeme_label] not licensed by [$target_label]" } );
   }
 
-  my $constituent = Syntactic::Practice::Parser::Constituent->new( %const_args );
+  my $constituent =
+    Syntactic::Practice::Parser::Constituent->new( name          => "${target_label}${num}",
+                                                   label         => $target_label,
+                                                   decomposition => [],
+                                                   sentence      => $sentence,
+                                                   frompos       => $from,
+                                                   topos         => $from + 1,
+                                                   cat_type      => 'lexical' );
   push( @$const_list, $constituent );
 
   return $constituent;
@@ -144,24 +138,7 @@ sub license_phrasal_rule {
 
   my $target_label = $phrasal_rule->{label};
 
-  confess( "invalid sentence ($num_words): [ @$sentence ]" ) if grep { !defined $_ } @$sentence;
-  my $s = join( ' ', @$sentence );
-
-  confess(
-           Data::Dumper::Dumper(
-                                 { sentence         => $sentence,
-                                   current_position => $from,
-                                   cat_type         => $phrasal_rule->{rs}->target->ctype,
-                                   target_label     => $phrasal_rule->{label},
-                                   max_depth        => $max_depth,
-                                   current_depth    => $current_depth,
-                                 }
-           )
-  ) unless exists $phrasal_rule->{node} && defined $phrasal_rule->{node};
-
   my @node_list = @{ $phrasal_rule->{node} };
-
-  my $num_nodes = scalar @node_list;
 
   my @error = ();
 
@@ -169,7 +146,7 @@ sub license_phrasal_rule {
                  phrasal => \&license_phrasal_rule, };
 
   my @decomp = ( [] );
-  for ( my $node_num = 0; $node_num < $num_nodes; $node_num++ ) {
+  for ( my $node_num = 0; $node_num < scalar @node_list; $node_num++ ) {
     my $node       = $node_list[$node_num];
     my $node_label = $node->cat->label;
     my $cat_type   = $node->cat->ctype;
@@ -265,11 +242,11 @@ sub license_phrasal_rule {
   my @return_copy = @return;
   my @second_copy = @return_copy;
   my @unique;
-  while( my $l = shift( @second_copy ) ){
+  while ( my $l = shift( @second_copy ) ) {
     my @dup = grep { compare_constituents( $l, $_ ) == 0 } @return_copy;
     my @sorted = sort { $a->name cmp $b->name } ( @dup );
-    $l = $sorted[0];
-    @unique = grep { compare_constituents( $_, $l ) != 0 } @return_copy;
+    $l           = $sorted[0];
+    @unique      = grep { compare_constituents( $_, $l ) != 0 } @return_copy;
     @return_copy = ( @unique, $l );
   }
   @return = @return_copy;
@@ -282,7 +259,7 @@ sub compare_constituents {
   my ( $a, $b ) = @_;
 
   my $result;
-  foreach my $attribute ( qw(label frompos topos cat_type) ){
+  foreach my $attribute ( qw(label frompos topos cat_type) ) {
     $result = $a->$attribute cmp $b->$attribute;
     return $result unless $result == 0;
   }
@@ -293,7 +270,7 @@ sub compare_constituents {
   $result = scalar @a_decomp <=> scalar @b_decomp;
   return $result unless $result == 0;
 
-  for( my $num_decomp = 0; $num_decomp < scalar @a_decomp; $num_decomp++ ){
+  for ( my $num_decomp = 0; $num_decomp < scalar @a_decomp; $num_decomp++ ) {
     $result = compare_constituents( $a_decomp[$num_decomp], $b_decomp[$num_decomp] );
     return $result unless $result == 0;
   }

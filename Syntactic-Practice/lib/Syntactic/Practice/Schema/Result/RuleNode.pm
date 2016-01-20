@@ -52,17 +52,15 @@ __PACKAGE__->table("rule_node");
 
 =head2 optional
 
-  data_type: 'bit'
-  default_value: 'b'0''
+  data_type: 'tinyint'
+  default_value: 0
   is_nullable: 0
-  size: 1
 
 =head2 rpt
 
-  data_type: 'bit'
-  default_value: 'b'0''
+  data_type: 'tinyint'
+  default_value: 0
   is_nullable: 0
-  size: 1
 
 =cut
 
@@ -76,9 +74,9 @@ __PACKAGE__->add_columns(
   "cat_id",
   { data_type => "integer", is_foreign_key => 1, is_nullable => 0 },
   "optional",
-  { data_type => "bit", default_value => "b'0'", is_nullable => 0, size => 1 },
+  { data_type => "tinyint", default_value => 0, is_nullable => 0 },
   "rpt",
-  { data_type => "bit", default_value => "b'0'", is_nullable => 0, size => 1 },
+  { data_type => "tinyint", default_value => 0, is_nullable => 0 },
 );
 
 =head1 PRIMARY KEY
@@ -142,8 +140,8 @@ __PACKAGE__->belongs_to(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07042 @ 2015-12-29 13:13:22
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:OchqjRKE6QRw5RGrMA3GyA
+# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-01-14 17:17:49
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:H7dp47LC1AzaRHiSG9/faw
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

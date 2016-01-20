@@ -84,6 +84,14 @@ __PACKAGE__->has_many(
 # Created by DBIx::Class::Schema::Loader v0.07042 @ 2015-12-29 13:13:22
 # DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:R2FsGjvlgqJ0c0S1D/1VCQ
 
+=head2 target
+
+Type: has_one
+
+Related object: L<Syntactic::Practice::Schema::Result::PhrasalCategory>
+
+=cut
+
 __PACKAGE__->has_one(
   "target",
   "Syntactic::Practice::Schema::Result::PhrasalCategory",

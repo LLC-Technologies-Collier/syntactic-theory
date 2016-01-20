@@ -2,10 +2,14 @@
 
 use strict;
 use warnings;
+use Carp;
 
 use Getopt::Long::Descriptive;
 use DBI;
 use Data::Compare;
+
+use Syntactic::Practice::Parser::Constituent;
+use Syntactic::Practice::Schema;
 
 # TODO: variable glossary
 
@@ -25,13 +29,14 @@ my ( $getOpt, $usage ) =
 
 print( $usage->text ), exit if $getOpt->help;
 
-use Syntactic::Practice::Schema;
 my $schema = Syntactic::Practice::Schema->connect( $dsn, $user, $pass );
 
 my $rule_rs = $schema->resultset( 'PhraseStructureRule' )
   ->search( {}, { prefetch => [ 'target', { 'rule_nodes' => ['cat'] } ] } );
 
 my $rule = {};
+
+my $constByLabel = {};
 
 # Load the grammar rules in to the $rule hashref
 while ( my $r = $rule_rs->next() ) {
@@ -83,24 +88,28 @@ use Data::Dumper;
 print STDERR "$content\n=====\n";
 
 # Find phrases licensed when max number of iterations is 5
-my $tree = license_phrase(
-                           { rule       => $rule->{'S'},
-                             word_list  => \@word_list,
-                             iterations => 5,
-                             max_depth  => 5,
-                           } );
+# my @constituents = license_phrase(
+#                                    { rule       => $rule->{'S'},
+#                                      word_list  => \@word_list,
+#                                      iterations => 5,
+#                                      max_depth  => 5,
+#                                    } );
 
-if ( ref $tree eq 'HASH' && exists $tree->{error} ) {
-  die "parse failure: $tree->{error}";
-}
+my @constituents = license_phrasal_rule( \@word_list, 0, $rule->{S}, 5, 0 );
 
-foreach my $t ( denormalize_tree( $tree ) ) {
-  print_tree( $t, '' );
-}
+die Data::Dumper::Dumper( \@constituents );
 
-if ( ref $tree eq 'HASH' && exists $tree->{error} ) {
-  print STDERR "$tree->{error}\n";
-}
+# if ( ref $tree eq 'HASH' && exists $tree->{error} ) {
+#   die "parse failure: $tree->{error}";
+# }
+
+# foreach my $t ( denormalize_tree( $tree ) ) {
+#   print_tree( $t, '' );
+# }
+
+# if ( ref $tree eq 'HASH' && exists $tree->{error} ) {
+#   print STDERR "$tree->{error}\n";
+# }
 
 sub license_lexeme {
   my ( $opt ) = @_;
@@ -121,179 +130,575 @@ sub license_lexeme {
   }
 }
 
-sub node_loop {
-  my ( $arg ) = @_;
-  my $opt = $arg->{phrase_opt};
-  my ( @licensed, @error ) = ( @{ $arg->{licensed} } );
+sub get_iteration_range {
+  my ( $node, $max ) = @_;
 
-  my @initial_node_list  = @{ $arg->{node_list} };
-  my @initial_word_list  = @{ $opt->{word_list} };
-  my $initial_iterations = $opt->{iterations};
+  my ( $min_i, $max_i );
 
-  my $num_nodes = scalar @initial_node_list;
-
-  my $indent = ' ' x ( $opt->{current_depth} - 1 );
-  print STDERR "${indent}Attempting to license $opt->{rule}->{label}\n";
-
-  my $position = 0;
-  my @initial_set = ( { remainder => [@initial_word_list] } );
-  while ( my $child = shift @{ $arg->{node_list} } ) {
-
-    my $label    = $child->cat->label;
-    my $cat_type = $child->cat->ctype;
-    if ( $child->position - 1 != $position ) {    # indexed from 1
-      die "something is wrong.  node position is not as expected.";
-    }
-    my $set;
-    if ( $position == 0 ) {
-      $set = [
-               { remainder  => [@initial_word_list],
-                 result     => undef,
-                 iterations => undef,
-                 node       => undef,
-                 position   => undef,
-                 precursor  => undef,
-               } ];
+  my $nlabel = $node->cat->label;
+  if ( $node->optional ) {
+    $min_i = 0;
+    if ( $node->rpt ) {
+      $nlabel = "$nlabel*";
+      $max_i  = $max;
     } else {
-      $set = $licensed[ $position - 1 ];    # the nodes licensed by the previous pass
-      $licensed[ $position - 1 ] = [];
+      $nlabel = "($nlabel)";
+      $max_i  = 1;
     }
-    while ( my $lic = shift @$set ) {
-      $opt->{word_list} = $lic->{remainder};
-
-      my $num_words = scalar @{ $opt->{word_list} };
-      if ( $opt->{iterations} > $num_words ) {
-        $opt->{iterations} = $num_words;
-      }
-
-      my ( $min_i, $max_i );
-      my $nlabel = $label;
-      if ( $child->optional ) {
-        $min_i = 0;
-        if ( $child->rpt ) {
-          $nlabel = "$nlabel*";
-          $max_i  = $opt->{iterations};
-        } else {
-          $nlabel = "($nlabel)";
-          $max_i  = 1;
-        }
-      } elsif ( $child->rpt ) {
-        $min_i  = 1;
-        $max_i  = $opt->{iterations};
-        $nlabel = "$nlabel+";
-      } else {
-        $min_i = 1;
-        $max_i = 1;
-      }
-
-      if ( $opt->{iterations} < $min_i ) {
-        return ( { error => "cannot iterate $opt->{iterations} times" } );
-      }
-
-      my ( $options, $function );
-      my $remainder_sub = sub { return @{ $_->{word_list} } };
-      my $wl = [ @{ $opt->{word_list} } ];
-      if ( $cat_type eq 'phrasal' ) {
-        $options = { rule          => $rule->{$label},
-                     word_list     => $wl,
-                     max_depth     => $opt->{max_depth},
-                     current_depth => $opt->{current_depth} + 1,
-                     iterations    => $opt->{iterations}, };
-        $function = sub {
-          my ( $opt ) = @_;
-          my $tree = license_phrase( $opt );
-          return [ denormalize_tree( $tree, "FULL" ) ];
-        };
-      } elsif ( $cat_type eq 'lexical' ) {
-        $options = { node      => $child,
-                     word_list => $wl };
-        $function = sub { license_lexeme( @_ ) };
-      } else {
-        die( "category [$cat_type] unknown" );
-      }
-      my @lic = ();
-
-      print STDERR (
-            "${indent}attempting $max_i time(s) to license ($cat_type) $nlabel with words [@{$lic->{remainder}}]\n" );
-      for ( my $i = $min_i; $i <= $max_i; $i++ ) {
-        my @word_list = @{ $opt->{word_list} };
-        my @r         = ();
-
-        my @r_word = ( [@word_list] );
-        while ( my $rwl = shift( @r_word ) ) {
-          for ( my $n = 1; $n <= $i; $n++ ) {
-            my $return = $function->( $options );
-
-            if ( ref $return eq 'HASH' && exists $return->{error} ) {
-              $#{$wl} = -1;
-              push( @$wl, @{ $opt->{word_list} } );
-              last;
-            } elsif ( $cat_type eq 'phrasal' ) {
-              foreach my $tree ( @$return ) {
-                push( @r_word, [ @{ $tree->{remainder} } ] );
-              }
-            }
-
-            push( @r, $return );
-          }
-          if ( scalar @r == $i ) {
-            my @r_word = @{ $options->{word_list} };
-            if ( $i > 0 && scalar @r_word >= scalar @word_list ) {
-              warn "word list count was not decremented";
-            }
-
-            push( @lic,
-                  { remainder  => \@r_word,
-                    result     => \@r,
-                    iterations => $i,
-                    node       => $child,
-                    position   => $position,
-                    precursor  => $lic,
-                  } );
-          }
-          $#{$wl} = -1;
-          push( @$wl, @{ $opt->{word_list} } );
-        }
-        if ( @lic ) {
-          my $count = scalar @lic;
-          print STDERR "${indent}$nlabel successfully licensed ($count matches):\n";
-          foreach my $l ( @lic ) {
-            print STDERR "${indent}  $l->{iterations} iteration(s) with remaining words: [@{ $l->{remainder} }]\n";
-          }
-          push( @{ $licensed[$position] }, @lic );
-
-          # if any nodes have been licensed, place precursor back on
-          # list of licensed nodes
-          push( @{ $licensed[ $position - 1 ] }, $lic );
-        } else {
-          print STDERR "${indent}failed to license $nlabel with words [ @{$lic->{remainder}} ]\n";
-        }
-      }
-    }
-    $position++;
-  }
-
-  my $valid = 1;
-  for ( my $i = 0; $i < $num_nodes; $i++ ) {
-    my $node = $initial_node_list[$i];
-    if ( ref $licensed[$i] ne 'ARRAY' ) {
-      $valid = 0;
-      return {   error => "List of parses at position $i ("
-               . $node->cat->label
-               . ") in rule $opt->{rule}->{label} not an array" };
-    }
-    if ( scalar @{ $licensed[$i] } == 0 ) {
-      $valid = 0;
-      return { error => "Node number $i in rule $opt->{rule}->{label} not licensed" };
-    }
-  }
-  if ( $valid ) {
-    return ( \@licensed );
+  } elsif ( $node->rpt ) {
+    $min_i  = 1;
+    $max_i  = $max;
+    $nlabel = "$nlabel+";
   } else {
-    print STDERR "${indent}Not all nodes in rule $opt->{rule}->{label} are licensed\n";
-    return { error => "Not all nodes in rule $opt->{rule}->{label} are licensed" };
+    $min_i = 1;
+    $max_i = 1;
   }
+  return ( $min_i, $max_i, $nlabel );
 }
+
+my $cached_tree = {};
+
+sub license_lexical_rule {
+  my ( $sentence, $from, $lexical_rule ) = @_;
+
+  my $num_words = scalar( @$sentence );
+  confess( "invalid sentence ($num_words): [ @$sentence ]" ) if grep { !defined $_ } @$sentence;
+  return( { error => "insufficient words to license additional lexical rule" } )
+    if( $from >= $num_words );
+
+  my $target_label = $lexical_rule->cat->label;
+  my $const_list   = [];
+  if ( exists $constByLabel->{$target_label} ) {
+    $const_list = $constByLabel->{$target_label};
+  } else {
+    $constByLabel->{$target_label} = $const_list;
+  }
+
+  my $num = scalar @$const_list;
+
+  my %const_args = ( name          => "${target_label}${num}",
+                     label         => $target_label,
+                     decomposition => [],
+                     sentence      => $sentence,
+                     frompos       => $from,
+                     topos         => $from + 1 );
+
+  my $word         = $sentence->[$from];
+  my $l            = $lexeme->{$word};
+  my $lexeme_label = $l->cat->label;
+
+  if ( $lexeme_label ne $target_label ) {
+    return ( { error => "[$word] (position [$from]) with label [$lexeme_label] not licensed by [$target_label]" } );
+  }
+
+  my $constituent = Syntactic::Practice::Parser::Constituent->new( %const_args );
+  push( @$const_list, $constituent );
+
+  return $constituent;
+}
+
+sub license_constituent_at_wordpos {
+  my ( $this_rule, $sentence, $frompos, $max_depth, $current_depth ) = @_;
+
+  my $target_label = $this_rule->cat->label;
+  my @error        = ();
+  my @decomp       = ( [] );
+  if ( $this_rule->cat->ctype eq 'phrasal' ) {
+
+    foreach my $node ( @{ $this_rule->{node} } ) {
+      foreach my $decomp ( @decomp ) {
+        my $curpos = $frompos;
+        if ( scalar @$decomp ) {
+          $curpos = $decomp->[-1]->topos;
+        }
+
+        my $r;
+        my $node_label = $node->cat->label;
+        my $cat_type   = $node->cat->ctype;
+
+        if ( $cat_type eq 'phrasal' ) {
+          $r = $rule->{$node_label};
+        } elsif ( $cat_type eq 'lexical' ) {
+          $r = $node;
+        }
+
+        my @return;
+        my @args = ( $sentence, $curpos, $r, $max_depth, $current_depth + 1 );
+        if ( $cat_type eq 'phrasal' ) {
+          @return = license_phrasal_rule( @args );
+        } elsif ( $cat_type eq 'lexical' ) {
+          @return = license_lexical_rule( @args );
+        }
+
+        if ( ref $return[0] eq 'HASH' && exists $return[0]->{error} ) {
+          push( @error, $return[0] );
+          next;
+        }
+
+        my @decomp_copy = @$decomp;
+
+        my $constituent = shift( @return );
+        push( @$decomp, @$constituent );
+
+        while ( my $additional_parse = shift( @return ) ) {
+          push( @decomp, [ @decomp_copy, @$additional_parse ] );
+        }
+      }
+    }
+  }
+  return @decomp;
+}
+
+sub license_phrasal_rule {
+  my ( $sentence, $from, $phrasal_rule, $max_depth, $current_depth ) = @_;
+  confess( "bad phrase rule!" ) unless $phrasal_rule;
+  return ( { error => "exceeded maximum recursion depth ($max_depth)" } ) if ( $current_depth > $max_depth );
+  return ( { error => "insufficient words to license phrase" } ) unless ( @$sentence );
+
+  my $target_label = $phrasal_rule->{label};
+
+  print STDERR "phrase ($target_label)\n";
+  my $num_words = scalar( @$sentence );
+  confess( "invalid sentence ($num_words): [ @$sentence ]" ) if grep { !defined $_ } @$sentence;
+  my $s = join( ' ', @$sentence );
+
+  confess(
+           Data::Dumper::Dumper(
+                                 { sentence         => $sentence,
+                                   current_position => $from,
+                                   cat_type         => $phrasal_rule->{rs}->cat->ctype,
+                                   target_label     => $phrasal_rule->{label},
+                                   max_depth        => $max_depth,
+                                   current_depth    => $current_depth,
+                                 }
+           )
+  ) unless exists $phrasal_rule->{node} && defined $phrasal_rule->{node};
+
+  my @node_list = @{ $phrasal_rule->{node} };
+
+  my $num_nodes = scalar @node_list;
+
+  my @error = ();
+
+  my $method = { lexical => \&license_lexical_rule,
+                 phrasal => \&license_phrasal_rule, };
+
+  my @decomp = ( [] );
+  for ( my $node_num = 0; $node_num < $num_nodes; $node_num++ ) {
+    my $node       = $node_list[$node_num];
+    my $node_label = $node->cat->label;
+    my $cat_type   = $node->cat->ctype;
+
+    my $r;
+    if ( $cat_type eq 'phrasal' ) {
+      $r = $rule->{$node_label};
+    } elsif ( $cat_type eq 'lexical' ) {
+      $r = $node;
+    }
+
+    my @arg = ( $sentence, $from, $r, $max_depth, $current_depth + 1 );
+
+    print STDERR ( "processing ($target_label) position $node_num ($node_label), depth $current_depth\n" );
+
+    my $optional   = $node->optional;
+    my $repeat     = $node->rpt;
+    my $const_list = [];
+    if ( exists $constByLabel->{$node_label} ) {
+      $const_list = $constByLabel->{$node_label};
+    } else {
+      $constByLabel->{$node_label} = $const_list;
+    }
+
+    my $optAtPos = {};
+
+    my $num_passes = 0;
+    my $decomp_num = 0;
+    while ( $decomp_num < scalar @decomp ) {
+      $num_passes++;
+      my $decomp = $decomp[$decomp_num];
+
+      next unless ref $decomp eq 'ARRAY';
+      my $curpos = $from;
+
+      $curpos = $decomp->[-1]->topos if scalar @$decomp;
+
+      $arg[1] = $curpos;
+
+      my @decomp_copy = @$decomp;
+
+      if ( $optional && !exists $optAtPos->{$curpos} ) {
+        my $num = scalar @$const_list;
+        my $constituent =
+          Syntactic::Practice::Parser::Constituent->new( name          => "${node_label}${num}",
+                                                         label         => $node_label,
+                                                         sentence      => $sentence,
+                                                         frompos       => $curpos,
+                                                         topos         => $curpos,
+                                                         decomposition => [], );
+
+        $optAtPos->{$curpos} = $constituent;
+
+        push( @$const_list, $constituent );
+
+        splice( @decomp, $decomp_num++, 0, [ @decomp_copy, $constituent ] );
+      }
+
+      my ( @result ) = $method->{$cat_type}->( @arg );
+
+      # remove placeholder ; replaced below unless there is an error
+      splice( @decomp, $decomp_num, 1 );
+
+      if ( ref $result[0] eq 'HASH' && exists $result[0]->{error} ) {
+        push( @error, $result[0] );
+        next;
+      }
+
+      foreach my $d ( @result ) {
+        splice( @decomp, $decomp_num, 0, [ @decomp_copy, $d ] );
+
+        splice( @decomp, $decomp_num, 0, [ @decomp_copy, $d ] ) if ( $repeat );
+      }
+      $decomp_num++;
+    }
+    print( "num passes: [$num_passes]\n" );
+  }
+
+  my $const_list = [];
+  if ( exists $constByLabel->{$target_label} ) {
+    $const_list = $constByLabel->{$target_label};
+  } else {
+    $constByLabel->{$target_label} = $const_list;
+  }
+
+  my %const_args = ( label    => $target_label,
+                     sentence => $sentence,
+                     frompos  => $from, );
+
+  my @return = ();
+  while ( my $d = shift( @decomp ) ) {
+    my $num = scalar @$const_list;
+    $const_args{name}          = "${target_label}${num}";
+    $const_args{topos}         = $d->[-1]->topos;
+    $const_args{decomposition} = $d;
+
+    my $constituent = Syntactic::Practice::Parser::Constituent->new( %const_args );
+
+    push( @$const_list, $constituent );
+
+    push( @return, $constituent );
+  }
+
+  print STDERR ( "($target_label) resulted in " . scalar @return . " parses\n" );
+
+  return @return if scalar @return;
+  return @error;
+
+  #   my $match_constituents;
+
+  #   $match_constituents = sub {
+  #     my ( $const, $nnum ) = @_;
+  #     my @match;
+
+  #     # walk through each parse licensed at this phrasal position
+  #     for ( my $pnum = 0; $pnum < scalar @{ $decomp[$nnum] }; $pnum++ ) {
+  #       my @result;
+  #       if ( !defined $decomp[$nnum]->[$pnum] ) {    # optional position - not defined
+  #         next if ( $nnum + 1 == $num_nodes );       # last node in phrase ; do nothing
+  #         @result = $match_constituents->( $const, $nnum + 1 );    # Attempt to bind to next node, skipping this one
+  #       } else {
+
+  #         # skip this parse unless this constituent's final position matches this parse's start position
+  #         if ( $const->topos != $decomp[$nnum]->[$pnum]->frompos ) {
+  #           next;
+  #         }
+
+#         if ( $nnum + 1 != $num_nodes ) {                         # if there are subsequent nodes, traverse
+#           @result = $match_constituents->( $decomp[$nnum]->[$pnum], $nnum + 1 );
+#         } else {                                                 # otherwise, add this parse to the decomposition list
+#           @result = [ $decomp[$nnum]->[$pnum] ];
+#         }
+#       }
+
+  #       next unless scalar @result;
+  #       foreach my $match ( @result ) {
+  #         push( @match, [ $const, @$match ] );
+  #       }
+  #     }
+
+  #     if ( @good_parse ) {
+  #       $parse[$nnum] = \@good_parse;
+  #     }
+
+  #     return @match;
+  #   };
+  #   my @constituent;
+
+  #   my $print_constituent;
+  #   $print_constituent = sub {
+  #     my ( $c, $depth ) = @_;
+
+  #     $depth = 0 unless $depth;
+  #     my $indent = " " x $depth;
+
+  #     my ( $label, @word );
+  #     if ( $c ) {
+  #       $label = $c->label;
+  #       my ( $f, $t ) = ( $c->frompos, ( $c->topos - 1 ) );
+  #       @word = ( @{$sentence} )[ $f .. $t ];
+  #     } else {
+  #       $label = "(empty)";
+  #     }
+
+  #     print( "${indent}$label: @word\n" );
+  #     return unless defined $c && $c->decomposition;
+  #     foreach my $node ( @{ $c->decomposition } ) {
+  #       $print_constituent->( $node, $depth + 1 );
+  #     }
+  #   };
+
+  #   my $denormalize_parses;
+  #   $denormalize_parses = sub {
+  #     my ( $start_idx ) = @_;
+  #     foreach my $p ( @{ $parse[$start_idx] } ) {
+  #       unless ( defined $p ) {    # for optional nodes, start from next
+  #         $denormalize_parses->( $start_idx + 1 );
+  #         next;
+  #       }
+  #       my @decomp = $match_constituents->( $p, $start_idx );
+  #       foreach my $decomposition ( @decomp ) {
+  #         my $num = scalar @{ $constByLabel->{$target_label} };
+  #         my $constituent =
+  #           Syntactic::Practice::Parser::Constituent->new( name          => "${target_label}${num}",
+  #                                                          label         => $target_label,
+  #                                                          decomposition => $decomposition,
+  #                                                          sentence      => $sentence,
+  #                                                          frompos       => $decomposition->[0]->frompos,
+  #                                                          topos         => $decomposition->[-1]->topos );
+  #         push( @{ $constByLabel->{$target_label} }, $constituent );
+  #         push( @constituent,                        $constituent );
+  #       }
+  #     }
+  #   };
+
+  #   for ( my $node_num = 0; $node_num < $num_nodes; $node_num++ ) {
+
+#     my $node            = $node_list[$node_num];
+#     my $node_label      = $node->cat->label;
+#     my @good_parse      = @{ $parse[$node_num] };
+#     my $num_good_parses = scalar @good_parse;
+#     next unless $num_good_parses > 0;
+#     my $first;
+#     foreach my $p ( @good_parse ) {
+#       next unless defined $p;
+#       $first = $p->frompos;
+#       last;
+#     }
+#     $denormalize_parses->( $node_num );
+#     next unless $first;
+#     my $last = $#{$sentence};
+#     my @word = ( @{$sentence} )[ $first .. $last ];
+#     print STDERR (
+# "$num_good_parses parse(s) for slot #$node_num ($node_label) of target ($target_label) at position $first ( @word )\n"
+#     );
+#     foreach my $c ( @good_parse ) {
+
+  #       # print previous parses' lexemes
+  #       # print this licensed parse
+  #       #      $print_constituent->( $c );
+  #     }
+  #   }
+
+  #   return @constituent;
+}
+
+sub parse_loop {
+  my ( $arg ) = @_;
+  my @parse     = map { [] } @{ $arg->{node_list} };
+  my @sentence  = @{ $arg->{phrase_opt}->{word_list} };
+  my $num_words = scalar( @sentence );
+
+  my @constituent =
+    license_phrasal_rule( \@sentence, 0, $arg->{phrase_opt}->{rule}, $arg->{phrase_opt}->{max_depth}, 0 );
+
+}
+
+# sub node_loop {
+#   my ( $arg ) = @_;
+#   my $opt = $arg->{phrase_opt};
+#   my ( @licensed, @error ) = ( @{ $arg->{licensed} } );
+
+#   my @initial_node_list  = @{ $arg->{node_list} };
+#   my @initial_word_list  = @{ $opt->{word_list} };
+#   my $initial_iterations = $opt->{iterations};
+
+#   my $num_nodes = scalar @initial_node_list;
+
+#   my $indent = ' ' x ( $opt->{current_depth} - 1 );
+#   print STDERR "${indent}Attempting to license $opt->{rule}->{label}\n";
+
+#   my $position = 0;
+#   my @initial_set = ( { remainder => [@initial_word_list] } );
+#   for ( my $node_position = 0; $node_position < scalar @{ $arg->{node_list} }; $node_position++ ) {
+#     my $child = $arg->{node_list}->[$node_position];
+
+#     my $label    = $child->cat->label;
+#     my $cat_type = $child->cat->ctype;
+#     unless ( $child->position - 1 == $node_position ) {    # indexed from 1
+#       die "something is wrong.  node position is not as expected.";
+#     }
+#     my $set;
+#     if ( $node_position == 0 ) {
+#       $set = [
+#                { remainder  => [@initial_word_list],
+#                  result     => undef,
+#                  iterations => undef,
+#                  node       => undef,
+#                  position   => undef,
+#                  precursor  => undef,
+#                } ];
+#     } else {
+#       $set = $licensed[ $node_position - 1 ];    # the nodes licensed by the previous pass
+#       $licensed[ $node_position - 1 ] = [];
+#     }
+#     for ( my $constituent_position = 0; $constituent_position < scalar @$set; $constituent_position++ ) {
+#       my $constituent = $set[$constituent_position];
+
+#       $opt->{word_list} = $constituent->{remainder};
+
+#       my $num_words = scalar @{ $opt->{word_list} };
+#       if ( $opt->{iterations} > $num_words ) {
+#         $opt->{iterations} = $num_words;
+#       }
+
+#       my ( $min_i, $max_i );
+#       my $nlabel = $label;
+#       if ( $child->optional ) {
+#         $min_i = 0;
+#         if ( $child->rpt ) {
+#           $nlabel = "$nlabel*";
+#           $max_i  = $opt->{iterations};
+#         } else {
+#           $nlabel = "($nlabel)";
+#           $max_i  = 1;
+#         }
+#       } elsif ( $child->rpt ) {
+#         $min_i  = 1;
+#         $max_i  = $opt->{iterations};
+#         $nlabel = "$nlabel+";
+#       } else {
+#         $min_i = 1;
+#         $max_i = 1;
+#       }
+
+#       if ( $opt->{iterations} < $min_i ) {
+#         return ( { error => "cannot iterate $opt->{iterations} times" } );
+#       }
+
+#       my @constituents = license_phrasal_rule( $sentence, $position, $target_label, $max_depth, 0 );
+
+#       my ( $options, $function );
+
+#       my $wl = [ @{ $opt->{word_list} } ];
+#       if ( $cat_type eq 'phrasal' ) {
+#         $options = { rule          => $rule->{$label},
+#                      word_list     => $wl,
+#                      max_depth     => $opt->{max_depth},
+#                      current_depth => $opt->{current_depth} + 1,
+#                      iterations    => $opt->{iterations}, };
+#         $function = sub {
+#           my ( $opt ) = @_;
+#           my $tree = license_phrase( $opt );
+#           return [ denormalize_tree( $tree, "FULL" ) ];
+#         };
+#       } elsif ( $cat_type eq 'lexical' ) {
+#         $options = { node      => $child,
+#                      word_list => $wl };
+#         $function = sub { license_lexeme( @_ ) };
+#       } else {
+#         die( "category [$cat_type] unknown" );
+#       }
+#       my @lic = ();
+
+#       print STDERR (
+# "${indent}attempting $max_i time(s) to license ($cat_type) $nlabel with words [@{$constituent->{remainder}}]\n" );
+#       for ( my $i = $min_i; $i <= $max_i; $i++ ) {
+#         my @word_list = @{ $opt->{word_list} };
+#         my @r         = ();
+
+#         my @r_word = ( [@word_list] );
+#         while ( my $rwl = shift( @r_word ) ) {
+#           for ( my $n = 1; $n <= $i; $n++ ) {
+#             my $return = $function->( $options );
+
+#             if ( ref $return eq 'HASH' && exists $return->{error} ) {
+#               $#{$wl} = -1;
+#               push( @$wl, @{ $opt->{word_list} } );
+#               last;
+#             } elsif ( $cat_type eq 'phrasal' ) {
+#               foreach my $tree ( @$return ) {
+#                 push( @r_word, [ @{ $tree->{remainder} } ] );
+#               }
+#             }
+
+#             push( @r, $return );
+#           }
+#           if ( scalar @r == $i ) {
+#             my @r_word = @{ $options->{word_list} };
+#             if ( $i > 0 && scalar @r_word >= scalar @word_list ) {
+#               warn "word list count was not decremented";
+#             }
+
+#             push( @lic,
+#                   { remainder  => \@r_word,
+#                     result     => \@r,
+#                     iterations => $i,
+#                     node       => $child,
+#                     position   => $node_position,
+#                     precursor  => $constituent,
+#                   } );
+#           }
+#           $#{$wl} = -1;
+#           push( @$wl, @{ $opt->{word_list} } );
+#         }
+#         if ( @lic ) {
+#           my $count = scalar @lic;
+#           print STDERR "${indent}$nlabel successfully licensed ($count matches):\n";
+#           foreach my $l ( @lic ) {
+#             print STDERR "${indent}  $l->{iterations} iteration(s) with remaining words: [@{ $l->{remainder} }]\n";
+#           }
+#           push( @{ $licensed[$node_position] }, @lic );
+
+#           # if any nodes have been licensed, place precursor back on
+#           # list of licensed nodes
+#           push( @{ $licensed[ $node_position - 1 ] }, $constituent );
+#         } else {
+#           print STDERR "${indent}failed to license $nlabel with words [ @{$constituent->{remainder}} ]\n";
+#         }
+#       }
+#     }
+#   }
+
+#   my $valid = 1;
+#   for ( my $i = 0; $i < $num_nodes; $i++ ) {
+#     my $node = $initial_node_list[$i];
+#     if ( ref $licensed[$i] ne 'ARRAY' ) {
+#       $valid = 0;
+#       return {   error => "List of parses at position $i ("
+#                . $node->cat->label
+#                . ") in rule $opt->{rule}->{label} not an array" };
+#     }
+#     if ( scalar @{ $licensed[$i] } == 0 ) {
+#       $valid = 0;
+#       return { error => "Node number $i in rule $opt->{rule}->{label} not licensed" };
+#     }
+#   }
+#   if ( $valid ) {
+#     return ( \@licensed );
+#   } else {
+#     print STDERR "${indent}Not all nodes in rule $opt->{rule}->{label} are licensed\n";
+#     return { error => "Not all nodes in rule $opt->{rule}->{label} are licensed" };
+#   }
+# }
 
 sub count_nodes {
   my ( $node_list, $iterations, $current_depth, $max_depth ) = @_;
@@ -342,9 +747,10 @@ sub license_phrase {
     return { error => "Depth $opt->{current_depth} is beyond max depth $opt->{max_depth}" };
   }
 
+  my @sentence  = @{ $opt->{word_list} };
+  my $num_words = scalar( @sentence );
   my ( $min_nodes, $max_nodes ) =
     count_nodes( $opt->{rule}->{node}, $opt->{iterations}, $opt->{current_depth}, $opt->{max_depth} );
-  my $num_words = scalar @{ $opt->{word_list} };
 
   if ( $min_nodes > $num_words ) {
     return { error => 'insufficient words to license phrase [$target_label]' };
@@ -352,18 +758,31 @@ sub license_phrase {
 
   my @node_list = sort { $a->position > $b->position } @{ $opt->{rule}->{node} };
 
-  my $return = node_loop(
-                          { phrase_opt => $opt,
-                            min_nodes  => $min_nodes,
-                            node_list  => [@node_list],
-                            parsed     => [],
-                            licensed   => [],
-                          } );
-  if ( ref $return eq 'HASH' && exists $return->{error} ) {
-    return $return;
-  }
+  my $return;
 
-  return { $target_label => $return };
+  my @constituent =
+    license_phrasal_rule( \@sentence, 0, $opt->{rule}, $opt->{max_depth}, 0 );
+
+  # $return = parse_loop(
+  #                       { phrase_opt => $opt,
+  #                         min_nodes  => $min_nodes,
+  #                         node_list  => [@node_list],
+  #                         parsed     => [],
+  #                         licensed   => [],
+  #                       } );
+
+  # my $return = node_loop(
+  #                         { phrase_opt => $opt,
+  #                           min_nodes  => $min_nodes,
+  #                           node_list  => [@node_list],
+  #                           parsed     => [],
+  #                           licensed   => [],
+  #                         } );
+  # if ( ref $return eq 'HASH' && exists $return->{error} ) {
+  #   return $return;
+  # }
+
+  # return { $target_label => $return };
 }
 
 sub dedup_list {
@@ -391,7 +810,7 @@ sub denormalize_tree {
   }
 
   my ( $target_label, $nodes ) = ( %$tree );
-  die Data::Dumper::Dumper( $tree ) unless $target_label;
+
   my @tree = ( { $target_label => [] } );
 
   foreach my $node ( @$nodes ) {

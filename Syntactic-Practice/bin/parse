@@ -203,7 +203,8 @@ sub license_phrasal_rule {
 
       $curpos = $decomp->[-1]->topos if scalar @$decomp;
 
-      if( $curpos == $num_words ){
+      if ( $curpos == $num_words ) {
+
         # Yay!  We're done!  This decomposition rocks!
         $decomp_num++;
         next;

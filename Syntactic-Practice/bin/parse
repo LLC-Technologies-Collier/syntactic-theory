@@ -93,7 +93,6 @@ foreach my $c ( @constituents ) {
   print_tree( $c );
 }
 
-
 sub license_lexical_rule {
   my ( $sentence, $from, $lexical_rule ) = @_;
 
@@ -195,10 +194,8 @@ sub license_phrasal_rule {
 
     my $optAtPos = {};
 
-    my $num_passes = 0;
     my $decomp_num = 0;
     while ( $decomp_num < scalar @decomp ) {
-      $num_passes++;
       my $decomp = $decomp[$decomp_num];
 
       next unless ref $decomp eq 'ARRAY';
@@ -210,10 +207,6 @@ sub license_phrasal_rule {
         # Yay!  We're done!  This decomposition rocks!
         $decomp_num++;
         next;
-      }
-
-      if( $curpos == 6 && $current_depth == 0 && $node_label eq 'VP'){
-        my $foo = 'bar';
       }
 
       $arg[1] = $curpos;
@@ -232,9 +225,7 @@ sub license_phrasal_rule {
                                                          decomposition => [], );
 
         $optAtPos->{$curpos} = $constituent;
-
         push( @$const_list, $constituent );
-
         splice( @decomp, $decomp_num++, 0, [ @decomp_copy, $constituent ] );
       }
 
@@ -250,7 +241,6 @@ sub license_phrasal_rule {
 
       foreach my $d ( @result ) {
         splice( @decomp, $decomp_num, 0, [ @decomp_copy, $d ] );
-
         splice( @decomp, $decomp_num, 0, [ @decomp_copy, $d ] ) if ( $repeat );
       }
       $decomp_num++;
@@ -264,23 +254,21 @@ sub license_phrasal_rule {
     $constByLabel->{$target_label} = $const_list;
   }
 
-  my %const_args = ( label    => $target_label,
-                     sentence => $sentence,
-                     frompos  => $from,
-                     cat_type => 'phrasal' );
-
   my @return = ();
   while ( my $d = shift( @decomp ) ) {
     my $num = scalar @$const_list;
-    $const_args{name}          = "${target_label}${num}";
-    $const_args{topos}         = $d->[-1]->topos;
-    $const_args{decomposition} = $d;
+    my %const_args = ( label         => $target_label,
+                       sentence      => $sentence,
+                       frompos       => $from,
+                       cat_type      => 'phrasal',
+                       name          => "${target_label}${num}",
+                       topos         => $d->[-1]->topos,
+                       decomposition => $d );
 
     my $constituent = Syntactic::Practice::Parser::Constituent->new( %const_args );
 
     push( @$const_list, $constituent );
-
-    push( @return, $constituent );
+    push( @return,      $constituent );
   }
 
   return @return if scalar @return;

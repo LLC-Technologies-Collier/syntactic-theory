@@ -194,8 +194,7 @@ sub license_phrasal_rule {
 
     my $optAtPos = {};
 
-    my $decomp_num = 0;
-    while ( $decomp_num < scalar @decomp ) {
+    for ( my $decomp_num = 0; $decomp_num < scalar @decomp; $decomp_num++ ) {
       my $decomp = $decomp[$decomp_num];
 
       next unless ref $decomp eq 'ARRAY';
@@ -204,9 +203,7 @@ sub license_phrasal_rule {
       $curpos = $decomp->[-1]->topos if scalar @$decomp;
 
       if ( $curpos == $num_words ) {
-
         # Yay!  We're done!  This decomposition rocks!
-        $decomp_num++;
         next;
       }
 
@@ -237,6 +234,7 @@ sub license_phrasal_rule {
 
       if ( ref $result[0] eq 'HASH' && exists $result[0]->{error} ) {
         push( @error, $result[0] );
+        $decomp_num--;
         next;
       }
 
@@ -244,7 +242,6 @@ sub license_phrasal_rule {
         splice( @decomp, $decomp_num, 0, [ @decomp_copy, $d ] );
         splice( @decomp, $decomp_num, 0, [ @decomp_copy, $d ] ) if ( $repeat );
       }
-      $decomp_num++;
     }
   }
 

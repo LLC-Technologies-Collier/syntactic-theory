@@ -97,7 +97,7 @@ print STDERR "$content\n=====\n";
 
 my @constituents = license_phrasal_rule( \@word_list, 0, $rule->{S}, 5, 0 );
 
-die Data::Dumper::Dumper( \@constituents );
+#die Data::Dumper::Dumper( \@constituents );
 
 # if ( ref $tree eq 'HASH' && exists $tree->{error} ) {
 #   die "parse failure: $tree->{error}";
@@ -257,7 +257,7 @@ sub license_phrasal_rule {
 
   my $target_label = $phrasal_rule->{label};
 
-  print STDERR "phrase ($target_label)\n";
+#  print STDERR "phrase ($target_label)\n";
   my $num_words = scalar( @$sentence );
   confess( "invalid sentence ($num_words): [ @$sentence ]" ) if grep { !defined $_ } @$sentence;
   my $s = join( ' ', @$sentence );
@@ -298,7 +298,7 @@ sub license_phrasal_rule {
 
     my @arg = ( $sentence, $from, $r, $max_depth, $current_depth + 1 );
 
-    print STDERR ( "processing ($target_label) position $node_num ($node_label), depth $current_depth\n" );
+#    print STDERR ( "processing ($target_label) position $node_num ($node_label), depth $current_depth\n" );
 
     my $optional   = $node->optional;
     my $repeat     = $node->rpt;
@@ -360,7 +360,7 @@ sub license_phrasal_rule {
       }
       $decomp_num++;
     }
-    print( "num passes: [$num_passes]\n" );
+#    print( "num passes: [$num_passes]\n" );
   }
 
   my $const_list = [];
@@ -388,7 +388,14 @@ sub license_phrasal_rule {
     push( @return, $constituent );
   }
 
-  print STDERR ( "($target_label) resulted in " . scalar @return . " parses\n" );
+  my $num_parses = scalar @return;
+  print STDERR ( "($target_label) resulted in $num_parses parse(s)\n" ) if $num_parses;
+
+  foreach my $r ( @return ){
+    my @word = ( @$sentence )[ $r->frompos .. $r->topos -1 ];
+    print( "@word\n" );
+
+  }
 
   return @return if scalar @return;
   return @error;

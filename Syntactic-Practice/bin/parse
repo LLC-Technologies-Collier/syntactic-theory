@@ -7,6 +7,8 @@ use Carp;
 use Getopt::Long::Descriptive;
 use DBI;
 
+use File::Basename;
+
 use Syntactic::Practice::Parser::Constituent;
 use Syntactic::Practice::Schema;
 
@@ -74,8 +76,10 @@ while ( my $l = $lexeme_rs->next() ) {
 my $content = do {
   local undef $/;
   open( my $fh, q{<}, $getOpt->file ) or die "could not open file [" . $getOpt->file . "]";
-  <$fh>
+  <$fh>;
 };
+
+my $srcFile = basename( $getOpt->file, '.txt' );
 
 chomp $content;
 
@@ -88,6 +92,8 @@ my @constituents = license_phrasal_rule( \@word_list, 0, $rule->{S}, 5, 0 );
 foreach my $c ( @constituents ) {
   print_tree( $c );
 }
+
+print_tree_latex( \@constituents, "${srcFile}.tex" );
 
 sub license_lexical_rule {
   my ( $sentence, $from, $lexical_rule ) = @_;
@@ -106,8 +112,8 @@ sub license_lexical_rule {
 
   my $num = scalar @$const_list;
 
-  my $word         = $sentence->[$from];
-  print STDERR "No entry for word [$word]\n" unless exists $lexeme->{lc( $word )};
+  my $word = $sentence->[$from];
+  print STDERR "No entry for word [$word]\n" unless exists $lexeme->{ lc( $word ) };
   my $l            = $lexeme->{ lc( $word ) };
   my $lexeme_label = $l->cat->label;
 
@@ -277,6 +283,60 @@ sub compare_constituents {
   }
 
   return 0;
+}
+
+sub print_tree_latex {
+  my ( $constituent, $filename ) = @_;
+
+  open( my $fh, q{>}, $filename ) or die "Couldn't open file [$filename]";
+
+  my $content_emitter;
+  $content_emitter = sub {
+    my ( $c, $depth ) = @_;
+    my @sentence = @{ $c->sentence };
+    $depth = 0 unless $depth;
+    my $indent = " " x ( $depth * 2 );
+
+    my $output = "";
+    my $label  = $c->label;
+    my @decomp = @{ $c->decomposition };
+    $output .= "${indent}[$label\n";
+    if ( @decomp ) {
+      foreach my $d ( @decomp ) {
+        next if ( $d->frompos == $d->topos );
+        $output .= $content_emitter->( $d, $depth + 1 );
+      }
+      $output .= "\n${indent}";
+    } else {
+      $output .= "${indent}[@sentence[ $c->frompos .. $c->topos - 1 ]]";
+    }
+    $output .= "]";
+    return $output;
+  };
+
+  my @package = qw(forest);
+
+  my @constituent;
+  if ( ref $constituent eq 'ARRAY' ) {
+    @constituent = @$constituent;
+  } else {
+    push( @constituent, $constituent );
+  }
+
+  my @forest = map { '\begin{forest}' . $content_emitter->( $_ ) . '\end{forest}' } @constituent;
+
+  print $fh (
+              join( "\n",
+                    '\documentclass{report}',
+                    ( map { "\\usepackage{$_}\n" } @package ),
+                    '\title{Template for displaying linguistic parse trees}',
+                    '\author{C.J. Adams-Collier}',
+                    '\date{January 2016}',
+                    '\begin{document}',
+                    '\maketitle',
+                    join( '\newline', @forest ),
+                    '\end{document}',
+              ) );
 }
 
 sub print_tree {

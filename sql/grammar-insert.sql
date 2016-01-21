@@ -1,4 +1,4 @@
-/* Copyright 2015 Collier Technologies LLC */
+/* Copyright 2015, 2016 Collier Technologies LLC */
 
 DELETE FROM rule_node;
 DELETE FROM phrase_structure_rule;
@@ -10,12 +10,12 @@ DELETE FROM lexical_category_;
 DELETE FROM syntactic_category;
 
 INSERT INTO lexical_category_ ( label, longname )
-                       VALUES ( 'D',   'Determiner' ),
-                              ( 'A',   'Adjective' ),
-                              ( 'Adv', 'Adverb' ),
-                              ( 'N',   'Noun' ),
-		       	      ( 'V',   'Verb' ),
-		       	      ( 'P',   'Preposition' );
+            VALUES ( 'D',   'Determiner' ),
+                   ( 'A',   'Adjective' ),
+                   ( 'Adv', 'Adverb' ),
+                   ( 'N',   'Noun' ),
+                   ( 'V',   'Verb' ),
+                   ( 'P',   'Preposition' );
 
 INSERT INTO phrasal_category_
        ( longname, label, head_cat_id )
@@ -28,21 +28,26 @@ VALUES ( 'Adjective Phrase',     'AP',   ( SELECT catid_by_label('A')   ) ),
 
 
 INSERT INTO lexeme ( word, cat_id )
-            VALUES ( 'the',     ( SELECT catid_by_label('D') ) ),
-	           ( 'some',    ( SELECT catid_by_label('D') ) ),
-		   ( 'big',     ( SELECT catid_by_label('A') ) ),
-		   ( 'brown',   ( SELECT catid_by_label('A') ) ),
-		   ( 'old',     ( SELECT catid_by_label('A') ) ),
-		   ( 'birds',   ( SELECT catid_by_label('N') ) ),
-		   ( 'fleas',   ( SELECT catid_by_label('N') ) ),
-		   ( 'dog',     ( SELECT catid_by_label('N') ) ),
-		   ( 'hunter',  ( SELECT catid_by_label('N') ) ),
-		   ( 'attack',  ( SELECT catid_by_label('V') ) ),
-		   ( 'ate',     ( SELECT catid_by_label('V') ) ),
-		   ( 'watched', ( SELECT catid_by_label('V') ) ),
-		   ( 'for',     ( SELECT catid_by_label('P') ) ),
-		   ( 'beside',  ( SELECT catid_by_label('P') ) ),
-		   ( 'with',    ( SELECT catid_by_label('P') ) );
+VALUES ( 'the',        ( SELECT catid_by_label('D') ) ),
+       ( 'a',          ( SELECT catid_by_label('D') ) ),
+       ( 'some',       ( SELECT catid_by_label('D') ) ),
+       ( 'big',        ( SELECT catid_by_label('A') ) ),
+       ( 'brown',      ( SELECT catid_by_label('A') ) ),
+       ( 'old',        ( SELECT catid_by_label('A') ) ),
+       ( 'birds',      ( SELECT catid_by_label('N') ) ),
+       ( 'fleas',      ( SELECT catid_by_label('N') ) ),
+       ( 'dog',        ( SELECT catid_by_label('N') ) ),
+       ( 'hunter',     ( SELECT catid_by_label('N') ) ),
+       ( 'I',          ( SELECT catid_by_label('N') ) ),
+       ( 'astronomer', ( SELECT catid_by_label('N') ) ),
+       ( 'telescope',  ( SELECT catid_by_label('N') ) ),
+       ( 'attack',     ( SELECT catid_by_label('V') ) ),
+       ( 'saw',        ( SELECT catid_by_label('V') ) ),
+       ( 'ate',        ( SELECT catid_by_label('V') ) ),
+       ( 'watched',    ( SELECT catid_by_label('V') ) ),
+       ( 'for',        ( SELECT catid_by_label('P') ) ),
+       ( 'beside',     ( SELECT catid_by_label('P') ) ),
+       ( 'with',       ( SELECT catid_by_label('P') ) );
 
 INSERT INTO phrase_structure_rule ( target_id, node_count )
                            VALUES ( ( SELECT catid_by_label('PP') ), 2 );

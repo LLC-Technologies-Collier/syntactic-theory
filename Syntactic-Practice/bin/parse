@@ -68,7 +68,7 @@ my $lexeme_rs = $schema->resultset( 'Lexeme' )->search( {}, { prefetch => ['cat'
 
 my $lexeme = {};
 while ( my $l = $lexeme_rs->next() ) {
-  $lexeme->{ $l->word } = $l;
+  $lexeme->{ lc( $l->word ) } = $l;
 }
 
 my $content = do {
@@ -107,7 +107,8 @@ sub license_lexical_rule {
   my $num = scalar @$const_list;
 
   my $word         = $sentence->[$from];
-  my $l            = $lexeme->{$word};
+  print STDERR "No entry for word [$word]\n" unless exists $lexeme->{lc( $word )};
+  my $l            = $lexeme->{ lc( $word ) };
   my $lexeme_label = $l->cat->label;
 
   if ( $lexeme_label ne $target_label ) {

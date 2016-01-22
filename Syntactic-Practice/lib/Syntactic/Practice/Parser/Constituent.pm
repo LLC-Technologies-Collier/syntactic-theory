@@ -34,8 +34,9 @@ has topos => ( is  => 'ro',
                isa => 'PositiveInt' );
 
 enum 'SynCatType', [qw(phrasal lexical)];
-has cat_type => ( is  => 'ro',
-                  isa => 'SynCatType' required => 1 );
+has cat_type => ( is       => 'ro',
+                  isa      => 'SynCatType',
+                  required => 1 );
 
 around 'new' => sub {
   my ( $orig, $self, @arg ) = @_;
@@ -52,18 +53,18 @@ around 'new' => sub {
   if ( exists $arg->{name} ) {
     die "Constituent name $arg->{name} is already taken."
       if ( exists $constByNameByLabel{ $arg->{label} }->{ $arg->{name} } );
-  }else{
+  } else {
     $arg->{name} = $arg->{label} . scalar keys %{ $constByNameByLabel{ $arg->{label} } };
   }
 
-  if( exists $arg->{topos} ){
-    if( $arg->{topos} < $arg->{frompos} ){
-      Carp::cluck('To and From positions are being reversed');
+  if ( exists $arg->{topos} ) {
+    if ( $arg->{topos} < $arg->{frompos} ) {
+      Carp::cluck( 'To and From positions are being reversed' );
       my $tmp = $arg->{topos};
-      $arg->{topos} = $arg->{frompos};
+      $arg->{topos}   = $arg->{frompos};
       $arg->{frompos} = $tmp;
     }
-  }else{
+  } else {
     $arg->{topos} = $arg->{frompos} + 1;
   }
 

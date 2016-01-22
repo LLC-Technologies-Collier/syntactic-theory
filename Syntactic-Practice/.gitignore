@@ -5,3 +5,8 @@ perltidy.ERR
 blib/
 pm_to_blib
 
+*.aux
+*.pdf
+*.dvi
+*.log
+*.png

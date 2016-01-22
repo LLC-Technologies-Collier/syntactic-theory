@@ -8,6 +8,7 @@ use Getopt::Long::Descriptive;
 use DBI;
 
 use File::Basename;
+use DateTime;
 
 use Syntactic::Practice::Parser::Constituent;
 use Syntactic::Practice::Schema;
@@ -24,6 +25,8 @@ my $dsn      = "DBI:mysql:database=$database;host=$hostname;port=$port";
 my ( $getOpt, $usage ) =
   describe_options( 'parse %o <some-arg>',
                     [ 'file|f=s', "file containing text to parse", { required => 1 } ],
+                    [ 'title|t=s', "Title for latex rendering of parses", { default => "A title" } ],
+                    [ 'author|a=s', "Author for latex rendering of parses", { default => "C.J." } ],
                     [],
                     [ 'verbose|v', "print extra stuff" ],
                     [ 'help',      "print usage message and exit" ], );
@@ -36,8 +39,6 @@ my $rule_rs = $schema->resultset( 'PhraseStructureRule' )
   ->search( {}, { prefetch => [ 'target', { 'rule_nodes' => ['cat'] } ] } );
 
 my $rule = {};
-
-my $constByLabel = {};
 
 # Load the grammar rules in to the $rule hashref
 while ( my $r = $rule_rs->next() ) {
@@ -93,7 +94,9 @@ foreach my $c ( @constituents ) {
   print_tree( $c );
 }
 
-print_tree_latex( \@constituents, "${srcFile}.tex" );
+my $now = DateTime->now();
+
+print_tree_latex( \@constituents, "${srcFile}.tex", $getOpt->title, $getOpt->author, $now->month_name . ' ' . $now->day . ', ' . $now->year );
 
 sub license_lexical_rule {
   my ( $sentence, $from, $lexical_rule ) = @_;
@@ -103,14 +106,6 @@ sub license_lexical_rule {
     if ( $from >= $num_words );
 
   my $target_label = $lexical_rule->cat->label;
-  my $const_list   = [];
-  if ( exists $constByLabel->{$target_label} ) {
-    $const_list = $constByLabel->{$target_label};
-  } else {
-    $constByLabel->{$target_label} = $const_list;
-  }
-
-  my $num = scalar @$const_list;
 
   my $word = $sentence->[$from];
   print STDERR "No entry for word [$word]\n" unless exists $lexeme->{ lc( $word ) };
@@ -122,15 +117,10 @@ sub license_lexical_rule {
   }
 
   my $constituent =
-    Syntactic::Practice::Parser::Constituent->new( name          => "${target_label}${num}",
-                                                   label         => $target_label,
-                                                   decomposition => [],
+    Syntactic::Practice::Parser::Constituent->new( label         => $target_label,
                                                    sentence      => $sentence,
                                                    frompos       => $from,
-                                                   topos         => $from + 1,
                                                    cat_type      => 'lexical' );
-  push( @$const_list, $constituent );
-
   return $constituent;
 }
 
@@ -169,12 +159,6 @@ sub license_phrasal_rule {
 
     my $optional   = $node->optional;
     my $repeat     = $node->rpt;
-    my $const_list = [];
-    if ( exists $constByLabel->{$node_label} ) {
-      $const_list = $constByLabel->{$node_label};
-    } else {
-      $constByLabel->{$node_label} = $const_list;
-    }
 
     my $optAtPos = {};
 
@@ -188,18 +172,15 @@ sub license_phrasal_rule {
       $arg[1] = $curpos;
 
       if ( $optional && !exists $optAtPos->{$curpos} ) {
-        my $num = scalar @$const_list;
         my $constituent =
-          Syntactic::Practice::Parser::Constituent->new( name          => "${node_label}${num}",
-                                                         label         => $node_label,
+          Syntactic::Practice::Parser::Constituent->new( label         => $node_label,
                                                          sentence      => $sentence,
                                                          frompos       => $curpos,
                                                          topos         => $curpos,
                                                          cat_type      => $cat_type,
-                                                         decomposition => [], );
+                                                         );
 
         $optAtPos->{$curpos} = $constituent;
-        push( @$const_list, $constituent );
         splice( @decomp, $decomp_num++, 0, [ @$decomp, $constituent ] );
       }
 
@@ -221,27 +202,17 @@ sub license_phrasal_rule {
     }
   }
 
-  my $const_list = [];
-  if ( exists $constByLabel->{$target_label} ) {
-    $const_list = $constByLabel->{$target_label};
-  } else {
-    $constByLabel->{$target_label} = $const_list;
-  }
-
   my @return = ();
   while ( my $d = shift( @decomp ) ) {
-    my $num = scalar @$const_list;
     my %const_args = ( label         => $target_label,
                        sentence      => $sentence,
                        frompos       => $from,
                        cat_type      => 'phrasal',
-                       name          => "${target_label}${num}",
                        topos         => $d->[-1]->topos,
                        decomposition => $d );
 
     my $constituent = Syntactic::Practice::Parser::Constituent->new( %const_args );
 
-    push( @$const_list, $constituent );
     push( @return,      $constituent );
   }
 
@@ -286,7 +257,7 @@ sub compare_constituents {
 }
 
 sub print_tree_latex {
-  my ( $constituent, $filename ) = @_;
+  my ( $constituent, $filename, $title, $author, $date ) = @_;
 
   open( my $fh, q{>}, $filename ) or die "Couldn't open file [$filename]";
 
@@ -316,12 +287,7 @@ sub print_tree_latex {
 
   my @package = qw(forest);
 
-  my @constituent;
-  if ( ref $constituent eq 'ARRAY' ) {
-    @constituent = @$constituent;
-  } else {
-    push( @constituent, $constituent );
-  }
+  my @constituent = ( ref $constituent eq 'ARRAY' ? @$constituent : ( $constituent ) );
 
   my @forest = map { '\begin{forest}' . $content_emitter->( $_ ) . '\end{forest}' } @constituent;
 
@@ -329,9 +295,9 @@ sub print_tree_latex {
               join( "\n",
                     '\documentclass{report}',
                     ( map { "\\usepackage{$_}\n" } @package ),
-                    '\title{Template for displaying linguistic parse trees}',
-                    '\author{C.J. Adams-Collier}',
-                    '\date{January 2016}',
+                    "\\title{$title}",
+                    "\\author{$author}",
+                    "\\date{$date}",
                     '\begin{document}',
                     '\maketitle',
                     join( '\newline', @forest ),

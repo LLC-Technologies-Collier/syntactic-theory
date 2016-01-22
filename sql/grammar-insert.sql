@@ -32,7 +32,7 @@ VALUES ( 'Determiner Phrase',    'DP',   @determiner_catid ),
        ( 'Noun Phrase',          'NP',   @noun_catid ),
        ( 'Verb Phrase',          'VP',   @verb_catid ),
        ( 'Prepositional Phrase', 'PP',   @preposition_catid ),
-       ( 'Sentence',             'S',    ( SELECT catid_by_label('N')   ) ); /* probably wrong... */
+       ( 'Sentence',             'S',    @noun_catid ); /* probably wrong... */
 
 SET @AP_catid   = ( SELECT catid_by_label('AP') );
 SET @AdvP_catid = ( SELECT catid_by_label('AdvP') );

@@ -19,9 +19,18 @@ use Syntactic::Practice::Lexer;
 
 my ( $getOpt, $usage ) =
   describe_options( 'parse %o <some-arg>',
-                    [ 'file|f=s', "file containing text to parse", { required => 1 } ],
-                    [ 'title|t=s', "Title for latex rendering of parses", { default => "A title" } ],
-                    [ 'author|a=s', "Author for latex rendering of parses", { default => "C.J." } ],
+                    [ 'file|f=s',
+                      "file containing text to parse",
+                      { required => 1 }
+                    ],
+                    [ 'title|t=s',
+                      "Title for latex rendering of parses",
+                      { default => "A title" }
+                    ],
+                    [ 'author|a=s',
+                      "Author for latex rendering of parses",
+                      { default => "C.J." }
+                    ],
                     [],
                     [ 'verbose|v', "print extra stuff" ],
                     [ 'help',      "print usage message and exit" ], );
@@ -30,8 +39,13 @@ print( $usage->text ), exit if $getOpt->help;
 
 my $schema = Syntactic::Practice::Util->new()->get_schema();
 
-my $rule_rs = $schema->resultset( 'PhraseStructureRule' )
-  ->search( {}, { prefetch => [ 'target', { 'rule_nodes' => ['cat'] } ] } );
+my $rule_rs = $schema->resultset( 'PhraseStructureRule' )->search(
+                                       {},
+                                       {
+                                         prefetch => [
+                                           'target', { 'rule_nodes' => ['cat'] }
+                                         ]
+                                       } );
 
 my $rule = {};
 
@@ -65,7 +79,8 @@ print STDERR ( "=====\n" );
 
 my $content = do {
   local undef $/;
-  open( my $fh, q{<}, $getOpt->file ) or die "could not open file [" . $getOpt->file . "]";
+  open( my $fh, q{<}, $getOpt->file )
+    or die "could not open file [" . $getOpt->file . "]";
   <$fh>;
 };
 
@@ -73,14 +88,14 @@ my $srcFile = basename( $getOpt->file, '.txt' );
 
 chomp $content;
 
-my $lexer = Syntactic::Practice::Lexer->new();
+my $lexer     = Syntactic::Practice::Lexer->new();
 my @paragraph = $lexer->scan( $content );
-my @sentence = @{ $paragraph[0] };
+my @sentence  = @{ $paragraph[0] };
 my @word_list = @{ $sentence[0] };
 
 print STDERR "$content\n=====\n";
 
-warn( scalar @word_list, "\n", join(" ", map { ref $_ } @word_list ) );
+warn( scalar @word_list, "\n", join( " ", map { ref $_ } @word_list ) );
 
 my @constituents = license_phrasal_rule( \@word_list, 0, $rule->{S}, 5, 0 );
 
@@ -90,12 +105,17 @@ foreach my $c ( @constituents ) {
 
 my $now = DateTime->now();
 
-print_tree_latex( \@constituents, "${srcFile}.tex", $getOpt->title, $getOpt->author, $now->month_name . ' ' . $now->day . ', ' . $now->year );
+print_tree_latex( \@constituents,
+                  "${srcFile}.tex",
+                  $getOpt->title,
+                  $getOpt->author,
+                  $now->month_name . ' ' . $now->day . ', ' . $now->year );
 
 sub license_lexical_rule {
   my ( $sentence, $from, $lexical_rule ) = @_;
 
-  return ( { error => "insufficient words to license additional lexical rule" } )
+  return (
+          { error => "insufficient words to license additional lexical rule" } )
     if ( $from >= scalar( @$sentence ) );
 
   my $lexeme = $sentence->[$from];
@@ -104,13 +124,17 @@ sub license_lexical_rule {
 
   return $lexeme if ( $lexeme->label eq $lexical_rule->cat->label );
 
-  return ( { error => "[\($lexeme->word)] (position [$from]) with label [\($lexeme->label)] not licensed by [\($lexical_rule->cat->label)]" } );
+  return (
+    { error =>
+"[\($lexeme->word)] (position [$from]) with label [\($lexeme->label)] not licensed by [\($lexical_rule->cat->label)]"
+    } );
 }
 
 sub license_phrasal_rule {
   my ( $sentence, $from, $phrasal_rule, $max_depth, $current_depth ) = @_;
   confess( "bad phrase rule!" ) unless $phrasal_rule;
-  return ( { error => "exceeded maximum recursion depth ($max_depth)" } ) if ( $current_depth > $max_depth );
+  return ( { error => "exceeded maximum recursion depth ($max_depth)" } )
+    if ( $current_depth > $max_depth );
 
   my $num_words = scalar( @$sentence );
   return ( { error => "insufficient words to license phrase" } )
@@ -140,8 +164,8 @@ sub license_phrasal_rule {
 
     my @arg = ( $sentence, $from, $r, $max_depth, $current_depth + 1 );
 
-    my $optional   = $node->optional;
-    my $repeat     = $node->rpt;
+    my $optional = $node->optional;
+    my $repeat   = $node->rpt;
 
     my $optAtPos = {};
 
@@ -156,18 +180,17 @@ sub license_phrasal_rule {
 
       if ( $optional && !exists $optAtPos->{$curpos} ) {
         my $class;
-        my %arg = (frompos       => $curpos,
-                   topos         => $curpos,
-                   cat_type      => $cat_type,
-                   label         => $node_label,
-                   sentence      => $sentence,
-                  );
-        if( $cat_type eq 'lexical' ){
+        my %arg = ( frompos  => $curpos,
+                    topos    => $curpos,
+                    cat_type => $cat_type,
+                    label    => $node_label,
+                    sentence => $sentence, );
+        if ( $cat_type eq 'lexical' ) {
           $class = 'Syntactic::Practice::Lexeme';
           delete $arg{label};
           $arg{sentence} = $sentence->[$curpos]->sentence;
-          $arg{word} = $sentence->[$curpos]->word;
-        }else{
+          $arg{word}     = $sentence->[$curpos]->word;
+        } else {
           $class = 'Syntactic::Practice::Phrase';
         }
         my $constituent = $class->new( %arg );
@@ -205,7 +228,7 @@ sub license_phrasal_rule {
 
     my $constituent = Syntactic::Practice::Phrase->new( %const_args );
 
-    push( @return,      $constituent );
+    push( @return, $constituent );
   }
 
   # De-duplicate
@@ -234,19 +257,20 @@ sub compare_constituents {
     return $result unless $result == 0;
   }
 
-  my( @a_decomp, my @b_decomp );
-  if( $a->cat_type eq 'lexical' ){
+  my ( @a_decomp, my @b_decomp );
+  if ( $a->cat_type eq 'lexical' ) {
     @a_decomp = @{ $a->decomposition };
     @b_decomp = @{ $b->decomposition };
     for ( my $decomp_num = 0; $decomp_num < scalar @a_decomp; $decomp_num++ ) {
       $result = ( $a_decomp[$decomp_num] cmp $b_decomp[$decomp_num] );
       return $result unless $result == 0;
     }
-  }elsif( $a->cat_type eq 'phrasal' ){
+  } elsif ( $a->cat_type eq 'phrasal' ) {
     @a_decomp = grep { $_->frompos != $_->topos } @{ $a->decomposition };
     @b_decomp = grep { $_->frompos != $_->topos } @{ $b->decomposition };
     for ( my $decomp_num = 0; $decomp_num < scalar @a_decomp; $decomp_num++ ) {
-      $result = compare_constituents( $a_decomp[$decomp_num], $b_decomp[$decomp_num] );
+      $result =
+        compare_constituents( $a_decomp[$decomp_num], $b_decomp[$decomp_num] );
       return $result unless $result == 0;
     }
   }
@@ -272,7 +296,8 @@ sub print_tree_latex {
 
     my $output = "";
     my $label  = $c->label;
-    my @decomp = grep { !ref $_ || $_->frompos != $_->topos } @{ $c->decomposition };
+    my @decomp =
+      grep { !ref $_ || $_->frompos != $_->topos } @{ $c->decomposition };
 
     $output .= "${indent}[$label\n${indent}";
     if ( $c->cat_type eq 'phrasal' ) {
@@ -281,7 +306,7 @@ sub print_tree_latex {
         $output .= $content_emitter->( $d, $depth + 1 );
       }
       $output .= "\n${indent}";
-    } elsif( $c->cat_type eq 'lexical' ) {
+    } elsif ( $c->cat_type eq 'lexical' ) {
       $output .= "[@decomp] ";
     }
     $output .= "]";
@@ -290,22 +315,20 @@ sub print_tree_latex {
 
   my @package = qw(forest);
 
-  my @constituent = ( ref $constituent eq 'ARRAY' ? @$constituent : ( $constituent ) );
+  my @constituent =
+    ( ref $constituent eq 'ARRAY' ? @$constituent : ( $constituent ) );
 
-  my @forest = map { '\begin{forest}' . $content_emitter->( $_ ) . '\end{forest}' } @constituent;
+  my @forest =
+    map { '\begin{forest}' . $content_emitter->( $_ ) . '\end{forest}' }
+    @constituent;
 
   print $fh (
-              join( "\n",
-                    '\documentclass{report}',
-                    ( map { "\\usepackage{$_}\n" } @package ),
-                    "\\title{$title}",
-                    "\\author{$author}",
-                    "\\date{$date}",
-                    '\begin{document}',
-                    '\maketitle',
-                    join( '\newline', @forest ),
-                    '\end{document}',
-              ) );
+      join( "\n",
+            '\documentclass{report}', ( map { "\\usepackage{$_}\n" } @package ),
+            "\\title{$title}", "\\author{$author}",
+            "\\date{$date}",   '\begin{document}',
+            '\maketitle', join( '\newline', @forest ),
+            '\end{document}', ) );
 }
 
 sub print_tree {
@@ -314,13 +337,14 @@ sub print_tree {
   my $indent = " " x ( $depth * 2 );
   my $is_empty = $constituent->frompos == $constituent->topos;
   print( $indent, $constituent->name, ": " );
-  if( $constituent->cat_type eq 'lexical' ){
+  if ( $constituent->cat_type eq 'lexical' ) {
     print( $constituent->word, "\n" ) unless $is_empty;
     return;
   }
-  my @decomp = grep { $_->frompos != $_->topos } @{ $constituent->decomposition };
+  my @decomp =
+    grep { $_->frompos != $_->topos } @{ $constituent->decomposition };
   print( join( ' ', map { $_->label } @decomp ), "\n" );
-  foreach my $d ( @decomp ){
+  foreach my $d ( @decomp ) {
     print_tree( $d, $depth + 1 ) unless $is_empty;
   }
 }

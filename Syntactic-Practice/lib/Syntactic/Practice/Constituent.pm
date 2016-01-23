@@ -1,7 +1,7 @@
-package Syntactic::Practice::Parser::Constituent;
+package Syntactic::Practice::Constituent;
 
+use Syntactic::Practice::Types;
 use Moose;
-use Moose::Util::TypeConstraints;
 
 my %constByNameByLabel = ();
 
@@ -12,19 +12,13 @@ has label => ( is       => 'ro',
                isa      => 'Str',
                required => 1, );
 
-has decomposition => ( is      => 'ro',
-                       isa     => 'ArrayRef[Syntactic::Practice::Parser::Constituent]',
+has decomposition => ( is  => 'ro',
+                       isa => 'ArrayRef',
                        default => sub { [] }, );
 
-subtype 'Word', as 'Str', where { $_ !~ /\s/ };
-
 has sentence => ( is       => 'ro',
-                  isa      => 'ArrayRef[Word]',
+                  isa      => 'ArrayRef',
                   required => 1 );
-
-subtype 'PositiveInt', as 'Int',
-  where { $_ >= 0 },
-  message { "The number you provided, $_, was not a positive number" };
 
 has frompos => ( is       => 'ro',
                  isa      => 'PositiveInt',
@@ -33,7 +27,6 @@ has frompos => ( is       => 'ro',
 has topos => ( is  => 'ro',
                isa => 'PositiveInt' );
 
-enum 'SynCatType', [qw(phrasal lexical)];
 has cat_type => ( is       => 'ro',
                   isa      => 'SynCatType',
                   required => 1 );
@@ -49,6 +42,8 @@ around 'new' => sub {
   }
 
   $constByNameByLabel{ $arg->{label} } = {} unless exists $constByNameByLabel{ $arg->{label} };
+
+  my $last_wordpos = scalar $#{ $arg->{sentence} };
 
   if ( exists $arg->{name} ) {
     die "Constituent name $arg->{name} is already taken."
@@ -69,8 +64,8 @@ around 'new' => sub {
   }
 
   $constByNameByLabel{ $arg->{label} }->{ $arg->{name} } = $self->$orig( %$arg );
-
 };
 
 no Moose;
-__PACKAGE__->meta->make_immutable;
+#__PACKAGE__->meta->make_immutable;
+1;

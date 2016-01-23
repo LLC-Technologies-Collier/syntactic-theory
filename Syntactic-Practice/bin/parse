@@ -10,17 +10,12 @@ use DBI;
 use File::Basename;
 use DateTime;
 
-use Syntactic::Practice::Parser::Constituent;
+use Syntactic::Practice::Lexeme;
+use Syntactic::Practice::Phrase;
 use Syntactic::Practice::Schema;
+use Syntactic::Practice::Lexer;
 
 # TODO: variable glossary
-
-my $hostname = 'localhost';
-my $port     = '3306';
-my $database = 'grammar';
-my $user     = 'grammaruser';
-my $pass     = 'nunya';
-my $dsn      = "DBI:mysql:database=$database;host=$hostname;port=$port";
 
 my ( $getOpt, $usage ) =
   describe_options( 'parse %o <some-arg>',
@@ -33,7 +28,7 @@ my ( $getOpt, $usage ) =
 
 print( $usage->text ), exit if $getOpt->help;
 
-my $schema = Syntactic::Practice::Schema->connect( $dsn, $user, $pass );
+my $schema = Syntactic::Practice::Util->new()->get_schema();
 
 my $rule_rs = $schema->resultset( 'PhraseStructureRule' )
   ->search( {}, { prefetch => [ 'target', { 'rule_nodes' => ['cat'] } ] } );
@@ -67,12 +62,6 @@ while ( my $r = $rule_rs->next() ) {
   print STDERR ( "\n" );
 }
 print STDERR ( "=====\n" );
-my $lexeme_rs = $schema->resultset( 'Lexeme' )->search( {}, { prefetch => ['cat'] } );
-
-my $lexeme = {};
-while ( my $l = $lexeme_rs->next() ) {
-  $lexeme->{ lc( $l->word ) } = $l;
-}
 
 my $content = do {
   local undef $/;
@@ -84,9 +73,14 @@ my $srcFile = basename( $getOpt->file, '.txt' );
 
 chomp $content;
 
-my @word_list = map { lc $_ } split( /\s+/, $content );
+my $lexer = Syntactic::Practice::Lexer->new();
+my @paragraph = $lexer->scan( $content );
+my @sentence = @{ $paragraph[0] };
+my @word_list = @{ $sentence[0] };
 
 print STDERR "$content\n=====\n";
+
+warn( scalar @word_list, "\n", join(" ", map { ref $_ } @word_list ) );
 
 my @constituents = license_phrasal_rule( \@word_list, 0, $rule->{S}, 5, 0 );
 
@@ -101,27 +95,16 @@ print_tree_latex( \@constituents, "${srcFile}.tex", $getOpt->title, $getOpt->aut
 sub license_lexical_rule {
   my ( $sentence, $from, $lexical_rule ) = @_;
 
-  my $num_words = scalar( @$sentence );
   return ( { error => "insufficient words to license additional lexical rule" } )
-    if ( $from >= $num_words );
+    if ( $from >= scalar( @$sentence ) );
 
-  my $target_label = $lexical_rule->cat->label;
+  my $lexeme = $sentence->[$from];
 
-  my $word = $sentence->[$from];
-  print STDERR "No entry for word [$word]\n" unless exists $lexeme->{ lc( $word ) };
-  my $l            = $lexeme->{ lc( $word ) };
-  my $lexeme_label = $l->cat->label;
+  warn $lexeme->label, "\n";
 
-  if ( $lexeme_label ne $target_label ) {
-    return ( { error => "[$word] (position [$from]) with label [$lexeme_label] not licensed by [$target_label]" } );
-  }
+  return $lexeme if ( $lexeme->label eq $lexical_rule->cat->label );
 
-  my $constituent =
-    Syntactic::Practice::Parser::Constituent->new( label         => $target_label,
-                                                   sentence      => $sentence,
-                                                   frompos       => $from,
-                                                   cat_type      => 'lexical' );
-  return $constituent;
+  return ( { error => "[\($lexeme->word)] (position [$from]) with label [\($lexeme->label)] not licensed by [\($lexical_rule->cat->label)]" } );
 }
 
 sub license_phrasal_rule {
@@ -172,13 +155,22 @@ sub license_phrasal_rule {
       $arg[1] = $curpos;
 
       if ( $optional && !exists $optAtPos->{$curpos} ) {
-        my $constituent =
-          Syntactic::Practice::Parser::Constituent->new( label         => $node_label,
-                                                         sentence      => $sentence,
-                                                         frompos       => $curpos,
-                                                         topos         => $curpos,
-                                                         cat_type      => $cat_type,
-                                                         );
+        my $class;
+        my %arg = (frompos       => $curpos,
+                   topos         => $curpos,
+                   cat_type      => $cat_type,
+                   label         => $node_label,
+                   sentence      => $sentence,
+                  );
+        if( $cat_type eq 'lexical' ){
+          $class = 'Syntactic::Practice::Lexeme';
+          delete $arg{label};
+          $arg{sentence} = $sentence->[$curpos]->sentence;
+          $arg{word} = $sentence->[$curpos]->word;
+        }else{
+          $class = 'Syntactic::Practice::Phrase';
+        }
+        my $constituent = $class->new( %arg );
 
         $optAtPos->{$curpos} = $constituent;
         splice( @decomp, $decomp_num++, 0, [ @$decomp, $constituent ] );
@@ -211,7 +203,7 @@ sub license_phrasal_rule {
                        topos         => $d->[-1]->topos,
                        decomposition => $d );
 
-    my $constituent = Syntactic::Practice::Parser::Constituent->new( %const_args );
+    my $constituent = Syntactic::Practice::Phrase->new( %const_args );
 
     push( @return,      $constituent );
   }
@@ -242,16 +234,25 @@ sub compare_constituents {
     return $result unless $result == 0;
   }
 
-  my @a_decomp = grep { $_->frompos != $_->topos } @{ $a->decomposition };
-  my @b_decomp = grep { $_->frompos != $_->topos } @{ $b->decomposition };
+  my( @a_decomp, my @b_decomp );
+  if( $a->cat_type eq 'lexical' ){
+    @a_decomp = @{ $a->decomposition };
+    @b_decomp = @{ $b->decomposition };
+    for ( my $decomp_num = 0; $decomp_num < scalar @a_decomp; $decomp_num++ ) {
+      $result = ( $a_decomp[$decomp_num] cmp $b_decomp[$decomp_num] );
+      return $result unless $result == 0;
+    }
+  }elsif( $a->cat_type eq 'phrasal' ){
+    @a_decomp = grep { $_->frompos != $_->topos } @{ $a->decomposition };
+    @b_decomp = grep { $_->frompos != $_->topos } @{ $b->decomposition };
+    for ( my $decomp_num = 0; $decomp_num < scalar @a_decomp; $decomp_num++ ) {
+      $result = compare_constituents( $a_decomp[$decomp_num], $b_decomp[$decomp_num] );
+      return $result unless $result == 0;
+    }
+  }
 
   $result = scalar @a_decomp <=> scalar @b_decomp;
   return $result unless $result == 0;
-
-  for ( my $num_decomp = 0; $num_decomp < scalar @a_decomp; $num_decomp++ ) {
-    $result = compare_constituents( $a_decomp[$num_decomp], $b_decomp[$num_decomp] );
-    return $result unless $result == 0;
-  }
 
   return 0;
 }
@@ -264,22 +265,24 @@ sub print_tree_latex {
   my $content_emitter;
   $content_emitter = sub {
     my ( $c, $depth ) = @_;
+    return '' if $c->frompos == $c->topos;
     my @sentence = @{ $c->sentence };
     $depth = 0 unless $depth;
     my $indent = " " x ( $depth * 2 );
 
     my $output = "";
     my $label  = $c->label;
-    my @decomp = @{ $c->decomposition };
-    $output .= "${indent}[$label\n";
-    if ( @decomp ) {
+    my @decomp = grep { !ref $_ || $_->frompos != $_->topos } @{ $c->decomposition };
+
+    $output .= "${indent}[$label\n${indent}";
+    if ( $c->cat_type eq 'phrasal' ) {
       foreach my $d ( @decomp ) {
         next if ( $d->frompos == $d->topos );
         $output .= $content_emitter->( $d, $depth + 1 );
       }
       $output .= "\n${indent}";
-    } else {
-      $output .= "${indent}[@sentence[ $c->frompos .. $c->topos - 1 ]]";
+    } elsif( $c->cat_type eq 'lexical' ) {
+      $output .= "[@decomp] ";
     }
     $output .= "]";
     return $output;
@@ -309,12 +312,16 @@ sub print_tree {
   my ( $constituent, $depth ) = @_;
   $depth = 0 unless $depth;
   my $indent = " " x ( $depth * 2 );
-  print( $indent, $constituent->name, "\n" ) unless $depth > 0;
-  foreach my $d ( @{ $constituent->decomposition } ) {
-    next if ( $d->frompos == $d->topos );
-    my @word = ( @{ $constituent->sentence } )[ $d->frompos .. $d->topos - 1 ];
-    print( $indent, $d->name, ": @word\n" );
-    print_tree( $d, $depth + 1 ) if $d->cat_type eq 'phrasal';
+  my $is_empty = $constituent->frompos == $constituent->topos;
+  print( $indent, $constituent->name, ": " );
+  if( $constituent->cat_type eq 'lexical' ){
+    print( $constituent->word, "\n" ) unless $is_empty;
+    return;
+  }
+  my @decomp = grep { $_->frompos != $_->topos } @{ $constituent->decomposition };
+  print( join( ' ', map { $_->label } @decomp ), "\n" );
+  foreach my $d ( @decomp ){
+    print_tree( $d, $depth + 1 ) unless $is_empty;
   }
 }
 

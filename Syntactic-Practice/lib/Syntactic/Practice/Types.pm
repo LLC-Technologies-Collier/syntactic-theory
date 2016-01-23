@@ -3,7 +3,6 @@ package Syntactic::Practice::Types;
 use Moose;
 use Moose::Util::TypeConstraints;
 
-
 subtype 'Word', as 'Str', where { $_ !~ /\s/ };
 
 subtype 'PositiveInt', as 'Int',

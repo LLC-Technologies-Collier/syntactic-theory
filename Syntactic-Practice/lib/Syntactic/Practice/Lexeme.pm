@@ -13,8 +13,7 @@ has word => ( is       => 'ro',
               required => 0 );
 
 has '+decomposition' => ( is  => 'ro',
-                          isa => 'ArrayRef[Word]',
-                          );
+                          isa => 'ArrayRef[Word]', );
 
 has '+sentence' => ( is       => 'ro',
                      isa      => 'ArrayRef[Word]',
@@ -34,22 +33,24 @@ around 'new' => sub {
 
   $arg->{topos} = $arg->{frompos} + 1 unless exists $arg->{topos};
 
-  print STDERR ("[$arg->{frompos}] .. [$arg->{topos}]\n");
+  print STDERR ( "[$arg->{frompos}] .. [$arg->{topos}]\n" );
 
-  $arg->{decomposition} = [(@{$arg->{sentence}})[ $arg->{frompos} .. ($arg->{topos} - 1) ]]
+  $arg->{decomposition} =
+    [ ( @{ $arg->{sentence} } )[ $arg->{frompos} .. ( $arg->{topos} - 1 ) ] ]
     unless exists $arg->{decomposition};
 
-  if( exists $arg->{word} ){
+  if ( exists $arg->{word} ) {
     confess "word should not be a reference" if ref $arg->{word};
-  }else{
+  } else {
     my $num_decomp = scalar @{ $arg->{decomposition} };
-    if( $num_decomp == 1 ){
+    if ( $num_decomp == 1 ) {
       $arg->{word} = $arg->{decomposition}->[0];
-    }elsif( $num_decomp > 1 ){
-      warn ("More than one word in decomposition for lexeme: [@{$arg->{decomposition}}]]");
+    } elsif ( $num_decomp > 1 ) {
+      warn(
+"More than one word in decomposition for lexeme: [@{$arg->{decomposition}}]]" );
       $arg->{word} = $arg->{decomposition}->[0];
-    }elsif( $num_decomp == 0 ){
-      confess("No word specified and empty decomposition list!");
+    } elsif ( $num_decomp == 0 ) {
+      confess( "No word specified and empty decomposition list!" );
     }
   }
 
@@ -68,7 +69,8 @@ around 'new' => sub {
 
     # TODO: prompt for definition
   } elsif ( $count > 1 ) {
-    die "cannot currently handle homonyms - word: [$arg->{word}] with label [$label]";
+    die
+"cannot currently handle homonyms - word: [$arg->{word}] with label [$label]";
 
     # TODO: account for homonyms
   }
@@ -77,7 +79,7 @@ around 'new' => sub {
 
   my $lexeme = $self->$orig( %$arg );
 
-  $lexeme->{rs} = $rs;
+  $lexeme->{rs}     = $rs;
   $lexeme->{lexeme} = \@lexeme;
 
   confess ref $lexeme if ref $lexeme ne 'Syntactic::Practice::Lexeme';

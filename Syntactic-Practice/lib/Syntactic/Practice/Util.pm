@@ -13,7 +13,7 @@ my $dsn      = "DBI:mysql:database=$database;host=$hostname;port=$port";
 my $schema = Syntactic::Practice::Schema->connect( $dsn, $user, $pass );
 
 sub get_schema {
-  my( $self ) = @_;
+  my ( $self ) = @_;
 
   return $schema;
 }

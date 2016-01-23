@@ -12,8 +12,8 @@ has label => ( is       => 'ro',
                isa      => 'Str',
                required => 1, );
 
-has decomposition => ( is  => 'ro',
-                       isa => 'ArrayRef',
+has decomposition => ( is      => 'ro',
+                       isa     => 'ArrayRef',
                        default => sub { [] }, );
 
 has sentence => ( is       => 'ro',
@@ -41,7 +41,8 @@ around 'new' => sub {
     $arg = {@arg};
   }
 
-  $constByNameByLabel{ $arg->{label} } = {} unless exists $constByNameByLabel{ $arg->{label} };
+  $constByNameByLabel{ $arg->{label} } = {}
+    unless exists $constByNameByLabel{ $arg->{label} };
 
   my $last_wordpos = scalar $#{ $arg->{sentence} };
 
@@ -49,7 +50,8 @@ around 'new' => sub {
     die "Constituent name $arg->{name} is already taken."
       if ( exists $constByNameByLabel{ $arg->{label} }->{ $arg->{name} } );
   } else {
-    $arg->{name} = $arg->{label} . scalar keys %{ $constByNameByLabel{ $arg->{label} } };
+    $arg->{name} =
+      $arg->{label} . scalar keys %{ $constByNameByLabel{ $arg->{label} } };
   }
 
   if ( exists $arg->{topos} ) {
@@ -63,9 +65,11 @@ around 'new' => sub {
     $arg->{topos} = $arg->{frompos} + 1;
   }
 
-  $constByNameByLabel{ $arg->{label} }->{ $arg->{name} } = $self->$orig( %$arg );
+  $constByNameByLabel{ $arg->{label} }->{ $arg->{name} } =
+    $self->$orig( %$arg );
 };
 
 no Moose;
+
 #__PACKAGE__->meta->make_immutable;
 1;

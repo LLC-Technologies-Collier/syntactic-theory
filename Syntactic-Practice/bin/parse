@@ -71,11 +71,11 @@ open( my $tex_fh, q{>}, $LaTeXfilename )
 
 my $now = DateTime->now();
 print $tex_fh tree_as_latex(
-                            { constituent => \@constituent,
-                              title       => $getOpt->title,
-                              author      => $getOpt->author,
-                              date => $now->month_name . ' ' . $now->day . ', ' . $now->year
-                            } );
+                { constituent => \@constituent,
+                  title       => $getOpt->title,
+                  author      => $getOpt->author,
+                  date => $now->month_name . ' ' . $now->day . ', ' . $now->year
+                } );
 
 sub tree_as_latex {
   my ( $opt ) = @_;

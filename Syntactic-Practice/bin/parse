@@ -36,16 +36,12 @@ my ( $getOpt, $usage ) =
 
 print( $usage->text ), exit if $getOpt->help;
 
-print STDERR ( "=====\n" );
-
 my $content = do {
   local undef $/;
   open( my $fh, q{<}, $getOpt->file )
     or die "could not open file [\($getOpt->file)]";
   <$fh>;
 };
-
-my ( $srcName, $srcPath, $suffix ) = fileparse( $getOpt->file, '.txt' );
 
 chomp $content;
 
@@ -54,12 +50,6 @@ my @paragraph = $lexer->scan( $content );
 my @sentence  = @{ $paragraph[0] };
 my @word_list = @{ $sentence[0] };
 
-print STDERR "$content\n=====\n";
-
-warn( scalar @word_list,
-      " words in sentence\n",
-      join( " ", map { ref $_ ? $_->word : $_ } @word_list ) );
-
 my $parser = Syntactic::Practice::Parser->new();
 
 my @constituent = $parser->ingest_phrase(
@@ -67,21 +57,25 @@ my @constituent = $parser->ingest_phrase(
                                             rule     => 'S'
                                           } );
 
-print map { $_->as_text } @constituent;
+my ( $srcName, $srcPath, $suffix ) = fileparse( $getOpt->file, '.txt' );
 
-my $now = DateTime->now();
+my $textFilename = File::Spec->catfile( $srcPath, $srcName . '.text' );
+open( my $text_fh, q{>}, $textFilename )
+  or die "Couldn't open file [$textFilename]";
+
+print $text_fh ( map { $_->as_text } @constituent );
 
 my $LaTeXfilename = File::Spec->catfile( $srcPath, $srcName . '.tex' );
-
-open( my $fh, q{>}, $LaTeXfilename )
+open( my $tex_fh, q{>}, $LaTeXfilename )
   or die "Couldn't open file [$LaTeXfilename]";
 
-print $fh tree_as_latex(
-                { constituent => \@constituent,
-                  title       => $getOpt->title,
-                  author      => $getOpt->author,
-                  date => $now->month_name . ' ' . $now->day . ', ' . $now->year
-                } );
+my $now = DateTime->now();
+print $tex_fh tree_as_latex(
+                            { constituent => \@constituent,
+                              title       => $getOpt->title,
+                              author      => $getOpt->author,
+                              date => $now->month_name . ' ' . $now->day . ', ' . $now->year
+                            } );
 
 sub tree_as_latex {
   my ( $opt ) = @_;

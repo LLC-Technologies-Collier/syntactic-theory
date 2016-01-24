@@ -78,8 +78,6 @@ sub ingest_phrase {
                           topos    => $curpos,
                           cat_type => $cat_type,
                           label    => $node_label,
-                          target_label => $target_label,
-                          node_num   => $node_num,
                           sentence => $sentence, );
         if ( $cat_type eq 'lexical' ) {
           $class = 'Syntactic::Practice::Lexeme';
@@ -92,8 +90,8 @@ sub ingest_phrase {
         my $constituent = $class->new( %const_arg );
 
         $optAtPos->{$curpos} = $constituent;
-        push( @result, $constituent );
-
+        splice( @decomp, $decomp_num, 0, ( [ @$decomp, $constituent ] ) );
+        next;
       }
 
       if( $cat_type eq 'lexical' ){
@@ -103,24 +101,22 @@ sub ingest_phrase {
         }else{
           push( @result, { error =>
 '['.$lexeme->word."] (position [$curpos]) with label [".$lexeme->label."] not licensed by [$node_label]"
-    } );
+                         } );
         }
       }else{
         push( @result, ( $self->ingest_phrase( \%ingest_arg ) ) );
       }
 
-
-
       # remove placeholder ; replaced below unless there is an error
-      splice( @decomp, $decomp_num--, 1 );
+      splice( @decomp, $decomp_num, 1 );
 
-      my $num_errors = 0;
+      if ( ref $result[0] eq 'HASH' && exists $result[0]->{error} ) {
+        push( @error, $result[0] );
+        $decomp_num--;
+        next;
+      }
+
       foreach my $d ( @result ) {
-        if ( ref $d eq 'HASH' && exists $d->{error} ) {
-          push( @error, $d );
-          next;
-        }
-        $decomp_num++;
         splice( @decomp, $decomp_num, 0, ( [ @$decomp, $d ] ) );
         splice( @decomp, $decomp_num, 0, ( [ @$decomp, $d ] ) ) if ( $repeat );
       }

@@ -33,8 +33,6 @@ around 'new' => sub {
 
   $arg->{topos} = $arg->{frompos} + 1 unless exists $arg->{topos};
 
-  print STDERR ( "[$arg->{frompos}] .. [$arg->{topos}]\n" );
-
   $arg->{decomposition} =
     [ ( @{ $arg->{sentence} } )[ $arg->{frompos} .. ( $arg->{topos} - 1 ) ] ]
     unless exists $arg->{decomposition};

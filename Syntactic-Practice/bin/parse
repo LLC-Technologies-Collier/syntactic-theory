@@ -5,15 +5,11 @@ use warnings;
 use Carp;
 
 use Getopt::Long::Descriptive;
-use DBI;
 
 use File::Basename;
 use File::Spec;
 use DateTime;
 
-use Syntactic::Practice::Lexeme;
-use Syntactic::Practice::Phrase;
-use Syntactic::Practice::Schema;
 use Syntactic::Practice::Lexer;
 use Syntactic::Practice::Parser;
 
@@ -48,7 +44,7 @@ my $content = do {
   <$fh>;
 };
 
-my ($srcName,$srcPath,$suffix) = fileparse($getOpt->file,'.txt');
+my ( $srcName, $srcPath, $suffix ) = fileparse( $getOpt->file, '.txt' );
 
 chomp $content;
 
@@ -59,25 +55,32 @@ my @word_list = @{ $sentence[0] };
 
 print STDERR "$content\n=====\n";
 
-warn( scalar @word_list, " words in sentence\n", join( " ", map { ref $_ ? $_->label : $_ } @word_list ) );
+warn( scalar @word_list,
+      " words in sentence\n",
+      join( " ", map { ref $_ ? $_->label : $_ } @word_list ) );
 
-my $parser     = Syntactic::Practice::Parser->new();
+my $parser = Syntactic::Practice::Parser->new();
 
-my @constituent = $parser->ingest_phrase( { sentence => $sentence[0],
-                                            rule => 'S' } );
+my @constituent = $parser->ingest_phrase(
+                                          { sentence => $sentence[0],
+                                            rule     => 'S'
+                                          } );
 
 print map { $_->as_text } @constituent;
 
 my $now = DateTime->now();
 
-my $LaTeXfilename = File::Spec->catfile($srcPath, $srcName . '.tex');
+my $LaTeXfilename = File::Spec->catfile( $srcPath, $srcName . '.tex' );
 
-open( my $fh, q{>}, $LaTeXfilename ) or die "Couldn't open file [$LaTeXfilename]";
+open( my $fh, q{>}, $LaTeXfilename )
+  or die "Couldn't open file [$LaTeXfilename]";
 
-print $fh tree_as_latex( { constituent => \@constituent,
-                           title => $getOpt->title,
-                           author => $getOpt->author,
-                           date => $now->month_name . ' ' . $now->day . ', ' . $now->year } );
+print $fh tree_as_latex(
+                { constituent => \@constituent,
+                  title       => $getOpt->title,
+                  author      => $getOpt->author,
+                  date => $now->month_name . ' ' . $now->day . ', ' . $now->year
+                } );
 
 sub tree_as_latex {
   my ( $opt ) = @_;
@@ -88,12 +91,12 @@ sub tree_as_latex {
     map { '\begin{forest}' . $_->as_forest() . '\end{forest}' }
     @{ $opt->{constituent} };
 
-  return       join( "\n",
-            '\documentclass{report}', ( map { "\\usepackage{$_}\n" } @package ),
-            "\\title{$opt->{title}}", "\\author{$opt->{author}}",
-            "\\date{$opt->{date}}",   '\begin{document}',
-            '\maketitle', join( '\newline', @forest ),
-            '\end{document}', );
+  return
+    join( "\n",
+          '\documentclass{report}', ( map { "\\usepackage{$_}\n" } @package ),
+          "\\title{$opt->{title}}", "\\author{$opt->{author}}",
+          "\\date{$opt->{date}}",   '\begin{document}',
+          '\maketitle', join( '\newline', @forest ),
+          '\end{document}', );
 }
-
 

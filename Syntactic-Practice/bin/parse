@@ -11,6 +11,7 @@ use File::Spec;
 use DateTime;
 
 use Syntactic::Practice::Lexer;
+use Syntactic::Practice::Phrase;
 use Syntactic::Practice::Parser;
 
 # TODO: variable glossary
@@ -57,7 +58,7 @@ print STDERR "$content\n=====\n";
 
 warn( scalar @word_list,
       " words in sentence\n",
-      join( " ", map { ref $_ ? $_->label : $_ } @word_list ) );
+      join( " ", map { ref $_ ? $_->word : $_ } @word_list ) );
 
 my $parser = Syntactic::Practice::Parser->new();
 

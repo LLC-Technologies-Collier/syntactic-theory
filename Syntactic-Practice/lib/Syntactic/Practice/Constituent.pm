@@ -69,6 +69,90 @@ around 'new' => sub {
     $self->$orig( %$arg );
 };
 
+sub cmp {
+  my ( $self, $other ) = @_;
+
+  my $result;
+  foreach my $attribute ( qw(label frompos topos cat_type) ) {
+    $result = $self->$attribute cmp $other->$attribute;
+    return $result unless $result == 0;
+  }
+
+  my ( @self_decomp, my @other_decomp );
+  if ( $self->cat_type eq 'lexical' ) {
+    @self_decomp = @{ $self->decomposition };
+    @other_decomp = @{ $other->decomposition };
+    for ( my $decomp_num = 0; $decomp_num < scalar @self_decomp; $decomp_num++ ) {
+      $result = ( $self_decomp[$decomp_num] cmp $other_decomp[$decomp_num] );
+      return $result unless $result == 0;
+    }
+  } elsif ( $self->cat_type eq 'phrasal' ) {
+    @self_decomp = grep { $_->frompos != $_->topos } @{ $self->decomposition };
+    @other_decomp = grep { $_->frompos != $_->topos } @{ $other->decomposition };
+    for ( my $decomp_num = 0; $decomp_num < scalar @self_decomp; $decomp_num++ ) {
+      $result =
+        $self_decomp[$decomp_num]->cmp( $other_decomp[$decomp_num] );
+      return $result unless $result == 0;
+    }
+  }
+
+  $result = scalar @self_decomp <=> scalar @other_decomp;
+  return $result unless $result == 0;
+
+  return 0;
+}
+
+sub as_forest {
+  my ( $self, $depth ) = @_;
+  return '' if $self->frompos == $self->topos;
+  $depth = 0 unless $depth;
+  my $indent = " " x ( $depth * 2 );
+
+  my $output = "";
+  my @decomp =
+    grep { !ref $_ || $_->frompos != $_->topos } @{ $self->decomposition };
+
+  $output .= "${indent}[".$self->label."\n${indent}";
+  if ( $self->cat_type eq 'phrasal' ) {
+    foreach my $d ( @decomp ) {
+      next if ( $d->frompos == $d->topos );
+      $output .= $d->as_forest( $depth + 1 );
+    }
+    $output .= "\n${indent}";
+  } elsif ( $self->cat_type eq 'lexical' ) {
+    $output .= "[@decomp] ";
+  }
+  $output .= "]";
+  return $output;
+}
+
+sub as_text {
+  my ( $self, $depth ) = @_;
+  my $output = '';
+
+  $depth = 0 unless $depth;
+
+  die "too deep!" if $depth > 5;
+
+  my $indent = " " x ( $depth * 2 );
+  my $is_empty = $self->frompos == $self->topos;
+  $output .= $indent . $self->name . ": ";
+
+  if ( $self->cat_type eq 'lexical' ) {
+    $output .= $self->word . "\n" unless $is_empty;
+    return $output;
+  }
+  my @decomp =
+    grep { $_->frompos != $_->topos } @{ $self->decomposition };
+  $output .= join( ' ', map { $_->label } @decomp ) . "\n";
+
+  foreach my $d ( @decomp ) {
+    $output .= $d->as_text( $depth + 1 ) unless $is_empty;
+  }
+  return $output;
+}
+
+
 no Moose;
 
 #__PACKAGE__->meta->make_immutable;

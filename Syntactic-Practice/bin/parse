@@ -8,12 +8,14 @@ use Getopt::Long::Descriptive;
 use DBI;
 
 use File::Basename;
+use File::Spec;
 use DateTime;
 
 use Syntactic::Practice::Lexeme;
 use Syntactic::Practice::Phrase;
 use Syntactic::Practice::Schema;
 use Syntactic::Practice::Lexer;
+use Syntactic::Practice::Parser;
 
 # TODO: variable glossary
 
@@ -37,54 +39,16 @@ my ( $getOpt, $usage ) =
 
 print( $usage->text ), exit if $getOpt->help;
 
-my $schema = Syntactic::Practice::Util->new()->get_schema();
-
-my $rule_rs = $schema->resultset( 'PhraseStructureRule' )->search(
-                                       {},
-                                       {
-                                         prefetch => [
-                                           'target', { 'rule_nodes' => ['cat'] }
-                                         ]
-                                       } );
-
-my $rule = {};
-
-# Load the grammar rules in to the $rule hashref
-while ( my $r = $rule_rs->next() ) {
-  my $tlabel = $r->target->label;
-  $rule->{$tlabel} = { rs    => $r,
-                       label => $tlabel,
-                       node  => [], };
-  print STDERR ( "$tlabel ->" );
-
-  my $nodes = $r->rule_nodes;
-  while ( my $n = $nodes->next ) {
-    my $nlabel = $n->cat->label;
-    if ( $n->optional ) {
-      if ( $n->rpt ) {
-        $nlabel = "$nlabel*";
-      } else {
-        $nlabel = "($nlabel)";
-      }
-    } elsif ( $n->rpt ) {
-      $nlabel = "$nlabel+";
-    }
-    my $position = $n->position;
-    $rule->{$tlabel}->{node}->[ $position - 1 ] = $n;
-    print STDERR ( " $nlabel" );
-  }
-  print STDERR ( "\n" );
-}
 print STDERR ( "=====\n" );
 
 my $content = do {
   local undef $/;
   open( my $fh, q{<}, $getOpt->file )
-    or die "could not open file [" . $getOpt->file . "]";
+    or die "could not open file [\($getOpt->file)]";
   <$fh>;
 };
 
-my $srcFile = basename( $getOpt->file, '.txt' );
+my ($srcName,$srcPath,$suffix) = fileparse($getOpt->file,'.txt');
 
 chomp $content;
 
@@ -95,257 +59,41 @@ my @word_list = @{ $sentence[0] };
 
 print STDERR "$content\n=====\n";
 
-warn( scalar @word_list, "\n", join( " ", map { ref $_ } @word_list ) );
+warn( scalar @word_list, " words in sentence\n", join( " ", map { ref $_ ? $_->label : $_ } @word_list ) );
 
-my @constituents = license_phrasal_rule( \@word_list, 0, $rule->{S}, 5, 0 );
+my $parser     = Syntactic::Practice::Parser->new();
 
-foreach my $c ( @constituents ) {
-  print_tree( $c );
-}
+my @constituent = $parser->ingest_phrase( { sentence => $sentence[0],
+                                            rule => 'S' } );
+
+print map { $_->as_text } @constituent;
 
 my $now = DateTime->now();
 
-print_tree_latex( \@constituents,
-                  "${srcFile}.tex",
-                  $getOpt->title,
-                  $getOpt->author,
-                  $now->month_name . ' ' . $now->day . ', ' . $now->year );
+my $LaTeXfilename = File::Spec->catfile($srcPath, $srcName . '.tex');
 
-sub license_lexical_rule {
-  my ( $sentence, $from, $lexical_rule ) = @_;
+open( my $fh, q{>}, $LaTeXfilename ) or die "Couldn't open file [$LaTeXfilename]";
 
-  return (
-          { error => "insufficient words to license additional lexical rule" } )
-    if ( $from >= scalar( @$sentence ) );
+print $fh tree_as_latex( { constituent => \@constituent,
+                           title => $getOpt->title,
+                           author => $getOpt->author,
+                           date => $now->month_name . ' ' . $now->day . ', ' . $now->year } );
 
-  my $lexeme = $sentence->[$from];
-
-  warn $lexeme->label, "\n";
-
-  return $lexeme if ( $lexeme->label eq $lexical_rule->cat->label );
-
-  return (
-    { error =>
-"[\($lexeme->word)] (position [$from]) with label [\($lexeme->label)] not licensed by [\($lexical_rule->cat->label)]"
-    } );
-}
-
-sub license_phrasal_rule {
-  my ( $sentence, $from, $phrasal_rule, $max_depth, $current_depth ) = @_;
-  confess( "bad phrase rule!" ) unless $phrasal_rule;
-  return ( { error => "exceeded maximum recursion depth ($max_depth)" } )
-    if ( $current_depth > $max_depth );
-
-  my $num_words = scalar( @$sentence );
-  return ( { error => "insufficient words to license phrase" } )
-    if ( $from >= $num_words );
-
-  my $target_label = $phrasal_rule->{label};
-
-  my @node_list = @{ $phrasal_rule->{node} };
-
-  my @error = ();
-
-  my $method = { lexical => \&license_lexical_rule,
-                 phrasal => \&license_phrasal_rule, };
-
-  my @decomp = ( [] );
-  for ( my $node_num = 0; $node_num < scalar @node_list; $node_num++ ) {
-    my $node       = $node_list[$node_num];
-    my $node_label = $node->cat->label;
-    my $cat_type   = $node->cat->ctype;
-
-    my $r;
-    if ( $cat_type eq 'phrasal' ) {
-      $r = $rule->{$node_label};
-    } elsif ( $cat_type eq 'lexical' ) {
-      $r = $node;
-    }
-
-    my @arg = ( $sentence, $from, $r, $max_depth, $current_depth + 1 );
-
-    my $optional = $node->optional;
-    my $repeat   = $node->rpt;
-
-    my $optAtPos = {};
-
-    for ( my $decomp_num = 0; $decomp_num < scalar @decomp; $decomp_num++ ) {
-      my $decomp = $decomp[$decomp_num];
-
-      my $curpos = ( scalar @$decomp ? $decomp->[-1]->topos : $from );
-
-      next if $curpos == $num_words;
-
-      $arg[1] = $curpos;
-
-      if ( $optional && !exists $optAtPos->{$curpos} ) {
-        my $class;
-        my %arg = ( frompos  => $curpos,
-                    topos    => $curpos,
-                    cat_type => $cat_type,
-                    label    => $node_label,
-                    sentence => $sentence, );
-        if ( $cat_type eq 'lexical' ) {
-          $class = 'Syntactic::Practice::Lexeme';
-          delete $arg{label};
-          $arg{sentence} = $sentence->[$curpos]->sentence;
-          $arg{word}     = $sentence->[$curpos]->word;
-        } else {
-          $class = 'Syntactic::Practice::Phrase';
-        }
-        my $constituent = $class->new( %arg );
-
-        $optAtPos->{$curpos} = $constituent;
-        splice( @decomp, $decomp_num++, 0, [ @$decomp, $constituent ] );
-      }
-
-      my ( @result ) = $method->{$cat_type}->( @arg );
-
-      # remove placeholder ; replaced below unless there is an error
-      splice( @decomp, $decomp_num, 1 );
-
-      if ( ref $result[0] eq 'HASH' && exists $result[0]->{error} ) {
-        push( @error, $result[0] );
-        $decomp_num--;
-        next;
-      }
-
-      foreach my $d ( @result ) {
-        splice( @decomp, $decomp_num, 0, [ @$decomp, $d ] );
-        splice( @decomp, $decomp_num, 0, [ @$decomp, $d ] ) if ( $repeat );
-      }
-    }
-  }
-
-  my @return = ();
-  while ( my $d = shift( @decomp ) ) {
-    my %const_args = ( label         => $target_label,
-                       sentence      => $sentence,
-                       frompos       => $from,
-                       cat_type      => 'phrasal',
-                       topos         => $d->[-1]->topos,
-                       decomposition => $d );
-
-    my $constituent = Syntactic::Practice::Phrase->new( %const_args );
-
-    push( @return, $constituent );
-  }
-
-  # De-duplicate
-  my @return_copy = @return;
-  my @second_copy = @return_copy;
-  my @unique;
-  while ( my $l = shift( @second_copy ) ) {
-    my @dup = grep { compare_constituents( $l, $_ ) == 0 } @return_copy;
-    my @sorted = sort { $a->name cmp $b->name } ( @dup );
-    $l           = $sorted[0];
-    @unique      = grep { compare_constituents( $_, $l ) != 0 } @return_copy;
-    @return_copy = ( @unique, $l );
-  }
-  @return = @return_copy;
-
-  return @return if scalar @return;
-  return @error;
-}
-
-sub compare_constituents {
-  my ( $a, $b ) = @_;
-
-  my $result;
-  foreach my $attribute ( qw(label frompos topos cat_type) ) {
-    $result = $a->$attribute cmp $b->$attribute;
-    return $result unless $result == 0;
-  }
-
-  my ( @a_decomp, my @b_decomp );
-  if ( $a->cat_type eq 'lexical' ) {
-    @a_decomp = @{ $a->decomposition };
-    @b_decomp = @{ $b->decomposition };
-    for ( my $decomp_num = 0; $decomp_num < scalar @a_decomp; $decomp_num++ ) {
-      $result = ( $a_decomp[$decomp_num] cmp $b_decomp[$decomp_num] );
-      return $result unless $result == 0;
-    }
-  } elsif ( $a->cat_type eq 'phrasal' ) {
-    @a_decomp = grep { $_->frompos != $_->topos } @{ $a->decomposition };
-    @b_decomp = grep { $_->frompos != $_->topos } @{ $b->decomposition };
-    for ( my $decomp_num = 0; $decomp_num < scalar @a_decomp; $decomp_num++ ) {
-      $result =
-        compare_constituents( $a_decomp[$decomp_num], $b_decomp[$decomp_num] );
-      return $result unless $result == 0;
-    }
-  }
-
-  $result = scalar @a_decomp <=> scalar @b_decomp;
-  return $result unless $result == 0;
-
-  return 0;
-}
-
-sub print_tree_latex {
-  my ( $constituent, $filename, $title, $author, $date ) = @_;
-
-  open( my $fh, q{>}, $filename ) or die "Couldn't open file [$filename]";
-
-  my $content_emitter;
-  $content_emitter = sub {
-    my ( $c, $depth ) = @_;
-    return '' if $c->frompos == $c->topos;
-    my @sentence = @{ $c->sentence };
-    $depth = 0 unless $depth;
-    my $indent = " " x ( $depth * 2 );
-
-    my $output = "";
-    my $label  = $c->label;
-    my @decomp =
-      grep { !ref $_ || $_->frompos != $_->topos } @{ $c->decomposition };
-
-    $output .= "${indent}[$label\n${indent}";
-    if ( $c->cat_type eq 'phrasal' ) {
-      foreach my $d ( @decomp ) {
-        next if ( $d->frompos == $d->topos );
-        $output .= $content_emitter->( $d, $depth + 1 );
-      }
-      $output .= "\n${indent}";
-    } elsif ( $c->cat_type eq 'lexical' ) {
-      $output .= "[@decomp] ";
-    }
-    $output .= "]";
-    return $output;
-  };
+sub tree_as_latex {
+  my ( $opt ) = @_;
 
   my @package = qw(forest);
 
-  my @constituent =
-    ( ref $constituent eq 'ARRAY' ? @$constituent : ( $constituent ) );
-
   my @forest =
-    map { '\begin{forest}' . $content_emitter->( $_ ) . '\end{forest}' }
-    @constituent;
+    map { '\begin{forest}' . $_->as_forest() . '\end{forest}' }
+    @{ $opt->{constituent} };
 
-  print $fh (
-      join( "\n",
+  return       join( "\n",
             '\documentclass{report}', ( map { "\\usepackage{$_}\n" } @package ),
-            "\\title{$title}", "\\author{$author}",
-            "\\date{$date}",   '\begin{document}',
+            "\\title{$opt->{title}}", "\\author{$opt->{author}}",
+            "\\date{$opt->{date}}",   '\begin{document}',
             '\maketitle', join( '\newline', @forest ),
-            '\end{document}', ) );
+            '\end{document}', );
 }
 
-sub print_tree {
-  my ( $constituent, $depth ) = @_;
-  $depth = 0 unless $depth;
-  my $indent = " " x ( $depth * 2 );
-  my $is_empty = $constituent->frompos == $constituent->topos;
-  print( $indent, $constituent->name, ": " );
-  if ( $constituent->cat_type eq 'lexical' ) {
-    print( $constituent->word, "\n" ) unless $is_empty;
-    return;
-  }
-  my @decomp =
-    grep { $_->frompos != $_->topos } @{ $constituent->decomposition };
-  print( join( ' ', map { $_->label } @decomp ), "\n" );
-  foreach my $d ( @decomp ) {
-    print_tree( $d, $depth + 1 ) unless $is_empty;
-  }
-}
 

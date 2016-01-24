@@ -68,9 +68,17 @@ __PACKAGE__->set_primary_key("id");
 # Created by DBIx::Class::Schema::Loader v0.07042 @ 2015-12-29 13:13:22
 # DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:QGbzSFk2JnnKDPjJx5ujqw
 
+=head2 cat
+
+Type: has_one
+
+Related object: L<Syntactic::Practice::Schema::Result::LexicalCategory>
+
+=cut
+
 __PACKAGE__->has_one(
   "cat",
-  "Syntactic::Practice::Schema::Result::SyntacticCategory",
+  "Syntactic::Practice::Schema::Result::LexicalCategory",
   { "foreign.id" => "self.cat_id"},
   { cascade_copy => 0, cascade_delete => 0 },
 );

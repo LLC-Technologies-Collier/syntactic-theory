@@ -1,6 +1,7 @@
 package Syntactic::Practice::Lexer;
 
 use strict;
+
 use Syntactic::Practice::Tree::Lexical;
 use Moose;
 

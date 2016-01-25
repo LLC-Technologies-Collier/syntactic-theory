@@ -18,7 +18,7 @@ my %categoryLabel;
 foreach my $cat_type ( @SynCatType, 'Syntactic' ) {
   $categoryLabel{$cat_type} =
     [ map { $_->label }
-      $schema->resultSet( "${cat_type}Category" )->search( @args )->all() ];
+      $schema->resultset( "${cat_type}Category" )->search( @args )->all() ];
 }
 
 my $msg_format = 'The %s category label you provided, %s, is not recognized';
@@ -28,7 +28,7 @@ subtype 'SyntacticCategoryLabel', as 'Str',
   message { sprintf( $msg_format, 'Syntactic', $_ ) };
 
 foreach my $cat_type ( @SynCatType ) {
-  subtype '${cat_type}CategoryLabel', as 'SyntacticCategoryLabel',
+  subtype "${cat_type}CategoryLabel", as 'SyntacticCategoryLabel',
     where { grep { $_ } @{ $categoryLabel{$cat_type} } },
     message { sprintf( $msg_format, $cat_type, $_ ) };
 }
@@ -39,6 +39,9 @@ coerce 'SynCatLabelList', from 'SyntacticCategoryLabel', via { [$_] };
 subtype 'LexCatLabelList', as 'ArrayRef[LexicalCategoryLabel]';
 coerce 'LexCatLabelList', from 'LexicalCategoryLabel', via { [$_] };
 
+subtype 'PhrCatLabelList', as 'ArrayRef[PhrasalCategoryLabel]';
+coerce 'PhrCatLabelList', from 'PhrasalCategoryLabel', via { [$_] };
+
 # TODO: change this when we have other types of terminal symbols
 subtype 'TerminalCategoryLabel', as 'LexicalCategoryLabel';
 subtype 'TerminalCatLabelList', as 'LexCatLabelList';
@@ -47,11 +50,7 @@ subtype 'TerminalCatLabelList', as 'LexCatLabelList';
 subtype 'NonTerminalCategoryLabel', as 'PhrasalCategoryLabel';
 subtype 'NonTerminalCatLabelList', as 'PhrCatLabelList';
 
-
-subtype 'PhrCatLabelList', as 'ArrayRef[PhrasalCategoryLabel]';
-coerce 'PhrCatLabelList', from 'PhrasalCategoryLabel', via { [$_] };
-
-my $lexeme_rs = $schema->resultSet( 'Lexeme' )->search();
+my $lexeme_rs = $schema->resultset( 'Lexeme' )->search();
 
 subtype 'Word', as 'Str',
   where { scalar $lexeme_rs->search( { word => $_ } )->all() },

@@ -1,6 +1,7 @@
 package Syntactic::Practice::Grammar;
 
 use Syntactic::Practice::Util;
+use Syntactic::Practice::Grammar::Rule;
 use Syntactic::Practice::Grammar::Symbol::Lexical;
 use Syntactic::Practice::Grammar::Symbol::Phrasal;
 
@@ -11,9 +12,9 @@ has 'locale' => ( is      => 'ro',
                   default => 'en_US.UTF-8' );
 
 sub _lookup_rule {
-  my ( $self, $label ) = @_;
+  my ( $self, $identifier ) = @_;
 
-  my $cond = { 'LOWER(target.label)' => { 'LIKE' => lc( $label ) } };
+  my $cond = { 'LOWER(target.label)' => { 'LIKE' => lc( $identifier ) } };
   my $rs = $self->{rule_rs}->search( $cond );
 
   my @rule;
@@ -32,7 +33,9 @@ sub _lookup_rule {
     }
     push( @rule, Syntactic::Practice::Grammar::Rule->new( $rule ) );
   }
-  return \@rule;
+    use Data::Dumper;
+    warn Data::Dumper::Dumper( \@rule );
+  return @rule;
 }
 
 my %rule;
@@ -47,16 +50,18 @@ sub rule {
     $opt = {@opt};
   }
 
-  my $label = $opt->{label};
+  my $identifier = $opt->{identifier};
 
-  $rule{$label} =
-    exists $rule{$label}
-    ? $rule{$label}
-    : $self->_lookup_rule( $label );
+  my @rule =
+    exists $rule{$identifier}
+    ? @{ $rule{$identifier} }
+    : $self->_lookup_rule( $identifier );
 
-  return @{ $rule{$label} }
+  $rule{$identifier} = \@rule;
+
+  return @{ $rule{$identifier} }
     if wantarray();
-  return $rule{$label};
+  return $rule{$identifier};
 }
 
 around 'new' => sub {

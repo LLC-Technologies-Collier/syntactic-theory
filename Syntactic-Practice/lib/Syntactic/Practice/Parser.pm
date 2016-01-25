@@ -1,5 +1,8 @@
 package Syntactic::Practice::Parser;
 
+use Syntactic::Practice::Tree::Null;
+use Syntactic::Practice::Tree::Lexical;
+use Syntactic::Practice::Tree::Phrasal;
 use Syntactic::Practice::Grammar;
 
 use Moose;
@@ -14,149 +17,112 @@ has max_depth => ( is => 'ro',
                    default => 5
                  );
 
+has sentence => ( is => 'ro',
+                  isa => 'ArrayRef[Syntactic::Practice::Tree::Lexical]',
+                  required => 1,
+                );
+
 has grammar => ( is => 'ro',
                  isa => 'Syntactic::Practice::Grammar',
                  default => sub { Syntactic::Practice::Grammar->new({locale => 'en_US.UTF-8'}) } );
 
-sub ingest_phrase {
+sub ingest {
   my ( $self, $opt ) = @_;
-  my ( $sentence, $from ) =
-    @{ $opt }{qw( sentence from )};
+  my ( $from, $rule ) =
+    @{ $opt }{qw( from rule )};
 
   $from = 0 unless defined $from;
 
-  my( $phrasal_rule ) =
-    ( ref $opt->{rule} ? $opt->{rule} : $self->grammar->rule( label => $opt->{rule} ) );
-
-  confess( "bad phrase rule!" ) unless $phrasal_rule;
-
-  my $num_words = scalar( @$sentence );
+  my $num_words = scalar( @{ $self->sentence } );
   return ( { error => "insufficient words to license phrase" } )
     if ( $from >= $num_words );
 
-  my $target_label = $phrasal_rule->{label};
+  ( $rule ) = $self->grammar->rule( identifier => (defined $rule ? $rule : 'S') )
+    unless ref $rule;
 
-  my @node_list = @{ $phrasal_rule->{node} };
+  confess( "bad phrase rule: [$opt->{rule}]!" ) unless $rule;
+
+  my $target_label = $rule->identifier;
+
+  my @symbol_list = $rule->symbols;
 
   my @error = ();
 
-  my @decomp = ( [] );
-  for ( my $node_num = 0; $node_num < scalar @node_list; $node_num++ ) {
-    my $node       = $node_list[$node_num];
-    my $node_label = $node->{label};
-    my $cat_type   = $node->{cat_type};
+  my @daughter = ( [] );
+  for ( my $symbol_num = 0; $symbol_num < scalar @symbol_list; $symbol_num++ ) {
+    my $symbol       = $symbol_list[$symbol_num];
+    my $symbol_label = $symbol->label;
 
-    my $r;
-    if ( $cat_type eq 'phrasal' ) {
-      # TODO: support multiple rules with same label
-      ($r) = $self->grammar->rule({ label => $node_label });
-    } elsif ( $cat_type eq 'lexical' ) {
-      $r = $node;
-    }
-
-    my %ingest_arg = ( sentence => $sentence,
-                       from => $from,
-                       rule => $r );
-
-    my $optional = $node->{optional};
-    my $repeat   = $node->{repeat};
+    my $optional = $symbol->optional;
+    my $repeat   = $symbol->repeat;
 
     my $optAtPos = {};
 
-    for ( my $decomp_num = 0; $decomp_num < scalar @decomp; $decomp_num++ ) {
-      my $decomp = $decomp[$decomp_num];
+    for ( my $daughter_num = 0; $daughter_num < scalar @daughter; $daughter_num++ ) {
+      my $daughter = $daughter[$daughter_num];
 
-      my $curpos = ( scalar @$decomp ? $decomp->[-1]->topos : $from );
+      my $curpos = ( scalar @$daughter ? $daughter->[-1]->topos : $from );
 
       next if $curpos == $num_words;
 
-      $ingest_arg{from} = $curpos;
-      my @result;
       if ( $optional && !exists $optAtPos->{$curpos} ) {
-        my $class;
-        my %const_arg = ( frompos  => $curpos,
-                          topos    => $curpos,
-                          cat_type => $cat_type,
-                          label    => $node_label,
-                          sentence => $sentence, );
-        if ( $cat_type eq 'lexical' ) {
-          $class = 'Syntactic::Practice::Lexeme';
-          delete $const_arg{label};
-          $const_arg{sentence} = $sentence->[$curpos]->sentence;
-          $const_arg{word}     = $sentence->[$curpos]->word;
-        } else {
-          $class = 'Syntactic::Practice::Phrase';
-        }
-        my $constituent = $class->new( %const_arg );
-
-        $optAtPos->{$curpos} = $constituent;
-        splice( @decomp, $decomp_num, 0, ( [ @$decomp, $constituent ] ) );
+        my $tree = Syntactic::Practice::Tree::Null->new( label => $symbol->label,
+                                                         frompos => $curpos );
+        $optAtPos->{$curpos} = $tree;
+        splice( @daughter, $daughter_num, 0, ( [ @$daughter, $tree ] ) );
         next;
       }
 
-      if( $cat_type eq 'lexical' ){
-        my $lexeme = $sentence->[$curpos];
-        if ( $lexeme->label eq $node_label ){
-          push( @result, $lexeme )
+      my @result;
+      if( $symbol->is_terminal ){
+        my $tree = $self->sentence->[$curpos];
+        if ( $tree->label eq $symbol->label ){
+          push( @result, $tree )
         }else{
           push( @result, { error =>
-'['.$lexeme->word."] (position [$curpos]) with label [".$lexeme->label."] not licensed by [$node_label]"
+'['.$tree->daughters."] (position [$curpos]) with label [".$tree->label."] not licensed by [$symbol_label]"
                          } );
         }
       }else{
-        push( @result, ( $self->ingest_phrase( \%ingest_arg ) ) );
+        push( @result, ( $self->ingest( { from => $curpos,
+                                          rule => $symbol->label } ) ) );
       }
 
       # remove placeholder ; replaced below unless there is an error
-      splice( @decomp, $decomp_num, 1 );
+      splice( @daughter, $daughter_num, 1 );
 
       if ( ref $result[0] eq 'HASH' && exists $result[0]->{error} ) {
         push( @error, $result[0] );
-        $decomp_num--;
+        $daughter_num--;
         next;
       }
 
       foreach my $d ( @result ) {
-        splice( @decomp, $decomp_num, 0, ( [ @$decomp, $d ] ) );
-        splice( @decomp, $decomp_num, 0, ( [ @$decomp, $d ] ) ) if ( $repeat );
+        my @new = ( [ @$daughter, $d ] );
+        push( @new, [ @$daughter, $d ] ) if ( $repeat );
+        splice( @daughter, $daughter_num, 0, ( @new ) );
       }
     }
   }
 
   my @return = ();
-  while ( my $d = shift( @decomp ) ) {
-    my %const_arg = ( label         => $target_label,
-                       sentence      => $sentence,
-                       frompos       => $from,
-                       cat_type      => 'phrasal',
-                       topos         => $d->[-1]->topos,
-                       decomposition => $d );
-
-    my $constituent = Syntactic::Practice::Phrase->new( %const_arg );
-
-    push( @return, $constituent );
-  }
-
-  if( scalar @return > 1 ){
-  # De-duplicate
-    my @return_copy = @return;
-    my @second_copy = @return_copy;
-    my @unique;
-    while ( my $l = shift( @second_copy ) ) {
-      my @dup = grep { $l->cmp( $_ ) == 0 } @return_copy;
-      my @sorted = sort { $a->name cmp $b->name } ( @dup );
-      $l           = $sorted[0];
-      @unique      = grep { $l->cmp( $_ ) != 0 } @return_copy;
-      @return_copy = ( @unique, $l );
-    }
-    @return = @return_copy;
+  while ( my $d = shift( @daughter ) ) {
+    my @d = grep { $_->frompos != $_->topos } @$d;
+    next unless scalar @d;
+    my $tree =
+      Syntactic::Practice::Tree::Phrasal->new( label     => $target_label,
+                                               frompos   => $from,
+                                               topos     => $d[-1]->topos,
+                                               daughters => \@d );
+    grep { $tree->cmp( $_ ) == 0 } @return or
+      push( @return, $tree );
   }
 
   return( @return ) if scalar @return;
   return( @error );
 }
 
-around 'ingest_phrase' => sub {
+around 'ingest' => sub {
   my ( $orig, $self, @arg ) = @_;
 
   $self->current_depth( $self->current_depth + 1 );

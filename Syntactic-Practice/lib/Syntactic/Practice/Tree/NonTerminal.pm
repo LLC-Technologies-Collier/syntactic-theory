@@ -1,22 +1,20 @@
-package Syntactic::Practice::Grammar::Symbol::NonTerminal;
+package Syntactic::Practice::Tree::NonTerminal;
 
-use Syntactic::Practice::Util;
 use Syntactic::Practice::Types;
-
 use Moose;
 
-extends 'Syntactic::Practice::Grammar::Symbol';
+extends 'Syntactic::Practice::Tree';
 
-has 'label' => ( is       => 'ro',
-                 isa      => 'NonTerminalCategoryLabel',
-                 required => 1 );
+has '+label' => ( is       => 'ro',
+                  isa      => 'NonTerminalCategoryLabel',
+                  required => 1, );
 
 has '+is_terminal' => ( is      => 'ro',
                         isa     => 'Bool',
                         default => 0 );
 around 'new' => sub {
   my ( $orig, $self, @arg ) = @_;
-
+  warn "arg: [@arg]";
   my $arg;
   if ( scalar @arg == 1 && ref $arg[0] eq 'HASH' ) {
     $arg = $arg[0];
@@ -25,9 +23,9 @@ around 'new' => sub {
   }
 
   die "Cannot mark a non-terminal symbol as terminal"
-    if $arg->{is_terminal};
+    if exists $arg->{is_terminal} && !$arg->{is_terminal};
 
-  my $symbol = $self->$orig( $arg );
+  my $tree = $self->$orig( $arg );
 };
 
 no Moose;

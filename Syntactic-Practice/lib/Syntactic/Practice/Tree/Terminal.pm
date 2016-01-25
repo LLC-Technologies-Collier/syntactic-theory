@@ -1,16 +1,14 @@
-package Syntactic::Practice::Grammar::Symbol::Terminal;
+package Syntactic::Practice::Tree::Terminal;
 
-use Syntactic::Practice::Grammar::Symbol;
-use Syntactic::Practice::Util;
+use Syntactic::Practice::Tree;
 use Syntactic::Practice::Types;
-
 use Moose;
 
-extends 'Syntactic::Practice::Grammar::Symbol';
+extends 'Syntactic::Practice::Tree';
 
-has 'label' => ( is       => 'ro',
-                 isa      => 'TerminalCategoryLabel',
-                 required => 1 );
+has '+label' => ( is       => 'ro',
+                  isa      => 'TerminalCategoryLabel',
+                  required => 1, );
 
 has '+is_terminal' => ( is      => 'ro',
                         isa     => 'Bool',
@@ -24,15 +22,12 @@ around 'new' => sub {
   } else {
     $arg = {@arg};
   }
-    use Data::Dumper;
-    warn Data::Dumper::Dumper( $arg );
-
 
   die "Cannot mark a terminal symbol as non-terminal"
     if exists $arg->{is_terminal} && !$arg->{is_terminal};
 
+  my $tree = $self->$orig( $arg );
 
-  my $obj = $self->$orig( @arg );
 };
 
 no Moose;

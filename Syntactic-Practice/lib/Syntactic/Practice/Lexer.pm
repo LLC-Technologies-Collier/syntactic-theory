@@ -1,10 +1,8 @@
 package Syntactic::Practice::Lexer;
 
 use strict;
-use Syntactic::Practice::Lexeme;
-use Syntactic::Practice::Parser::Constituent;
+use Syntactic::Practice::Tree::Lexical;
 use Moose;
-use Moose::Util::TypeConstraints;
 
 sub scan {
   my ( $self, $input ) = @_;
@@ -21,22 +19,13 @@ sub scan {
       my @_word = split( /\s+/, $sentence );
       my @word;
       for ( my $i = 0; $i < scalar( @_word ); $i++ ) {
-        confess( "strange word: [$_word[$i]]\n"
-                   . Data::Dumper::Dumper(
-                                           { word     => $_word[$i],
-                                             word_idx => $i,
-                                             sentence => $sentence,
-                                           }
-                   ) )
-          if ref $_word[$i]
-          or $_word[$i] =~ /ARRAY/;
 
-        my $lexeme =
-          Syntactic::Practice::Lexeme->new( word     => $_word[$i],
-                                            sentence => \@_word,
-                                            frompos  => $i,
-                                            cat_type => 'lexical' );
-        push( @word, $lexeme );
+        my $lexTree =
+          Syntactic::Practice::Tree::Lexical->new( { daughters => $_word[$i],
+                                                     frompos => $i, }
+                                                 );
+
+        push( @word, $lexTree );
       }
       push( @sentence, \@word );
     }

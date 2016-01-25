@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS lexical_category_ (
 CREATE TABLE IF NOT EXISTS _phrasal_category (
   id           INT PRIMARY KEY,
 
-  head_cat_id  INT NOT NULL,
+  head_cat_id  INT,
 
   CONSTRAINT fk_pcat_scat FOREIGN KEY (id) REFERENCES syntactic_category(id),
   CONSTRAINT fk_pcat_lcat FOREIGN KEY (head_cat_id) REFERENCES _lexical_category(id)
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS phrasal_category_ (
   label        VARCHAR(10) NOT NULL,
   longname     VARCHAR(64) NOT NULL,
 
-  head_cat_id  INT NOT NULL
+  head_cat_id  INT
 
 ) ENGINE=MEMORY, COMMENT='An abstract table for use in triggering updates to the _phrasal_category and syntactic_category tables';
 

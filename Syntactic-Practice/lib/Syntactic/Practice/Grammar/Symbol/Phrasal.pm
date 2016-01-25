@@ -1,13 +1,13 @@
-package Syntactic::Practice::Grammar::Symbol::Lexical;
+package Syntactic::Practice::Grammar::Symbol::Phrasal;
 
 use Syntactic::Practice::Types;
 
 use Moose;
 
-extends 'Syntactic::Practice::Grammar::Symbol::Terminal';
+extends 'Syntactic::Practice::Grammar::Symbol::NonTerminal';
 
 has '+label' => ( is       => 'ro',
-                  isa      => 'LexicalCategoryLabel',
+                  isa      => 'PhrasalCategoryLabel',
                   required => 1 );
 
 no Moose;

@@ -1,6 +1,5 @@
-package Syntactic::Practice::Grammar::Symbol::Terminal;
+package Syntactic::Practice::Grammar::Symbol::NonTerminal;
 
-use Syntactic::Practice::Grammar::Symbol;
 use Syntactic::Practice::Util;
 use Syntactic::Practice::Types;
 
@@ -9,12 +8,12 @@ use Moose;
 extends 'Syntactic::Practice::Grammar::Symbol';
 
 has 'label' => ( is       => 'ro',
-                 isa      => 'TerminalCategoryLabel',
+                 isa      => 'NonTerminalCategoryLabel',
                  required => 1 );
 
 has '+is_terminal' => ( is      => 'ro',
                         isa     => 'Bool',
-                        default => 1 );
+                        default => 0 );
 around 'new' => sub {
   my ( $self, @arg ) = @_;
 
@@ -25,8 +24,8 @@ around 'new' => sub {
     $arg = {@arg};
   }
 
-  die "Cannot mark a terminal symbol as non-terminal"
-    unless $arg->{is_terminal};
+  die "Cannot mark a non-terminal symbol as terminal"
+    if $arg->{is_terminal};
 
 };
 

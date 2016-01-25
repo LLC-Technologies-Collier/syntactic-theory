@@ -1,4 +1,4 @@
-package Syntactic::Practice::Rule::Symbol;
+package Syntactic::Practice::Grammar::Symbol;
 
 use Syntactic::Practice::Util;
 use Syntactic::Practice::Types;

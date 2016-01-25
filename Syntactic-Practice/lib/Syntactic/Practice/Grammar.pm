@@ -28,7 +28,7 @@ sub _lookup_rule {
                                 name     => $n->cat->longname,
                                 optional => $n->optional,
                                 repeat   => $n->rpt, );
-      $rule->{symbols}->[ $n->position - 1 ] = $node;
+      $rule->{symbols}->[ $n->position - 1 ] = $symbol;
     }
     push( @rule, Syntactic::Practice::Grammar::Rule->new( $rule ) );
   }
@@ -54,18 +54,17 @@ sub rule {
     ? $rule{$label}
     : $self->_lookup_rule( $label );
 
-  return @{
-    $rule{$label}
-      if wantarray();
-      return $rule{$label};
-    }
+  return @{ $rule{$label} }
+    if wantarray();
+  return $rule{$label};
+}
 
-    around 'new' => sub {
-    my ( $orig, $self, @arg ) = @_;
+around 'new' => sub {
+  my ( $orig, $self, @arg ) = @_;
 
-    my $schema = Syntactic::Practice::Util->get_schema();
+  my $schema = Syntactic::Practice::Util->get_schema();
 
-    my $rule_rs = $schema->resultset( 'PhraseStructureRule' )->search(
+  my $rule_rs = $schema->resultset( 'PhraseStructureRule' )->search(
                                        {},
                                        {
                                          prefetch => [
@@ -73,12 +72,12 @@ sub rule {
                                          ]
                                        } );
 
-    my $obj = $self->$orig( @arg );
-    $obj->{schema}  = $schema;
-    $obj->{rule_rs} = $rule_rs;
+  my $obj = $self->$orig( @arg );
+  $obj->{schema}  = $schema;
+  $obj->{rule_rs} = $rule_rs;
 
-    return $obj;
-    };
+  return $obj;
+};
 
-  no Moose;
-  __PACKAGE__->meta->make_immutable( inline_constructor => 0 );
+no Moose;
+__PACKAGE__->meta->make_immutable( inline_constructor => 0 );

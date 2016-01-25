@@ -11,7 +11,6 @@ use File::Spec;
 use DateTime;
 
 use Syntactic::Practice::Lexer;
-use Syntactic::Practice::Phrase;
 use Syntactic::Practice::Parser;
 
 # TODO: variable glossary
@@ -50,12 +49,9 @@ my @paragraph = $lexer->scan( $content );
 my @sentence  = @{ $paragraph[0] };
 my @word_list = @{ $sentence[0] };
 
-my $parser = Syntactic::Practice::Parser->new();
+my $parser = Syntactic::Practice::Parser->new(sentence => $sentence[0]);
 
-my @constituent = $parser->ingest_phrase(
-                                          { sentence => $sentence[0],
-                                            rule     => 'S'
-                                          } );
+my @tree = $parser->ingest();
 
 my ( $srcName, $srcPath, $suffix ) = fileparse( $getOpt->file, '.txt' );
 
@@ -63,7 +59,7 @@ my $textFilename = File::Spec->catfile( $srcPath, $srcName . '.text' );
 open( my $text_fh, q{>}, $textFilename )
   or die "Couldn't open file [$textFilename]";
 
-print $text_fh ( map { $_->as_text } @constituent );
+print $text_fh ( map { $_->as_text } @tree );
 
 my $LaTeXfilename = File::Spec->catfile( $srcPath, $srcName . '.tex' );
 open( my $tex_fh, q{>}, $LaTeXfilename )
@@ -71,7 +67,7 @@ open( my $tex_fh, q{>}, $LaTeXfilename )
 
 my $now = DateTime->now();
 print $tex_fh tree_as_latex(
-                { constituent => \@constituent,
+                { tree => \@tree,
                   title       => $getOpt->title,
                   author      => $getOpt->author,
                   date => $now->month_name . ' ' . $now->day . ', ' . $now->year
@@ -84,7 +80,7 @@ sub tree_as_latex {
 
   my @forest =
     map { '\begin{forest}' . $_->as_forest() . '\end{forest}' }
-    @{ $opt->{constituent} };
+    @{ $opt->{tree} };
 
   return
     join( "\n",

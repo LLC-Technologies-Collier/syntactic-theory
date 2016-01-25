@@ -1,4 +1,5 @@
 /* Copyright 2015, 2016 Collier Technologies LLC */
+DELETE FROM lexeme;
 
 DELETE FROM rule_node;
 DELETE FROM phrase_structure_rule;

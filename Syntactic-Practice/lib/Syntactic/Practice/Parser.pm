@@ -7,10 +7,7 @@ use Syntactic::Practice::Grammar;
 
 use Moose;
 
-has current_depth => ( is => 'rw',
-                       isa => 'PositiveInt',
-                       default => 0
-                     );
+my $current_depth = 0;
 
 has max_depth => ( is => 'ro',
                    isa => 'PositiveInt',
@@ -125,15 +122,25 @@ sub ingest {
 around 'ingest' => sub {
   my ( $orig, $self, @arg ) = @_;
 
-  $self->current_depth( $self->current_depth + 1 );
+	if ( ++$current_depth > $self->max_depth ){
+		--$current_depth;
+		return ( { error => 'exceeded maximum recursion depth ['.$self->max_depth.']' } )
+	}
 
-  return ( { error => 'exceeded maximum recursion depth ['.$self->max_depth.']' } )
-    if ( $self->current_depth > $self->max_depth );
 
   my( @result ) = $self->$orig( @arg );
 
-  $self->current_depth( $self->current_depth - 1 );
-
+	if( --$current_depth == 0 ){
+		# only return the trees with all symbols ingested
+		my $num_symbols = scalar @{ $self->sentence };
+		my @num_ingested;
+		my @complete;
+		foreach my $tree ( @result ){
+			push( @num_ingested, ($tree->daughters)[-1]->topos );
+			push( @complete, $tree ) if( $num_ingested[-1] == $num_symbols );
+		}
+		return { error => "Incomplete parse.  There are $num_symbols symbols in input, but only [ @num_ingested ] symbols were ingested" } unless scalar @complete;
+	}
   return @result;
 };
 

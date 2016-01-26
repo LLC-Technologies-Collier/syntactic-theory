@@ -33,8 +33,6 @@ sub _lookup_rule {
     }
     push( @rule, Syntactic::Practice::Grammar::Rule->new( $rule ) );
   }
-    use Data::Dumper;
-    warn Data::Dumper::Dumper( \@rule );
   return @rule;
 }
 

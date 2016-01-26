@@ -24,9 +24,6 @@ around 'new' => sub {
   } else {
     $arg = {@arg};
   }
-    use Data::Dumper;
-    warn Data::Dumper::Dumper( $arg );
-
 
   die "Cannot mark a terminal symbol as non-terminal"
     if exists $arg->{is_terminal} && !$arg->{is_terminal};

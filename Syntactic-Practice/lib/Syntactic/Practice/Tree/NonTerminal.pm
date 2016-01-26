@@ -14,7 +14,6 @@ has '+is_terminal' => ( is      => 'ro',
                         default => 0 );
 around 'new' => sub {
   my ( $orig, $self, @arg ) = @_;
-  warn "arg: [@arg]";
   my $arg;
   if ( scalar @arg == 1 && ref $arg[0] eq 'HASH' ) {
     $arg = $arg[0];

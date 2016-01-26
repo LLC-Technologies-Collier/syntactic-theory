@@ -25,7 +25,7 @@ has grammar => ( is => 'ro',
 
 sub ingest {
   my ( $self, $opt ) = @_;
-  my ( $from, $rule ) =
+  my ( $from, $target_label ) =
     @{ $opt }{qw( from rule )};
 
   $from = 0 unless defined $from;
@@ -34,76 +34,77 @@ sub ingest {
   return ( { error => "insufficient words to license phrase" } )
     if ( $from >= $num_words );
 
-  ( $rule ) = $self->grammar->rule( identifier => (defined $rule ? $rule : 'S') )
-    unless ref $rule;
+	$target_label //= 'S';
 
-  confess( "bad phrase rule: [$opt->{rule}]!" ) unless $rule;
+	my @rule = $self->grammar->rule( identifier => $target_label );
 
-  my $target_label = $rule->identifier;
+  confess( "bad phrase rule: [$opt->{rule}]!" ) unless @rule;
 
-  my @symbol_list = $rule->symbols;
+	my @error = ();
+	my @d_list = ( [] );
+	foreach my $rule ( @rule ){
 
-  my @error = ();
+		my @symbol_list = $rule->symbols;
 
-  my @daughter = ( [] );
-  for ( my $symbol_num = 0; $symbol_num < scalar @symbol_list; $symbol_num++ ) {
-    my $symbol       = $symbol_list[$symbol_num];
-    my $symbol_label = $symbol->label;
+		for ( my $symbol_num = 0; $symbol_num < scalar @symbol_list; $symbol_num++ ) {
+			my $symbol       = $symbol_list[$symbol_num];
+			my $symbol_label = $symbol->label;
 
-    my $optional = $symbol->optional;
-    my $repeat   = $symbol->repeat;
+			my $optional = $symbol->optional;
+			my $repeat   = $symbol->repeat;
 
-    my $optAtPos = {};
+			my $optAtPos = {};
 
-    for ( my $daughter_num = 0; $daughter_num < scalar @daughter; $daughter_num++ ) {
-      my $daughter = $daughter[$daughter_num];
+			for ( my $dlist_idx = 0; $dlist_idx < scalar @d_list; $dlist_idx++ ) {
+				my $daughter = $d_list[$dlist_idx];
 
-      my $curpos = ( scalar @$daughter ? $daughter->[-1]->topos : $from );
+				my $curpos = ( scalar @$daughter ? $daughter->[-1]->topos : $from );
 
-      next if $curpos == $num_words;
+				next if $curpos == $num_words;
 
-      if ( $optional && !exists $optAtPos->{$curpos} ) {
-        my $tree = Syntactic::Practice::Tree::Null->new( label => $symbol->label,
-                                                         frompos => $curpos );
-        $optAtPos->{$curpos} = $tree;
-        splice( @daughter, $daughter_num, 0, ( [ @$daughter, $tree ] ) );
-        next;
-      }
+				if ( $optional && !exists $optAtPos->{$curpos} ) {
+					my $tree = Syntactic::Practice::Tree::Null->new( label => $symbol->label,
+																													 frompos => $curpos );
+					$optAtPos->{$curpos} = $tree;
+					splice( @d_list, $dlist_idx, 0, ( [ @$daughter, $tree ] ) );
+					next;
+				}
 
-      my @result;
-      if( $symbol->is_terminal ){
-        my $tree = $self->sentence->[$curpos];
-        if ( $tree->label eq $symbol->label ){
-          push( @result, $tree )
-        }else{
-          push( @result, { error =>
-'['.$tree->daughters."] (position [$curpos]) with label [".$tree->label."] not licensed by [$symbol_label]"
-                         } );
-        }
-      }else{
-        push( @result, ( $self->ingest( { from => $curpos,
-                                          rule => $symbol->label } ) ) );
-      }
+				my @result;
+				if ( $symbol->is_terminal ) {
+					my $tree = $self->sentence->[$curpos];
+					if ( $tree->label eq $symbol->label ) {
+						push( @result, $tree )
+					} else {
+						push( @result, { error =>
+														 '['.$tree->daughters."] (position [$curpos]) with label [".$tree->label."] not licensed by [$symbol_label]"
+													 } );
+					}
+				} else {
+					push( @result, ( $self->ingest( { from => $curpos,
+																						rule => $symbol->label } ) ) );
+				}
 
-      # remove placeholder ; replaced below unless there is an error
-      splice( @daughter, $daughter_num, 1 );
+				# remove placeholder ; replaced below unless there is an error
+				splice( @d_list, $dlist_idx, 1 );
 
-      if ( ref $result[0] eq 'HASH' && exists $result[0]->{error} ) {
-        push( @error, $result[0] );
-        $daughter_num--;
-        next;
-      }
+				if ( ref $result[0] eq 'HASH' && exists $result[0]->{error} ) {
+					push( @error, $result[0] );
+					$dlist_idx--;
+					next;
+				}
 
-      foreach my $d ( @result ) {
-        my @new = ( [ @$daughter, $d ] );
-        push( @new, [ @$daughter, $d ] ) if ( $repeat );
-        splice( @daughter, $daughter_num, 0, ( @new ) );
-      }
-    }
-  }
+				foreach my $d ( @result ) {
+					my @new = ( [ @$daughter, $d ] );
+					push( @new, [ @$daughter, $d ] ) if ( $repeat );
+					splice( @d_list, $dlist_idx, 0, ( @new ) );
+				}
+			}
+		}
+	}
 
   my @return = ();
-  while ( my $d = shift( @daughter ) ) {
+  while ( my $d = shift( @d_list ) ) {
     my @d = grep { $_->frompos != $_->topos } @$d;
     next unless scalar @d;
     my $tree =
@@ -127,8 +128,9 @@ around 'ingest' => sub {
 		return ( { error => 'exceeded maximum recursion depth ['.$self->max_depth.']' } )
 	}
 
-
   my( @result ) = $self->$orig( @arg );
+
+	return $result[0] if( ref $result[0] eq 'HASH' && exists $result[0]->{error} );
 
 	if( --$current_depth == 0 ){
 		# only return the trees with all symbols ingested

@@ -37,16 +37,18 @@ sub ingest {
 
   confess( "bad phrase rule: [$opt->{rule}]!" ) unless @rule;
 
+  my @return = ();
   my @error = ();
-  my @d_list = ( [] );
-  my @symbol_list;
-  my $rule = $rule[0];
-  push( @symbol_list, [$rule->symbols] );
 
-  while( my $s = shift( @symbol_list ) ){
-    my @symbol = @$s;
-    for ( my $symbol_num = 0; $symbol_num < scalar @symbol; $symbol_num++ ) {
-      my $symbol       = $symbol[$symbol_num];
+  my @symbol_list;
+  foreach my $rule (@rule){
+    push( @symbol_list, [$rule->symbols] );
+  }
+
+  foreach my $s ( @symbol_list[0] ){
+    my @d_list = ( [] );
+
+    foreach my $symbol ( @$s ) {
       my $symbol_label = $symbol->label;
 
       my $optional = $symbol->optional;
@@ -100,20 +102,20 @@ sub ingest {
         }
       }
     }
+
+    while ( my $d = shift( @d_list ) ) {
+      my @d = grep { $_->frompos != $_->topos } @$d;
+      next unless scalar @d;
+      my $tree =
+        Syntactic::Practice::Tree::Phrasal->new( label     => $target_label,
+                                                 frompos   => $from,
+                                                 topos     => $d[-1]->topos,
+                                                 daughters => \@d );
+      grep { $tree->cmp( $_ ) == 0 } @return or
+        push( @return, $tree );
+    }
   }
 
-  my @return = ();
-  while ( my $d = shift( @d_list ) ) {
-    my @d = grep { $_->frompos != $_->topos } @$d;
-    next unless scalar @d;
-    my $tree =
-      Syntactic::Practice::Tree::Phrasal->new( label     => $target_label,
-                                               frompos   => $from,
-                                               topos     => $d[-1]->topos,
-                                               daughters => \@d );
-    grep { $tree->cmp( $_ ) == 0 } @return or
-      push( @return, $tree );
-  }
 
   return( @return ) if scalar @return;
   return( @error );

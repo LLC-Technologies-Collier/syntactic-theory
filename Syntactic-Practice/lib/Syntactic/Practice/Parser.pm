@@ -39,62 +39,65 @@ sub ingest {
 
   my @error = ();
   my @d_list = ( [] );
+  my @symbol_list;
   my $rule = $rule[0];
+  push( @symbol_list, [$rule->symbols] );
 
-  my @symbol_list = $rule->symbols;
+  while( my $s = shift( @symbol_list ) ){
+    my @symbol = @$s;
+    for ( my $symbol_num = 0; $symbol_num < scalar @symbol; $symbol_num++ ) {
+      my $symbol       = $symbol[$symbol_num];
+      my $symbol_label = $symbol->label;
 
-  for ( my $symbol_num = 0; $symbol_num < scalar @symbol_list; $symbol_num++ ) {
-    my $symbol       = $symbol_list[$symbol_num];
-    my $symbol_label = $symbol->label;
+      my $optional = $symbol->optional;
+      my $repeat   = $symbol->repeat;
 
-    my $optional = $symbol->optional;
-    my $repeat   = $symbol->repeat;
+      my $optAtPos = {};
 
-    my $optAtPos = {};
+      for ( my $dlist_idx = 0; $dlist_idx < scalar @d_list; $dlist_idx++ ) {
+        my $daughter = $d_list[$dlist_idx];
 
-    for ( my $dlist_idx = 0; $dlist_idx < scalar @d_list; $dlist_idx++ ) {
-      my $daughter = $d_list[$dlist_idx];
+        my $curpos = ( scalar @$daughter ? $daughter->[-1]->topos : $from );
 
-      my $curpos = ( scalar @$daughter ? $daughter->[-1]->topos : $from );
+        next if $curpos == $num_words;
 
-      next if $curpos == $num_words;
-
-      if ( $optional && !exists $optAtPos->{$curpos} ) {
-        my $tree = Syntactic::Practice::Tree::Null->new( label => $symbol->label,
-                                                         frompos => $curpos );
-        $optAtPos->{$curpos} = $tree;
-        splice( @d_list, $dlist_idx, 0, ( [ @$daughter, $tree ] ) );
-        next;
-      }
-
-      my @result;
-      if( $symbol->is_terminal ){
-        my $tree = $self->sentence->[$curpos];
-        if ( $tree->label eq $symbol->label ){
-          push( @result, $tree )
-        }else{
-          push( @result, { error =>
-'['.$tree->daughters."] (position [$curpos]) with label [".$tree->label."] not licensed by [$symbol_label]"
-                         } );
+        if ( $optional && !exists $optAtPos->{$curpos} ) {
+          my $tree = Syntactic::Practice::Tree::Null->new( label => $symbol->label,
+                                                           frompos => $curpos );
+          $optAtPos->{$curpos} = $tree;
+          splice( @d_list, $dlist_idx, 0, ( [ @$daughter, $tree ] ) );
+          next;
         }
-      }else{
-        push( @result, ( $self->ingest( { from => $curpos,
-                                          rule => $symbol->label } ) ) );
-      }
 
-      # remove placeholder ; replaced below unless there is an error
-      splice( @d_list, $dlist_idx, 1 );
+        my @result;
+        if ( $symbol->is_terminal ) {
+          my $tree = $self->sentence->[$curpos];
+          if ( $tree->label eq $symbol->label ) {
+            push( @result, $tree )
+          } else {
+            push( @result, { error =>
+                             '['.$tree->daughters."] (position [$curpos]) with label [".$tree->label."] not licensed by [$symbol_label]"
+                           } );
+          }
+        } else {
+          push( @result, ( $self->ingest( { from => $curpos,
+                                            rule => $symbol->label } ) ) );
+        }
 
-      if ( ref $result[0] eq 'HASH' && exists $result[0]->{error} ) {
-        push( @error, $result[0] );
-        $dlist_idx--;
-        next;
-      }
+        # remove placeholder ; replaced below unless there is an error
+        splice( @d_list, $dlist_idx, 1 );
 
-      foreach my $d ( @result ) {
-        my @new = ( [ @$daughter, $d ] );
-        push( @new, [ @$daughter, $d ] ) if ( $repeat );
-        splice( @d_list, $dlist_idx, 0, ( @new ) );
+        if ( ref $result[0] eq 'HASH' && exists $result[0]->{error} ) {
+          push( @error, $result[0] );
+          $dlist_idx--;
+          next;
+        }
+
+        foreach my $d ( @result ) {
+          my @new = ( [ @$daughter, $d ] );
+          push( @new, [ @$daughter, $d ] ) if ( $repeat );
+          splice( @d_list, $dlist_idx, 0, ( @new ) );
+        }
       }
     }
   }

@@ -19,7 +19,8 @@ sub _lookup_rule {
     my $identifier = $arg->{identifier};
 
     my $cond = { 'target.label' => $identifier };
-    push( @rs, $self->{rule_rs}->search( $cond ) );
+    my $rs = $self->{rule_rs}->search( $cond );
+    push( @rs, $rs );
 
   }elsif( exists( $arg->{daughters} ) ){
     foreach my $d ( @{$arg->{daughters}} ){

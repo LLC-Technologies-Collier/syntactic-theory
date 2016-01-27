@@ -76,9 +76,11 @@ sub ingest {
       }
     }else{
       @symbol_list = [$rule->symbols];
+      print("symbols: ", join("\n", @symbol_list), "\n");
     }
 
-    while( my @symbol = @{shift(@symbol_list)} ){
+    while( my $s = shift(@symbol_list) ){
+      my @symbol = @$s;
       for ( my $symbol_num = 0; $symbol_num < scalar @symbol; $symbol_num++ ) {
         my $symbol       = $symbol[$symbol_num];
         my $symbol_label = $symbol->label;

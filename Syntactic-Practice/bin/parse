@@ -53,6 +53,8 @@ my $parser = Syntactic::Practice::Parser->new(sentence => $sentence[0]);
 
 my @tree = $parser->ingest();
 
+die join("\n",map { $_->{error} } @tree) if ref $tree[0] eq 'HASH' && exists $tree[0]->{error};
+
 my ( $srcName, $srcPath, $suffix ) = fileparse( $getOpt->file, '.txt' );
 
 my $textFilename = File::Spec->catfile( $srcPath, $srcName . '.text' );

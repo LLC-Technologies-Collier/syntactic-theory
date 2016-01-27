@@ -40,7 +40,7 @@ sub _lookup_rule {
       }
     }
   }else{
-    return { error => q{Don't know how to look up rule with arguments provided} };
+    die qq{Don't know how to look up rule with arguments provided: } . join(', ', keys %$arg);
   }
 
   my @rule;

@@ -44,63 +44,97 @@ sub ingest {
 	my @d_list = ( [] );
 	foreach my $rule ( @rule ){
 
-		my @symbol_list = $rule->symbols;
+    my @symbol_list;
+    if( $target_label eq 'X' ){
+      my @pre_conj;
+      my $has_conj = 0;
+      foreach my $tree ( ($self->sentence)[$from .. $#{$self->sentence}] ){
+        if( $tree->label eq 'CONJ' ){
+          $has_conj = 1;
+          last;
+        }
+        push(@pre_conj, $tree);
+      }
+      unless( $has_conj ){
+        push(@error, { error => q{Rule 'X' requires CONJ, but none found} });
+        next;
+      }
+      if( scalar @pre_conj == 1 ){
+        @symbol_list = [$rule->symbols];
+      }elsif( scalar @pre_conj > 1 ){
+        my @r = $self->grammar->rule( daughters => \@pre_conj );
+        if( scalar @r == 0 ){
+          push(@error, { error => qq{Symbols [@pre_conj] do not combine to make phrase of any known type} });
+          next;
+        }
+        foreach my $r ( @r ){
+          push( @symbol_list, [ $r->label, 'CONJ', $r->label ] );
+        }
+      }else{
+        push(@error, { error => q{Rule 'X' requires symbols before CONJ, but none found} });
+        next;
+      }
+    }else{
+      @symbol_list = [$rule->symbols];
+    }
 
-		for ( my $symbol_num = 0; $symbol_num < scalar @symbol_list; $symbol_num++ ) {
-			my $symbol       = $symbol_list[$symbol_num];
-			my $symbol_label = $symbol->label;
+    while( my @symbol = @{shift(@symbol_list)} ){
+      for ( my $symbol_num = 0; $symbol_num < scalar @symbol; $symbol_num++ ) {
+        my $symbol       = $symbol[$symbol_num];
+        my $symbol_label = $symbol->label;
 
-			my $optional = $symbol->optional;
-			my $repeat   = $symbol->repeat;
+        my $optional = $symbol->optional;
+        my $repeat   = $symbol->repeat;
 
-			my $optAtPos = {};
+        my $optAtPos = {};
 
-			for ( my $dlist_idx = 0; $dlist_idx < scalar @d_list; $dlist_idx++ ) {
-				my $daughter = $d_list[$dlist_idx];
+        for ( my $dlist_idx = 0; $dlist_idx < scalar @d_list; $dlist_idx++ ) {
+          my $daughter = $d_list[$dlist_idx];
 
-				my $curpos = ( scalar @$daughter ? $daughter->[-1]->topos : $from );
+          my $curpos = ( scalar @$daughter ? $daughter->[-1]->topos : $from );
 
-				next if $curpos == $num_words;
+          next if $curpos == $num_words;
 
-				if ( $optional && !exists $optAtPos->{$curpos} ) {
-					my $tree = Syntactic::Practice::Tree::Null->new( label => $symbol->label,
-																													 frompos => $curpos );
-					$optAtPos->{$curpos} = $tree;
-					splice( @d_list, $dlist_idx, 0, ( [ @$daughter, $tree ] ) );
-					next;
-				}
+          if ( $optional && !exists $optAtPos->{$curpos} ) {
+            my $tree = Syntactic::Practice::Tree::Null->new( label => $symbol->label,
+                                                             frompos => $curpos );
+            $optAtPos->{$curpos} = $tree;
+            splice( @d_list, $dlist_idx, 0, ( [ @$daughter, $tree ] ) );
+            next;
+          }
 
-				my @result;
-				if ( $symbol->is_terminal ) {
-					my $tree = $self->sentence->[$curpos];
-					if ( $tree->label eq $symbol->label ) {
-						push( @result, $tree )
-					} else {
-						push( @result, { error =>
-														 '['.$tree->daughters."] (position [$curpos]) with label [".$tree->label."] not licensed by [$symbol_label]"
-													 } );
-					}
-				} else {
-					push( @result, ( $self->ingest( { from => $curpos,
-																						rule => $symbol->label } ) ) );
-				}
+          my @result;
+          if ( $symbol->is_terminal ) {
+            my $tree = $self->sentence->[$curpos];
+            if ( $tree->label eq $symbol->label ) {
+              push( @result, $tree )
+            } else {
+              push( @result, { error =>
+                               '['.$tree->daughters."] (position [$curpos]) with label [".$tree->label."] not licensed by [$symbol_label]"
+                             } );
+            }
+          } else {
+            push( @result, ( $self->ingest( { from => $curpos,
+                                              rule => $symbol->label } ) ) );
+          }
 
-				# remove placeholder ; replaced below unless there is an error
-				splice( @d_list, $dlist_idx, 1 );
+          # remove placeholder ; replaced below unless there is an error
+          splice( @d_list, $dlist_idx, 1 );
 
-				if ( ref $result[0] eq 'HASH' && exists $result[0]->{error} ) {
-					push( @error, $result[0] );
-					$dlist_idx--;
-					next;
-				}
+          if ( ref $result[0] eq 'HASH' && exists $result[0]->{error} ) {
+            push( @error, $result[0] );
+            $dlist_idx--;
+            next;
+          }
 
-				foreach my $d ( @result ) {
-					my @new = ( [ @$daughter, $d ] );
-					push( @new, [ @$daughter, $d ] ) if ( $repeat );
-					splice( @d_list, $dlist_idx, 0, ( @new ) );
-				}
-			}
-		}
+          foreach my $d ( @result ) {
+            my @new = ( [ @$daughter, $d ] );
+            push( @new, [ @$daughter, $d ] ) if ( $repeat );
+            splice( @d_list, $dlist_idx, 0, ( @new ) );
+          }
+        }
+      }
+    }
 	}
 
   my @return = ();

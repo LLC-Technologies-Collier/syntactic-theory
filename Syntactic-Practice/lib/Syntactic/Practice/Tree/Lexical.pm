@@ -26,7 +26,18 @@ around 'new' => sub {
     $arg = {@arg};
   }
 
-  my $cond = { 'LOWER(me.word)' => { 'LIKE' => lc( $arg->{daughters} ) } };
+  my $word;
+  if( ref $arg->{daughters} eq 'ARRAY' ){
+    if( scalar @{ $arg->{daughters} } > 1 ){
+      die "cannot currently handle multiple daughters in lexical trees";
+    }
+
+    $word = $arg->{daughters}->[0];
+  }else{
+    $word = $arg->{daughters};
+  }
+
+  my $cond = { 'LOWER(me.word)' => { 'LIKE' => lc( $word ) } };
   $cond->{'cat.label'} = $arg->{label} if exists $arg->{label};
 
   my $rs =
@@ -36,12 +47,11 @@ around 'new' => sub {
   my $count = scalar @lexeme;
   my $label = exists $arg->{label} ? $arg->{label} : 'unknown';
   if ( $count == 0 ) {
-    return { error => "unknown word: [$arg->{daughters}] with label [$label]" };
+    die "unknown word: [$word] with label [$label]";
 
     # TODO: prompt for definition
   } elsif ( $count > 1 ) {
-    die
-"cannot currently handle homonyms - word: [$arg->{daughters}] with label [$label]";
+    die "cannot currently handle homonyms - word: [$word] with label [$label]";
 
     # TODO: account for homonyms
   }

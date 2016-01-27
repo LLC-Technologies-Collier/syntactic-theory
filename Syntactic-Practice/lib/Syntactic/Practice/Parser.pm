@@ -7,8 +7,6 @@ use Syntactic::Practice::Grammar;
 
 use Moose;
 
-my $current_depth = 0;
-
 has max_depth => ( is => 'ro',
                    isa => 'PositiveInt',
                    default => 5
@@ -119,17 +117,27 @@ sub ingest {
   return( @error );
 }
 
+around 'new' =>  sub {
+  my ( $orig, $self, @arg ) = @_;
+
+  my $obj = $self->$orig( @arg );
+
+  $obj->{current_depth} = 0;
+
+  return $obj;
+};
+
 around 'ingest' => sub {
   my ( $orig, $self, @arg ) = @_;
 
-  $current_depth++;
+  $self->{current_depth}++;
 
   return ( { error => 'exceeded maximum recursion depth ['.$self->max_depth.']' } )
-    if ( $current_depth > $self->max_depth );
+    if ( $self->{current_depth} > $self->max_depth );
 
   my( @result ) = $self->$orig( @arg );
 
-  $current_depth--;
+  $self->{current_depth}--;
 
   return @result;
 };

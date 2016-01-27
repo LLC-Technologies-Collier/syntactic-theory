@@ -23,7 +23,7 @@ has grammar => ( is => 'ro',
 
 sub ingest {
   my ( $self, $opt ) = @_;
-  my ( $from, $rule ) =
+  my ( $from, $target_label ) =
     @{ $opt }{qw( from rule )};
 
   $from = 0 unless defined $from;
@@ -32,18 +32,17 @@ sub ingest {
   return ( { error => "insufficient words to license phrase" } )
     if ( $from >= $num_words );
 
-  ( $rule ) = $self->grammar->rule( identifier => (defined $rule ? $rule : 'S') )
-    unless ref $rule;
+  $target_label //= 'S';
+  my @rule = $self->grammar->rule( identifier => $target_label );
 
-  confess( "bad phrase rule: [$opt->{rule}]!" ) unless $rule;
+  confess( "bad phrase rule: [$opt->{rule}]!" ) unless @rule;
 
-  my $target_label = $rule->identifier;
+  my @error = ();
+  my @d_list = ( [] );
+  my $rule = $rule[0];
 
   my @symbol_list = $rule->symbols;
 
-  my @error = ();
-
-  my @daughter = ( [] );
   for ( my $symbol_num = 0; $symbol_num < scalar @symbol_list; $symbol_num++ ) {
     my $symbol       = $symbol_list[$symbol_num];
     my $symbol_label = $symbol->label;
@@ -53,8 +52,8 @@ sub ingest {
 
     my $optAtPos = {};
 
-    for ( my $daughter_num = 0; $daughter_num < scalar @daughter; $daughter_num++ ) {
-      my $daughter = $daughter[$daughter_num];
+    for ( my $dlist_idx = 0; $dlist_idx < scalar @d_list; $dlist_idx++ ) {
+      my $daughter = $d_list[$dlist_idx];
 
       my $curpos = ( scalar @$daughter ? $daughter->[-1]->topos : $from );
 
@@ -64,7 +63,7 @@ sub ingest {
         my $tree = Syntactic::Practice::Tree::Null->new( label => $symbol->label,
                                                          frompos => $curpos );
         $optAtPos->{$curpos} = $tree;
-        splice( @daughter, $daughter_num, 0, ( [ @$daughter, $tree ] ) );
+        splice( @d_list, $dlist_idx, 0, ( [ @$daughter, $tree ] ) );
         next;
       }
 
@@ -84,24 +83,24 @@ sub ingest {
       }
 
       # remove placeholder ; replaced below unless there is an error
-      splice( @daughter, $daughter_num, 1 );
+      splice( @d_list, $dlist_idx, 1 );
 
       if ( ref $result[0] eq 'HASH' && exists $result[0]->{error} ) {
         push( @error, $result[0] );
-        $daughter_num--;
+        $dlist_idx--;
         next;
       }
 
       foreach my $d ( @result ) {
         my @new = ( [ @$daughter, $d ] );
         push( @new, [ @$daughter, $d ] ) if ( $repeat );
-        splice( @daughter, $daughter_num, 0, ( @new ) );
+        splice( @d_list, $dlist_idx, 0, ( @new ) );
       }
     }
   }
 
   my @return = ();
-  while ( my $d = shift( @daughter ) ) {
+  while ( my $d = shift( @d_list ) ) {
     my @d = grep { $_->frompos != $_->topos } @$d;
     next unless scalar @d;
     my $tree =

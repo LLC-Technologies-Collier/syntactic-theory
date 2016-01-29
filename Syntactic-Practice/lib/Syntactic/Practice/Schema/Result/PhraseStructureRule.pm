@@ -35,7 +35,7 @@ __PACKAGE__->table("phrase_structure_rule");
   is_foreign_key: 1
   is_nullable: 0
 
-=head2 node_count
+=head2 symb_count
 
   data_type: 'integer'
   is_nullable: 0
@@ -47,7 +47,7 @@ __PACKAGE__->add_columns(
   { data_type => "integer", is_auto_increment => 1, is_nullable => 0 },
   "target_id",
   { data_type => "integer", is_foreign_key => 1, is_nullable => 0 },
-  "node_count",
+  "symb_count",
   { data_type => "integer", is_nullable => 0 },
 );
 
@@ -65,38 +65,41 @@ __PACKAGE__->set_primary_key("id");
 
 =head1 RELATIONS
 
-=head2 rule_nodes
+=head2 symbols
 
 Type: has_many
 
-Related object: L<Syntactic::Practice::Schema::Result::RuleNode>
+Related object: L<Syntactic::Practice::Schema::Result::Symbol>
 
 =cut
 
 __PACKAGE__->has_many(
-  "rule_nodes",
-  "Syntactic::Practice::Schema::Result::RuleNode",
+  "symbols",
+  "Syntactic::Practice::Schema::Result::Symbol",
   { "foreign.rule_id" => "self.id" },
   { cascade_copy => 0, cascade_delete => 0 },
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07042 @ 2015-12-29 13:13:22
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:R2FsGjvlgqJ0c0S1D/1VCQ
+# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-01-28 19:15:29
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:XRNJMwBJMpjAHHVOFx7Cqg
+
+
+=head1 RELATIONS
 
 =head2 target
 
-Type: has_one
+Type: belongs_to
 
 Related object: L<Syntactic::Practice::Schema::Result::PhrasalCategory>
 
 =cut
 
-__PACKAGE__->has_one(
+__PACKAGE__->belongs_to(
   "target",
   "Syntactic::Practice::Schema::Result::PhrasalCategory",
-  { "foreign.id" => "self.target_id"},
-  { cascade_copy => 0, cascade_delete => 0 },
+  { id => "target_id" },
+  { is_deferrable => 1, on_delete => "RESTRICT", on_update => "RESTRICT" },
 );
 
 1;

@@ -18,12 +18,12 @@ CREATE TABLE IF NOT EXISTS phrase_structure_rule (
   id         INT AUTO_INCREMENT PRIMARY KEY,
   target_id  INT NOT NULL,
 
-  node_count INT NOT NULL,
+  symb_count INT NOT NULL,
 
   CONSTRAINT fk_phstrule_pcat FOREIGN KEY (target_id) REFERENCES _phrasal_category(id)
 ) ENGINE=INNODB, COMMENT='Rules indicating valid grammatical constructs';
 
-CREATE TABLE IF NOT EXISTS rule_node (
+CREATE TABLE IF NOT EXISTS symbol (
   id        INT AUTO_INCREMENT PRIMARY KEY,
 
   rule_id   INT NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS rule_node (
   rpt       TINYINT NOT NULL DEFAULT 0, /* short for repeat, but that is a keyword */
 
   CONSTRAINT uniq_rule_position UNIQUE (rule_id,position),
-  CONSTRAINT fk_rcp_rule FOREIGN KEY (rule_id) REFERENCES phrase_structure_rule(id),
-  CONSTRAINT fk_rcp_scat FOREIGN KEY (cat_id) REFERENCES syntactic_category(id)
+  CONSTRAINT fk_symb_rule FOREIGN KEY (rule_id) REFERENCES phrase_structure_rule(id),
+  CONSTRAINT fk_symb_scat FOREIGN KEY (cat_id) REFERENCES syntactic_category(id)
 ) ENGINE=INNODB, COMMENT='Syntactic categories and sequence numbers which make up rules';
 

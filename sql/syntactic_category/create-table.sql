@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS _lexical_category (
   CONSTRAINT fk_lcat_scat FOREIGN KEY (id) REFERENCES syntactic_category(id)
 ) ENGINE=INNODB, COMMENT='A syntactic category for lexemes';
 
-CREATE TABLE IF NOT EXISTS lexical_category_ (
+CREATE TABLE IF NOT EXISTS lexical_category_writer (
   id       INT PRIMARY KEY,
 
   label    VARCHAR(10) UNIQUE NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS _phrasal_category (
   CONSTRAINT fk_pcat_lcat FOREIGN KEY (head_cat_id) REFERENCES _lexical_category(id)
 ) ENGINE=INNODB, COMMENT='A syntactic category for phrases';
 
-CREATE TABLE IF NOT EXISTS phrasal_category_ (
+CREATE TABLE IF NOT EXISTS phrasal_category_writer (
   id           INT PRIMARY KEY,
 
   label        VARCHAR(10) NOT NULL,

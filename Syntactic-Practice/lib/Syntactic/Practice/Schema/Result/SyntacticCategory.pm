@@ -104,24 +104,24 @@ __PACKAGE__->add_unique_constraint("longname", ["longname"]);
 
 =head1 RELATIONS
 
-=head2 rule_nodes
+=head2 symbols
 
 Type: has_many
 
-Related object: L<Syntactic::Practice::Schema::Result::RuleNode>
+Related object: L<Syntactic::Practice::Schema::Result::Symbol>
 
 =cut
 
 __PACKAGE__->has_many(
-  "rule_nodes",
-  "Syntactic::Practice::Schema::Result::RuleNode",
+  "symbols",
+  "Syntactic::Practice::Schema::Result::Symbol",
   { "foreign.cat_id" => "self.id" },
   { cascade_copy => 0, cascade_delete => 0 },
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07042 @ 2015-12-29 13:13:22
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:cFdCNcSX0LDohAbLQg+KBw
+# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-01-28 19:15:29
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:lhYKVpzcPYvC1vGTNPyFpg
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

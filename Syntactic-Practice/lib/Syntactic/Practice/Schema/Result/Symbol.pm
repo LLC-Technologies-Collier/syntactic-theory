@@ -1,12 +1,12 @@
 use utf8;
-package Syntactic::Practice::Schema::Result::RuleNode;
+package Syntactic::Practice::Schema::Result::Symbol;
 
 # Created by DBIx::Class::Schema::Loader
 # DO NOT MODIFY THE FIRST PART OF THIS FILE
 
 =head1 NAME
 
-Syntactic::Practice::Schema::Result::RuleNode
+Syntactic::Practice::Schema::Result::Symbol
 
 =head1 DESCRIPTION
 
@@ -19,11 +19,11 @@ use warnings;
 
 use base 'DBIx::Class::Core';
 
-=head1 TABLE: C<rule_node>
+=head1 TABLE: C<symbol>
 
 =cut
 
-__PACKAGE__->table("rule_node");
+__PACKAGE__->table("symbol");
 
 =head1 ACCESSORS
 
@@ -140,8 +140,8 @@ __PACKAGE__->belongs_to(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-01-14 17:17:49
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:H7dp47LC1AzaRHiSG9/faw
+# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-01-28 19:04:46
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:orN54JIcrCoV9bpQJLB+BQ
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

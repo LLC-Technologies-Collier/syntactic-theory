@@ -10,8 +10,7 @@ has 'label' => ( is       => 'ro',
                  required => 1 );
 
 has 'name' => ( is => 'ro',
-                isa => 'Str',
-                required => 1 );
+                isa => 'Str');
 
 has 'optional' => ( is      => 'ro',
                     isa     => 'Bool',
@@ -25,6 +24,14 @@ has 'is_terminal' => ( is => 'ro',
                        isa => 'Bool',
                        required => 1
                      );
+
+around 'new' => sub {
+  my ( $orig, $self, @arg ) = @_;
+
+  my $obj = $self->$orig( @arg );
+
+  return $obj;
+};
 
 sub as_string {
   my ( $self ) = @_;

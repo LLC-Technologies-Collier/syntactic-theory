@@ -35,7 +35,6 @@ sub ingest {
   die "insufficient words to license phrase"
     if ( $from >= $num_words );
 
-  my $target_label;
   if ( exists $opt->{symbol} ) {
     my $symbol = $opt->{symbol};
     $target_label = $symbol->label;
@@ -218,4 +217,4 @@ around 'ingest' => sub {
 };
 
 no Moose;
-__PACKAGE__->meta->make_immutable;
+__PACKAGE__->meta->make_immutable(inline_constructor => 0);

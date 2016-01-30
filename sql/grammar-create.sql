@@ -1,4 +1,4 @@
-/* Copyright 2015 Collier Technologies LLC */
+/* Copyright 2015, 2016 Collier Technologies LLC */
 
 use grammar;
 
@@ -6,13 +6,6 @@ source syntactic_category/create-table.sql;
 source syntactic_category/create-routine.sql;
 source syntactic_category/create-view.sql;
 source syntactic_category/create-trigger.sql;
-
-CREATE TABLE IF NOT EXISTS lexeme (
-  id     INT AUTO_INCREMENT PRIMARY KEY,
-  word   VARCHAR(64),
-  cat_id INT NOT NULL,
-  CONSTRAINT fk_lexeme_lexcat FOREIGN KEY (cat_id) REFERENCES _lexical_category(id)
-) ENGINE=INNODB, COMMENT='Words available for use and their associated properties';
 
 CREATE TABLE IF NOT EXISTS phrase_structure_rule (
   id         INT AUTO_INCREMENT PRIMARY KEY,

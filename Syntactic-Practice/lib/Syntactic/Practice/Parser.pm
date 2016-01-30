@@ -2,9 +2,17 @@ package Syntactic::Practice::Parser;
 
 use TryCatch;
 
+use MooseX::Params::Validate;
+
+use Syntactic::Practice::Tree::Start;
+use Syntactic::Practice::Tree::Abstract::Null;
+use Syntactic::Practice::Tree::Abstract::Lexical;
+use Syntactic::Practice::Tree::Abstract::Phrasal;
+use Syntactic::Practice::Tree::Abstract::Start;
 use Syntactic::Practice::Tree::Null;
 use Syntactic::Practice::Tree::Lexical;
 use Syntactic::Practice::Tree::Phrasal;
+use Syntactic::Practice::Tree::Start;
 use Syntactic::Practice::Grammar;
 
 use Moose;
@@ -13,9 +21,22 @@ has max_depth => ( is      => 'ro',
                    isa     => 'PositiveInt',
                    default => 5 );
 
-has sentence => ( is       => 'ro',
-                  isa      => 'ArrayRef[Syntactic::Practice::Tree::Lexical]',
-                  required => 1, );
+has allow_partial => ( is      => 'ro',
+                       isa     => 'Bool',
+                       default => 0 );
+
+has allow_duplicates => ( is      => 'ro',
+                          isa     => 'Bool',
+                          default => 0 );
+
+has prune_nulls => ( is      => 'ro',
+                     isa     => 'Bool',
+                     default => 1 );
+
+has sentence => (
+                is  => 'ro',
+                isa => 'ArrayRef[Syntactic::Practice::Tree::Abstract::Lexical]',
+                required => 1, );
 
 has grammar => (
   is      => 'ro',
@@ -25,38 +46,52 @@ has grammar => (
   } );
 
 sub ingest {
-  my ( $self, $opt ) = @_;
-  my ( $from, $target_label, $symbol ) =
-    @{$opt}{qw( from label symbol )};
+  my ( $self, %opt ) =
+    validated_hash(
+     \@_,
+     frompos => { isa => 'PositiveInt', optional => 1, default => 0 },
+     mother  => { isa => 'MotherValue', optional => 1 },
+     symbol => { isa => 'Syntactic::Practice::Grammar::Symbol', optional => 1 },
+    );
 
-  $from = 0 unless defined $from;
+  my ( $from, $mother, $target_symbol ) = @opt{qw( frompos mother symbol )};
 
   my $num_words = scalar( @{ $self->sentence } );
   die "insufficient words to license phrase"
     if ( $from >= $num_words );
 
-  if ( exists $opt->{symbol} ) {
-    my $symbol = $opt->{symbol};
-    $target_label = $symbol->label;
-    if ( $symbol->is_terminal ) {
-      my $tree = $self->sentence->[$from];
-      die 'word ['
-        . $tree->daughters
-        . "] depth [$self->{current_depth}], position [$from] with label ["
-        . $tree->label
-        . "] not licensed by [$target_label]"
-        unless $tree->label eq $symbol->label;
-      return $tree;
+  my %tree_params = ( frompos => $from );
+
+  my $msg_format =
+    'Word [%s] depth [%d], position [%d] with label [%s] not licensed by [%s]';
+  my( $target );
+  if ( $mother ) {
+    die 'symbol not specified' unless $target_symbol;
+    $target = $self->sentence->[$from];
+    die sprintf( $msg_format,
+                 $target->daughters->word, $target->depth,
+                 $target->frompos,         $target->label,
+                 $target_symbol->label )
+      unless $target->label eq $target_symbol->label;
+
+    $tree_params{daughters} = [ $target->daughters ];
+    $tree_params{depth}     = $mother->depth + 1;
+    $tree_params{mother}    = $mother;
+    $tree_params{symbol}    = $target_symbol;
+    $tree_params{label}     = $target->label;
+    $target = $target->new( %tree_params );
+    if ( $target_symbol->is_terminal ) {
+      return $target;
     }
-  } elsif ( exists $opt->{label} ) {
-    $target_label = $opt->{label};
   } else {
-    $target_label = 'S';
+    $target = Syntactic::Practice::Tree::Abstract::Start->new();
+    $tree_params{label}  = $target->label;
+    $tree_params{depth}  = $target->depth;
+    $tree_params{symbol} = $target_symbol = $target->symbol;
   }
 
-  my @rule = $self->grammar->rule( identifier => $target_label );
-
-  confess( "bad phrase rule: [$opt->{label}]!" ) unless @rule;
+  my @rule = $self->grammar->rule( identifier => $target_symbol->label )
+    or die( sprintf( 'bad rule identifier: [%s]!', $target_symbol->label ) );
 
   my @error        = ();
   my @return       = ();
@@ -64,7 +99,7 @@ sub ingest {
   my @symbol_list;
   foreach my $rule ( @rule[0] ) {    # TODO: support multiple rules
 
-    if ( $target_label eq 'X' ) {
+    if ( $rule->identifier eq 'X' ) {
       my @pre_conj;
       my $has_conj = 0;
       foreach my $tree ( ( $self->sentence )[ $from .. $#{ $self->sentence } ] )
@@ -100,7 +135,6 @@ qq{Symbols [@pre_conj] do not combine to make phrase of any known type} );
       push( @symbol_list, [ $rule->symbols ] );
     }
   }
-  die @error unless scalar @symbol_list;
 
   while ( my $s = shift( @symbol_list ) ) {
     my @d_list = ( [] );
@@ -121,48 +155,54 @@ qq{Symbols [@pre_conj] do not combine to make phrase of any known type} );
         next if $curpos == $num_words;
 
         if ( $optional && !exists $optAtPos->{$curpos} ) {
-          my $tree =
-            Syntactic::Practice::Tree::Null->new( label   => $symbol->label,
-                                                  frompos => $curpos );
+          my $class = 'Syntactic::Practice::Tree::Abstract::Null';
+          my $tree = $class->new( %tree_params, frompos => $curpos );
           $optAtPos->{$curpos} = $tree;
           splice( @d_list, $dlist_idx, 0, ( [ @$daughter, $tree ] ) );
           next;
         }
 
-        my @result;
+        my @tree;
         try {
-          push( @result, (
-                  $self->ingest(
-                                 { from   => $curpos,
-                                   symbol => $symbol
-                                 }
-                  )
-                ) );
+          @tree = $self->ingest( frompos => $curpos,
+                                 mother  => $target,
+                                 symbol  => $symbol );
         }
         catch {
-          push( @error, $@ );
-          splice( @d_list, $dlist_idx, 1 );
-          $dlist_idx--;
-          next;
+          warn( "Failed call to ingest: $@" );
+            push( @error, $@ );
+            splice( @d_list, $dlist_idx, 1 );
+            $dlist_idx--;
+            next;
         };
-
-        foreach my $d ( @result ) {
-          my @new = ( [ @$daughter, $d ] );
-          push( @new, [ @$daughter, $d ] ) if ( $repeat );
+        foreach my $tree ( @tree ) {
+          my @new = ( [ @$daughter, $tree ] );
+          push( @new, [ @$daughter, $tree ] ) if ( $repeat );
           splice( @d_list, $dlist_idx, 1, ( @new ) );
         }
+
       }
     }
     while ( my $d = shift( @d_list ) ) {
-      my @d = grep { $_->frompos != $_->topos } @$d;
+      my @d;
+      if ( $self->prune_nulls ) {
+        @d =
+          grep { !$_->isa( 'Syntactic::Practice::Tree::Abstract::Null' ) } @$d;
+      } else {
+        @d = @$d;
+      }
       next unless scalar @d;
+
       my $tree =
-        Syntactic::Practice::Tree::Phrasal->new( label     => $target_label,
-                                                 frompos   => $from,
-                                                 topos     => $d[-1]->topos,
-                                                 daughters => \@d );
-      grep { $tree->cmp( $_ ) == 0 } @return
-        or push( @return, $tree );
+        Syntactic::Practice::Tree::Abstract::Phrasal->new(
+                                                         %tree_params,
+                                                         topos => $d[-1]->topos,
+                                                         daughters => \@d );
+
+      if ( grep { $tree->cmp( $_ ) == 0 } @return ) {
+        next unless $self->allow_duplicates;
+      }
+      push( @return, $tree );
     }
   }
 
@@ -183,19 +223,23 @@ around 'new' => sub {
 around 'ingest' => sub {
   my ( $orig, $self, @arg ) = @_;
 
-  if ( ++$self->{current_depth} > $self->max_depth ) {
+  my ( $s, %opt ) =
+    validated_hash(
+     [ $self, @arg ],
+     frompos => { isa => 'PositiveInt', optional => 1, default => 0 },
+     mother  => { isa => 'MotherValue', optional => 1 },
+     symbol => { isa => 'Syntactic::Practice::Grammar::Symbol', optional => 1 },
+    );
+
+  my $msg =
+    "calling ingest at depth $self->{current_depth}, position $opt{frompos}";
+
+  if ( $self->{current_depth}++ >= $self->max_depth ) {
     --$self->{current_depth};
     die 'exceeded maximum recursion depth [' . $self->max_depth . ']';
   }
 
-  my @result;
-  try {
-    @result = $self->$orig( @arg );
-  }
-  catch {
-    --$self->{current_depth};
-    die $@;
-  };
+  my @result = $self->$orig( @arg );
 
   if ( $self->{current_depth}-- == 0 ) {
 
@@ -208,13 +252,18 @@ around 'ingest' => sub {
       push( @complete, $tree ) if ( $num_ingested[-1] == $num_symbols );
     }
 
-    die
-"Incomplete parse.  There are $num_symbols symbols in input, but only [ @num_ingested ] symbols were ingested"
-      unless scalar @complete;
+    unless ( $self->allow_partial ) {
+      my $msg_fmt =
+          'Incomplete parse;  '
+        . '%d symbols in input, only [ %d ] symbols were ingested';
+      die sprintf( $msg_fmt, $num_symbols, $num_ingested[0] )
+        unless scalar @complete;
+    }
+
     return @complete;
   }
   return @result;
 };
 
 no Moose;
-__PACKAGE__->meta->make_immutable(inline_constructor => 0);
+__PACKAGE__->meta->make_immutable( inline_constructor => 0 );

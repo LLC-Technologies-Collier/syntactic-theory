@@ -11,9 +11,10 @@ my @args = ( {}, { distinct => 1 } );
 
 my @SynCatType = qw(Phrasal Lexical);
 
-enum 'SynCatType', [map { lc $_ } @SynCatType];
+enum 'SynCatType', [ map { lc $_ } @SynCatType ];
 
-my %categoryLabel;
+my %categoryLabel =
+  ( Start => ['S'] );    # TODO: change as more start symbols occur
 
 foreach my $cat_type ( @SynCatType, 'Syntactic' ) {
   $categoryLabel{$cat_type} =
@@ -23,14 +24,18 @@ foreach my $cat_type ( @SynCatType, 'Syntactic' ) {
 
 my $msg_format = 'The %s category label you provided, %s, is not recognized';
 
-subtype 'SyntacticCategoryLabel', as 'Str',
-  where { grep { $_ } @{ $categoryLabel{Syntactic} } },
-  message { sprintf( $msg_format, 'Syntactic', $_ ) };
+subtype 'SyntacticCategoryLabel', as 'Str', where {
+  grep { $_ } @{ $categoryLabel{Syntactic} };
+}, message {
+  sprintf( $msg_format, 'Syntactic', $_ );
+};
 
 foreach my $cat_type ( @SynCatType ) {
-  subtype "${cat_type}CategoryLabel", as 'SyntacticCategoryLabel',
-    where { grep { $_ } @{ $categoryLabel{$cat_type} } },
-    message { sprintf( $msg_format, $cat_type, $_ ) };
+  subtype "${cat_type}CategoryLabel", as 'SyntacticCategoryLabel', where {
+    grep { $_ } @{ $categoryLabel{$cat_type} };
+  }, message {
+    sprintf( $msg_format, $cat_type, $_ );
+  };
 }
 
 subtype 'SynCatLabelList', as 'ArrayRef[SyntacticCategoryLabel]';
@@ -44,11 +49,18 @@ coerce 'PhrCatLabelList', from 'PhrasalCategoryLabel', via { [$_] };
 
 # TODO: change this when we have other types of terminal symbols
 subtype 'TerminalCategoryLabel', as 'LexicalCategoryLabel';
-subtype 'TerminalCatLabelList', as 'LexCatLabelList';
+subtype 'TerminalCatLabelList',  as 'LexCatLabelList';
 
 # TODO: change this when we have other types of non-terminal symbols
 subtype 'NonTerminalCategoryLabel', as 'PhrasalCategoryLabel';
-subtype 'NonTerminalCatLabelList', as 'PhrCatLabelList';
+subtype 'NonTerminalCatLabelList',  as 'PhrCatLabelList';
+
+my @startCategoryLabel = qw( S );
+subtype 'StartCategoryLabel', as 'NonTerminalCategoryLabel', where {
+  grep { $_ } @startCategoryLabel;
+}, message {
+  sprintf( $msg_format, 'Start', $_ );
+};
 
 my $lexeme_rs = $schema->resultset( 'Lexeme' )->search();
 
@@ -59,13 +71,22 @@ subtype 'Word', as 'Str',
 subtype 'WordList', as 'ArrayRef[Word]';
 coerce 'WordList', from 'Word', via { [$_] };
 
-subtype 'SymbolList', as 'ArrayRef[Syntactic::Practice::Grammar::Symbol]',
+subtype 'SymbolList',
+  as 'ArrayRef[Syntactic::Practice::Schema::Result::Symbol]',
   where { scalar @$_ > 0 },
   message { "The Symbol list you provided, [@$_], was empty" };
 
 subtype 'PositiveInt', as 'Int',
   where { $_ >= 0 },
   message { "The number you provided, $_, was not a positive number" };
+
+subtype 'True', as 'Bool', where { $_ },
+  message { "The value you provided, $_, was not true" };
+subtype 'False', as 'Bool', where { !$_ },
+  message { "The value you provided, $_, was not false" };
+subtype 'Undefined', as 'Undef', where { !defined $_ },
+  message { "The value you provided, $_, was not undefined" };
+
 
 no Moose;
 __PACKAGE__->meta->make_immutable;

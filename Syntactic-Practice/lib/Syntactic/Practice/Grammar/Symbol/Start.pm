@@ -1,6 +1,6 @@
-package Syntactic::Practice::Grammar::Symbol::Phrasal;
+package Syntactic::Practice::Grammar::Symbol::Start;
 
-use Syntactic::Practice::Types;
+use Syntactic::Practice::Grammar::Symbol::NonTerminal;
 
 use Moose;
 

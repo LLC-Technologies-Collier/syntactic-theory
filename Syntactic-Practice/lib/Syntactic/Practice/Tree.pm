@@ -1,45 +1,119 @@
 package Syntactic::Practice::Tree;
 
 use Carp;
-use Syntactic::Practice::Types;
+use Data::Dumper;
 use Moose;
 
-has name => ( is  => 'ro',
-              isa => 'Str' );
+use Syntactic::Practice::Types;
+use Moose::Util::TypeConstraints;
+use Syntactic::Practice::Grammar::Symbol::Start;
+
+subtype 'MotherValue', as 'Syntactic::Practice::Tree | Syntactic::Practice::Grammar::Symbol::Start';
+
+has name => ( is       => 'ro',
+              isa      => 'Str',
+              lazy     => 1,
+              builder  => '_build_name',
+              init_arg => undef );
+
+sub _build_name {
+  my ( $self ) = @_;
+  $self->label . $self->_numTrees( { label => $self->label } );
+}
 
 has label => ( is       => 'ro',
                isa      => 'SyntacticCategoryLabel',
                required => 1, );
 
+has symbol => ( is       => 'ro',
+                isa      => 'Syntactic::Practice::Grammar::Symbol',
+                required => 1, );
+
 has frompos => ( is       => 'ro',
                  isa      => 'PositiveInt',
+                 required => 1 );
+
+has topos => ( is       => 'ro',
+               isa      => 'PositiveInt',
+               lazy     => 1,
+               builder  => '_build_topos',
+               init_arg => undef );
+
+sub _build_topos {
+  my ( $self ) = @_;
+  return $self->{daughters}->[-1]->topos;
+}
+
+has sisters => ( is       => 'ro',
+                 isa      => 'ArrayRef[Syntactic::Practice::Tree]',
                  required => 1, );
 
-has topos => ( is  => 'ro',
-               isa => 'PositiveInt' );
+has daughters => ( is       => 'ro',
+                   isa      => 'ArrayRef[Syntactic::Practice::Tree]',
+                   required => 1, );
 
-has is_terminal => ( is      => 'ro',
+has mother => ( is       => 'ro',
+                isa      => 'MotherValue',
+                required => 1 );
+
+has 'depth' => ( is       => 'rw',
+                 isa      => 'PositiveInt',
+                 lazy     => 1,
+                 builder  => '_build_depth',
+                 init_arg => undef, );
+
+sub _build_depth {
+  my ( $self ) = @_;
+  return $self->mother->depth + 1 if defined $self->mother;
+  return 0;
+}
+
+has prune_nulls => ( is      => 'ro',
                      isa     => 'Bool',
-                     required => 1 );
-
-has daughters => ( is => 'ro',
-                   isa => 'ArrayRef[Syntactic::Practice::Tree]',
-                 );
+                     default => 1 );
 
 around 'daughters' => sub {
-  my( $orig, $self ) = @_;
+  my ( $orig, $self ) = @_;
 
-  if( ref $self->{daughters} eq 'ARRAY' ){
+  return $self->{daughters} unless wantarray;
+  if ( ref $self->{daughters} eq 'ARRAY' ) {
     return @{ $self->{daughters} };
-  }else{
+  } else {
     return ( $self->{daughters} );
   }
 };
 
-my %treeByNameByLabel;
+my %treeByName;
+my %treeByLabel;
+
+sub _treeExists {
+  my ( $self, $arg ) = @_;
+
+  return $treeByName{ $arg->{name} } if ( exists $treeByName{ $arg->{name} } );
+  return 0;
+}
+
+sub _registerTree {
+  my ( $self ) = @_;
+
+  $treeByLabel{ $self->label } = []
+    unless exists $treeByLabel{ $self->label };
+
+  push( @{ $treeByLabel{ $self->label } }, $treeByName{ $self->name } = $self );
+}
+
+sub _numTrees {
+  my ( $self, $arg ) = @_;
+  $treeByLabel{ $arg->{label} } = []
+    unless exists $treeByLabel{ $arg->{label} };
+  scalar @{ $treeByLabel{ $arg->{label} } };
+}
+
 
 around 'new' => sub {
   my ( $orig, $self, @arg ) = @_;
+
+  my $class = ref $self ? ref $self : $self;
 
   my $arg;
   if ( scalar @arg == 1 && ref $arg[0] eq 'HASH' ) {
@@ -48,31 +122,11 @@ around 'new' => sub {
     $arg = {@arg};
   }
 
-  $treeByNameByLabel{ $arg->{label} } = {}
-    unless exists $treeByNameByLabel{ $arg->{label} };
+  my $obj = $self->$orig( %$arg );
 
-  if ( exists $arg->{name} ) {
-    if ( exists $treeByNameByLabel{ $arg->{label} }->{ $arg->{name} } ){
-      die "Tree name $arg->{name} is already taken." unless $arg->{name} =~ /^\D+0$/;
-    }
-  } else {
-    $arg->{name} =
-      $arg->{label} . scalar keys %{ $treeByNameByLabel{ $arg->{label} } };
-  }
+  $obj->_registerTree();
 
-  if ( exists $arg->{topos} ) {
-    if ( $arg->{topos} < $arg->{frompos} ) {
-      cluck( 'To and From positions are being reversed' );
-      my $tmp = $arg->{topos};
-      $arg->{topos}   = $arg->{frompos};
-      $arg->{frompos} = $tmp;
-    }
-  } else {
-    $arg->{topos} = $arg->{frompos} + 1;
-  }
-
-  $treeByNameByLabel{ $arg->{label} }->{ $arg->{name} } =
-    $self->$orig( %$arg );
+  return $obj;
 };
 
 sub cmp {
@@ -84,7 +138,7 @@ sub cmp {
     return $result unless $result == 0;
   }
 
-  my @self_daughter = $self->daughters;
+  my @self_daughter  = $self->daughters;
   my @other_daughter = $other->daughters;
 
   $result = scalar @self_daughter <=> scalar @other_daughter;
@@ -99,19 +153,18 @@ sub cmp {
 }
 
 sub as_forest {
-  my ( $self, $depth ) = @_;
-  return '' if $self->frompos == $self->topos;
-  $depth = 0 unless $depth;
-  my $indent = " " x ( $depth * 2 );
+  my ( $self ) = @_;
 
-  my $output = "";
+  my $indent = " " x ( $self->depth * 2 );
+
+  my $output   = "";
   my @daughter = $self->daughters;
 
-  $output .= "${indent}[".$self->label."\n${indent}";
-  if( $self->is_terminal ){
+  $output .= "${indent}[" . $self->label . "\n${indent}";
+  if ( $self->symbol->is_terminal ) {
     $output .= "[@daughter] ";
-  }else{
-    $output .= join("", map { $_->as_forest( $depth + 1 ) } @daughter );
+  } else {
+    $output .= join( "", map { $_->as_forest() } @daughter );
     $output .= "\n${indent}";
   }
   $output .= "]";
@@ -119,26 +172,26 @@ sub as_forest {
 }
 
 sub as_text {
-  my ( $self, $depth ) = @_;
+  my ( $self ) = @_;
   my $output = '';
 
-  $depth = 0 unless $depth;
-
-  die "too deep!" if $depth > 5;
-
-  my $indent = " " x ( $depth * 2 );
+  my $indent = " " x ( $self->depth * 2 );
   $output .= $indent . $self->name . ": ";
 
-  my @daughter = $self->daughters;
+  my @daughter = map { $_ // '(null)' } $self->daughters;
   return "${output}@daughter\n" if $self->is_terminal;
 
   $output .= join( ' ', map { $_->label } @daughter ) . "\n${indent}";
-  $output .= join( '', map { $_->as_text( $depth + 1 ) } @daughter );;
+  $output .= join( '',  map { $_->as_text() } @daughter );
 
   return $output;
 }
 
+sub to_concrete {
+  my ( $self ) = @_;
+  return $self;
+}
 
 no Moose;
 
-__PACKAGE__->meta->make_immutable(inline_constructor => 0);
+__PACKAGE__->meta->make_immutable( inline_constructor => 0 );

@@ -9,23 +9,10 @@ has '+label' => ( is       => 'ro',
                   isa      => 'NonTerminalCategoryLabel',
                   required => 1, );
 
-has '+is_terminal' => ( is      => 'ro',
-                        isa     => 'Bool',
-                        default => 0 );
-around 'new' => sub {
-  my ( $orig, $self, @arg ) = @_;
-  my $arg;
-  if ( scalar @arg == 1 && ref $arg[0] eq 'HASH' ) {
-    $arg = $arg[0];
-  } else {
-    $arg = {@arg};
-  }
-
-  die "Cannot mark a non-terminal symbol as terminal"
-    if exists $arg->{is_terminal} && !$arg->{is_terminal};
-
-  my $tree = $self->$orig( $arg );
-};
+has '+symbol' => ( is  => 'rw',
+                   isa => 'Syntactic::Practice::Grammar::Symbol::NonTerminal',
+                   required => 0
+                 );
 
 no Moose;
-__PACKAGE__->meta->make_immutable(inline_constructor => 0);
+__PACKAGE__->meta->make_immutable( inline_constructor => 0 );

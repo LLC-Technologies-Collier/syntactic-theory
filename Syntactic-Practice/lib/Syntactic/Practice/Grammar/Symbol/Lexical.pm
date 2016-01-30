@@ -6,9 +6,5 @@ use Moose;
 
 extends 'Syntactic::Practice::Grammar::Symbol::Terminal';
 
-has '+label' => ( is       => 'ro',
-                  isa      => 'LexicalCategoryLabel',
-                  required => 1 );
-
 no Moose;
-__PACKAGE__->meta->make_immutable(inline_constructor => 0);
+__PACKAGE__->meta->make_immutable( inline_constructor => 0 );

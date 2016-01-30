@@ -1,13 +1,13 @@
-package Syntactic::Practice::Tree::Lexical;
+package Syntactic::Practice::Tree::Abstract::Lexical;
 
 use Syntactic::Practice::Types;
 use Moose;
 
-extends 'Syntactic::Practice::Tree::Terminal';
+extends 'Syntactic::Practice::Tree::Abstract::Terminal';
 
 has '+label' => ( is       => 'ro',
                   isa      => 'LexicalCategoryLabel',
-                  required => 0, );
+                  required => 1, );
 
 has '+daughters' => ( is => 'ro',
                       isa => 'Syntactic::Practice::Schema::Result::Lexeme',

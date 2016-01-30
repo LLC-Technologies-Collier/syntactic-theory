@@ -51,13 +51,13 @@ sub _lookup_rule {
                    symbols    => [] };
       my $symbols = $r->symbols;
       while ( my $sym = $symbols->next ) {
-        my $class =
-          'Syntactic::Practice::Grammar::Symbol::' . ucfirst $sym->cat->ctype;
-        my $symbol = $class->new( label    => $sym->cat->label,
-                                  name     => $sym->cat->longname,
-                                  optional => $sym->optional,
-                                  repeat   => $sym->rpt, );
-        $rule->{symbols}->[ $sym->position - 1 ] = $symbol;
+        my $class =  'Syntactic::Practice::Grammar::Symbol';
+        if( $sym->cat->label eq 'S' ){
+          $class .= '::Start';
+        }else{
+          $class .= '::' . ucfirst $sym->cat->ctype;
+        }
+        $rule->{symbols}->[ $sym->position - 1 ] = bless $sym, $class;
       }
       push( @rule, Syntactic::Practice::Grammar::Rule->new( $rule ) );
     }

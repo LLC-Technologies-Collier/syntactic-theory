@@ -2,8 +2,15 @@ package Syntactic::Practice::Lexer;
 
 use strict;
 
-use Syntactic::Practice::Tree::Lexical;
+use Syntactic::Practice::Lexicon;
+use Syntactic::Practice::Tree::Abstract::Lexical;
 use Moose;
+
+has 'lexicon' => ( is => 'ro',
+                   isa => 'Syntactic::Practice::Lexicon',
+                   default => sub {
+                     Syntactic::Practice::Lexicon->new( { locale => 'en_US.UTF-8' } );
+                   } );
 
 sub scan {
   my ( $self, $input ) = @_;
@@ -17,18 +24,22 @@ sub scan {
       chomp $sentence;
 
       # TODO: account for abbreviations such as Mt., Mr., Mrs., etc.
-      my @_word = split( /\s+/, $sentence );
-      my @word;
-      for ( my $i = 0; $i < scalar( @_word ); $i++ ) {
+      my @word = split( /\s+/, $sentence );
+      my @tree;
+      for ( my $i = 0; $i < scalar( @word ); $i++ ) {
+
+        my( $lexeme ) = $self->lexicon->lexeme( word => $word[$i] );
 
         my $lexTree =
-          Syntactic::Practice::Tree::Lexical->new( { daughters => $_word[$i],
-                                                     frompos => $i, }
-                                                 );
+          Syntactic::Practice::Tree::Abstract::Lexical->new(
+                                                      { daughters => $lexeme,
+                                                        frompos   => $i,
+                                                        label     => $lexeme->cat->label,
+                                                      } );
 
-        push( @word, $lexTree );
+        push( @tree, $lexTree );
       }
-      push( @sentence, \@word );
+      push( @sentence, \@tree );
     }
     push( @paragraph, \@sentence );
   }

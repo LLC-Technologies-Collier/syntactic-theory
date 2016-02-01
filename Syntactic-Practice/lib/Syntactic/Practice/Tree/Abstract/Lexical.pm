@@ -4,13 +4,10 @@ use Syntactic::Practice::Types;
 use Moose;
 
 extends 'Syntactic::Practice::Tree::Abstract::Terminal';
-
-has '+label' => ( is       => 'ro',
-                  isa      => 'LexicalCategoryLabel',
-                  required => 1, );
+with 'Syntactic::Practice::Roles::Category::Lexical';
 
 has '+daughters' => ( is => 'ro',
-                      isa => 'Syntactic::Practice::Schema::Result::Lexeme',
+                      isa => 'Syntactic::Practice::Lexicon::Lexeme',
                       required => 1
                     );
 

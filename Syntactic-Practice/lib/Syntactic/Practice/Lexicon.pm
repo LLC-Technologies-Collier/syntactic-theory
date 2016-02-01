@@ -2,6 +2,7 @@ package Syntactic::Practice::Lexicon;
 
 use Syntactic::Practice::Util;
 use Syntactic::Practice::Types;
+use Syntactic::Practice::Lexicon::Lexeme;
 use MooseX::Params::Validate;
 
 use Moose;
@@ -14,7 +15,7 @@ sub lexeme {
   my ( $self, %opt ) =
     validated_hash( \@_, word => { isa => 'Word', optional => 0 }, );
 
-  return ( $self->{rs}->search( { word => $opt{word} } )->all() );
+  return Syntactic::Practice::Lexicon::Lexeme->new( word => $opt{word} );
 }
 
 around 'new' => sub {

@@ -4,26 +4,21 @@ use Syntactic::Practice::Types;
 use Moose;
 
 extends 'Syntactic::Practice::Tree';
+with 'Syntactic::Practice::Roles::Category';
+
+my $tree_type = 'Syntactic::Practice::Tree';
 
 has '+daughters' => ( is       => 'rw',
-                      isa      => 'ArrayRef[Syntactic::Practice::Tree]',
+                      isa      => "ArrayRef[$tree_type]",
                       required => 0, );
 
-has '+mother' => (
-                is  => 'rw',
-                isa => (
-                      'Syntactic::Practice::Tree | '
-                    . 'Syntactic::Practice::Grammar::Symbol::Start | ' . 'Undef'
-                ),
-                required => 0 );
+has '+mother' => ( is       => 'rw',
+                   isa      => ( $tree_type ),
+                   required => 0 );
 
 has '+sisters' => ( is       => 'rw',
-                    isa      => ( 'ArrayRef[Syntactic::Practice::Tree]' ),
+                    isa      => ( "ArrayRef[$tree_type]" ),
                     required => 0 );
-
-has '+symbol' => ( is       => 'rw',
-                   isa      => 'Syntactic::Practice::Grammar::Symbol',
-                   required => 0 );
 
 has '+prune_nulls' => ( is      => 'ro',
                         isa     => 'False',

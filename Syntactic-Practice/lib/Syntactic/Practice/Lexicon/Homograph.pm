@@ -1,4 +1,4 @@
-package Syntactic::Practice::Lexicon::Homogaph;
+package Syntactic::Practice::Lexicon::Homograph;
 
 use Moose;
 
@@ -19,7 +19,7 @@ has 'lexemes' => ( is      => 'ro',
                    builder => '_build_lexemes' );
 
 has 'resultset' => ( is      => 'ro',
-                     isa     => $rs_namespace . '::' . $rs_class,
+                     isa     => 'DBIx::Class::ResultSet',
                      lazy    => 1,
                      builder => '_build_resultset' );
 

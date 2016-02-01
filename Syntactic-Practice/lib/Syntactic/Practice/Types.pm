@@ -5,38 +5,35 @@ use Syntactic::Practice::Util;
 use Moose;
 use Moose::Util::TypeConstraints;
 
-my $schema = Syntactic::Practice::Util->get_schema();
+my $schema             = Syntactic::Practice::Util->get_schema();
+my @startCategoryLabel = Syntactic::Practice::Util->get_start_category_labels();
 
 my @args = ( {}, { distinct => 1 } );
-
 my @SynCatType = qw(Phrasal Lexical);
 
 enum 'SynCatType', [ map { lc $_ } @SynCatType ];
 
-my %categoryLabel =
-  ( Start => ['S'] );    # TODO: change as more start symbols occur
-
-foreach my $cat_type ( @SynCatType, 'Syntactic' ) {
-  $categoryLabel{$cat_type} =
-    [ map { $_->label }
-      $schema->resultset( "${cat_type}Category" )->search( @args )->all() ];
-}
+my %categoryLabel = ( Start => \@startCategoryLabel );
 
 my $msg_format = 'The %s category label you provided, %s, is not recognized';
+foreach my $cat_type ( 'Syntactic', @SynCatType ) {
+  my $rs_class  = $cat_type . 'Category';
+  my $sub_type  = $rs_class . 'Label';
+  my $base_type = ( $cat_type eq 'Syntactic' ? 'Str' : 'SyntacticCategoryLabel' );
 
-subtype 'SyntacticCategoryLabel', as 'Str', where {
-  grep { $_ } @{ $categoryLabel{Syntactic} };
-}, message {
-  sprintf( $msg_format, 'Syntactic', $_ );
-};
+  $categoryLabel{$cat_type} =
+    [ map { $_->label }
+      $schema->resultset( $rs_class )->search( @args )->all() ]
+    unless exists $categoryLabel{$cat_type};
 
-foreach my $cat_type ( @SynCatType ) {
-  subtype "${cat_type}CategoryLabel", as 'SyntacticCategoryLabel', where {
-    grep { $_ } @{ $categoryLabel{$cat_type} };
+  subtype $sub_type, as $base_type, where {
+    my $input = $_;
+    grep { $_ eq $input } @{ $categoryLabel{$cat_type} };
   }, message {
     sprintf( $msg_format, $cat_type, $_ );
   };
 }
+
 
 subtype 'SynCatLabelList', as 'ArrayRef[SyntacticCategoryLabel]';
 coerce 'SynCatLabelList', from 'SyntacticCategoryLabel', via { [$_] };
@@ -55,7 +52,6 @@ subtype 'TerminalCatLabelList',  as 'LexCatLabelList';
 subtype 'NonTerminalCategoryLabel', as 'PhrasalCategoryLabel';
 subtype 'NonTerminalCatLabelList',  as 'PhrCatLabelList';
 
-my @startCategoryLabel = qw( S );
 subtype 'StartCategoryLabel', as 'NonTerminalCategoryLabel', where {
   grep { $_ } @startCategoryLabel;
 }, message {
@@ -86,7 +82,6 @@ subtype 'False', as 'Bool', where { !$_ },
   message { "The value you provided, $_, was not false" };
 subtype 'Undefined', as 'Undef', where { !defined $_ },
   message { "The value you provided, $_, was not undefined" };
-
 
 no Moose;
 __PACKAGE__->meta->make_immutable;

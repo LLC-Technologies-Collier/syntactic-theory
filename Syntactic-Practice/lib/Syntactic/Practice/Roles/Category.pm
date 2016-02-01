@@ -1,65 +1,58 @@
 package Syntactic::Practice::Roles::Category;
 
 use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
 
 use Moose::Role;
 use namespace::autoclean;
+
+my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
+
+my $rs_class       = 'Category';
+my $category_class = 'Syntactic::Practice::Grammar::Category';
 
 has 'label' => ( is      => 'ro',
                  isa     => 'SyntacticCategoryLabel',
                  lazy    => 1,
                  builder => '_build_label' );
 
-sub _build_label {
-  my ( $self ) = @_;
-  if ( exists $self->{category} ) {
-    return $self->category->label;
-  } else {
-    die 'Neither label nor category specified';
-  }
-}
+has 'name' => ( is      => 'ro',
+                isa     => 'Str',
+                lazy    => 1,
+                builder => '_build_name' );
 
 has 'category' => ( is      => 'ro',
-                    isa     => 'Syntactic::Practice::Grammar::Category',
+                    isa     => $category_class,
                     lazy    => 1,
                     builder => '_build_category' );
-
-sub _build_category {
-  my ( $self ) = @_;
-  if ( exists $self->{label} ) {
-    return Syntactic::Practice::Grammar::Category->new( label => $_->label );
-  } else {
-    die 'Neither label nor category specified';
-  }
-}
-
-has 'is_terminal' => ( is      => 'ro',
-                       isa     => 'Bool',
-                       lazy    => 1,
-                       builder => '_build_is_terminal' );
-
-sub _build_is_terminal {
-  my ( $self ) = @_;
-
-  # TODO: change this when there are more terminal and non-terminal categories
-  my $ctype = $self->resultset->cat->ctype;
-  return 0 if ( $ctype eq 'phrasal' );
-  return 1 if ( $ctype eq 'lexical' );
-}
 
 has 'is_start' => ( is      => 'ro',
                     isa     => 'Bool',
                     lazy    => 1,
                     builder => '_build_is_start' );
 
-sub _build_is_start {
-  my $label = $_[0]->label;
+has 'is_terminal' => ( is      => 'ro',
+                       isa     => 'Bool',
+                       lazy    => 1,
+                       builder => '_build_is_terminal' );
 
-  # TODO: change this when there are more start and non-start
-  return 0 if ( $label ne 'S' );
-  return 1 if ( $label eq 'S' );
+sub _build_label {
+  my ( $self ) = @_;
+  confess 'Neither label nor category specified'
+    unless exists $self->{category};
+  return $self->category->label;
 }
+
+sub _build_category {
+  my ( $self ) = @_;
+  die 'Neither label nor category specified' unless exists $self->{label};
+  my $class = 'Syntactic::Practice::Grammar::' . $self->_get_category_class;
+  return $class->new( label => $self->{label} );
+}
+
+sub _build_name         { $_[0]->category->resultset->longname }
+sub _build_is_terminal  { $_[0]->category->is_terminal }
+sub _build_is_start     { $_[0]->category->is_start }
+sub _get_category_class { 'Category' }
 
 no Moose::Role;
 1;

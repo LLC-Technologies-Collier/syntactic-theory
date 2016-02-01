@@ -2,7 +2,20 @@ package Syntactic::Practice::Lexer;
 
 use strict;
 
+=head1 NAME
+
+Syntactic::Practice::Lexer - A lexical analyzer
+
+=head1 VERSION
+
+Version 0.01
+
+=cut
+
+our $VERSION = '0.01';
+
 use Syntactic::Practice::Lexicon;
+use Syntactic::Practice::Lexicon::Homograph;
 use Syntactic::Practice::Tree::Abstract::Lexical;
 use Moose;
 
@@ -28,16 +41,18 @@ sub scan {
       my @tree;
       for ( my $i = 0; $i < scalar( @word ); $i++ ) {
 
-        my( $lexeme ) = $self->lexicon->lexeme( word => $word[$i] );
+        my $homograph = Syntactic::Practice::Lexicon::Homograph->new( word => $word[$i] );
+        foreach my $lexeme ( @{ $homograph->lexemes } ){
 
-        my $lexTree =
-          Syntactic::Practice::Tree::Abstract::Lexical->new(
-                                                      { daughters => $lexeme,
-                                                        frompos   => $i,
-                                                        label     => $lexeme->cat->label,
-                                                      } );
+          my $lexTree =
+            Syntactic::Practice::Tree::Abstract::Lexical->new(
+                                                              { daughters => $lexeme,
+                                                                frompos   => $i,
+                                                                label     => $lexeme->label,
+                                                              } );
 
-        push( @tree, $lexTree );
+          push( @tree, $lexTree );
+        }
       }
       push( @sentence, \@tree );
     }

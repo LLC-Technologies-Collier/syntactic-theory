@@ -4,30 +4,22 @@ use Carp;
 use Data::Dumper;
 use Moose;
 
+use namespace::autoclean;
+
 use Syntactic::Practice::Types;
 use Moose::Util::TypeConstraints;
 use Syntactic::Practice::Grammar::Symbol::Start;
 
-subtype 'MotherValue', as 'Syntactic::Practice::Tree | Syntactic::Practice::Grammar::Symbol::Start';
+with 'Syntactic::Practice::Roles::Category';
+
+subtype 'MotherValue',
+  as 'Syntactic::Practice::Tree | Syntactic::Practice::Grammar::Symbol::Start';
 
 has name => ( is       => 'ro',
               isa      => 'Str',
               lazy     => 1,
               builder  => '_build_name',
               init_arg => undef );
-
-sub _build_name {
-  my ( $self ) = @_;
-  $self->label . $self->_numTrees( { label => $self->label } );
-}
-
-has label => ( is       => 'ro',
-               isa      => 'SyntacticCategoryLabel',
-               required => 1, );
-
-has symbol => ( is       => 'ro',
-                isa      => 'Syntactic::Practice::Grammar::Symbol',
-                required => 1, );
 
 has frompos => ( is       => 'ro',
                  isa      => 'PositiveInt',
@@ -38,11 +30,6 @@ has topos => ( is       => 'ro',
                lazy     => 1,
                builder  => '_build_topos',
                init_arg => undef );
-
-sub _build_topos {
-  my ( $self ) = @_;
-  return $self->{daughters}->[-1]->topos;
-}
 
 has sisters => ( is       => 'ro',
                  isa      => 'ArrayRef[Syntactic::Practice::Tree]',
@@ -56,31 +43,30 @@ has mother => ( is       => 'ro',
                 isa      => 'MotherValue',
                 required => 1 );
 
-has 'depth' => ( is       => 'rw',
-                 isa      => 'PositiveInt',
-                 lazy     => 1,
-                 builder  => '_build_depth',
-                 init_arg => undef, );
-
-sub _build_depth {
-  my ( $self ) = @_;
-  return $self->mother->depth + 1 if defined $self->mother;
-  return 0;
-}
+has depth => ( is       => 'rw',
+               isa      => 'PositiveInt',
+               lazy     => 1,
+               builder  => '_build_depth',
+               init_arg => undef, );
 
 has prune_nulls => ( is      => 'ro',
                      isa     => 'Bool',
                      default => 1 );
 
+sub _build_name {
+  my ( $self ) = @_;
+  $self->label . $self->_numTrees( { label => $self->label } );
+}
+sub _build_topos { $_[0]->{daughters}->[-1]->topos }
+sub _build_depth { $_[0]->mother->depth + 1 }
+
 around 'daughters' => sub {
   my ( $orig, $self ) = @_;
 
   return $self->{daughters} unless wantarray;
-  if ( ref $self->{daughters} eq 'ARRAY' ) {
-    return @{ $self->{daughters} };
-  } else {
-    return ( $self->{daughters} );
-  }
+  return ( ref $self->{daughters} eq 'ARRAY'
+           ? @{ $self->{daughters} }
+           : ( $self->{daughters} ) );
 };
 
 my %treeByName;
@@ -108,7 +94,6 @@ sub _numTrees {
     unless exists $treeByLabel{ $arg->{label} };
   scalar @{ $treeByLabel{ $arg->{label} } };
 }
-
 
 around 'new' => sub {
   my ( $orig, $self, @arg ) = @_;

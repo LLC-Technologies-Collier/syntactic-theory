@@ -3,6 +3,9 @@ package Syntactic::Practice::Lexicon::Lexeme;
 use Moose;
 
 use Syntactic::Practice::Util;
+use Syntactic::Practice::Grammar::Category::Lexical;
+
+with 'Syntactic::Practice::Roles::Category::Lexical';
 
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
 
@@ -24,7 +27,13 @@ sub _build_word {
     unless ( exists $self->{resultset} );
 
   return $self->resultset->word;
+}
 
+sub _build_label { $_[0]->category->label }
+
+sub _build_category {
+  Syntactic::Practice::Grammar::Category::Lexical->new(
+                                        label => $_[0]->resultset->cat->label );
 }
 
 sub _build_resultset {

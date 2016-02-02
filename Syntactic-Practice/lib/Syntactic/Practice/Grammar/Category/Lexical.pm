@@ -12,12 +12,5 @@ has '+label' => ( is      => 'ro',
                   lazy    => 1,
                   builder => '_build_label' );
 
-has '+is_terminal' => ( is      => 'ro',
-                        isa     => 'True',
-                        lazy    => 1,
-                        builder => '_build_is_terminal' );
-
-sub _build_is_terminal { 1 }
-
 no Moose;
 __PACKAGE__->meta->make_immutable();

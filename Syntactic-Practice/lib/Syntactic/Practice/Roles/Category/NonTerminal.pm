@@ -18,6 +18,7 @@ has 'category' => (is  => 'ro',
                    lazy    => 1,
                    builder => '_build_category' );
 
+sub _build_is_start    { 0 }
 sub _build_is_terminal { 0 }
 sub _get_category_class { 'Category::Terminal' }
 

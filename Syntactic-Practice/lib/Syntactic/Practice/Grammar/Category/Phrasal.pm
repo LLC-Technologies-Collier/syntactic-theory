@@ -12,7 +12,6 @@ has '+label' => ( is      => 'ro',
                   lazy    => 1,
                   builder => '_build_label' );
 
-sub _build_is_terminal  { 1 }
 sub _get_category_class { 'Category::Phrasal' }
 
 

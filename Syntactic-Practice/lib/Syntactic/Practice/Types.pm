@@ -14,26 +14,54 @@ my @SynCatType = qw(Phrasal Lexical);
 enum 'SynCatType', [ map { lc $_ } @SynCatType ];
 
 my %categoryLabel = ( Start => \@startCategoryLabel );
+my %typeMap = (
+                Syntactic => { base  => 'SyntacticCategoryLabel',
+                               super => 'Str',
+                               rs    => 'SyntacticCategory',
+                               key   => 'Syntactic'
+                },
+                NonTerminal => { base  => 'NonTerminalCategoryLabel',
+                                 super => 'SyntacticCategoryLabel',
+                                 rs    => 'PhrasalCategory',
+                                 key   => 'NonTerminal'
+                },
+                Terminal => { base  => 'TerminalCategoryLabel',
+                              super => 'SyntacticCategoryLabel',
+                              rs    => 'LexicalCategory',
+                              key   => 'Terminal'
+                },
+                Lexical => { base  => 'LexicalCategoryLabel',
+                             super => 'TerminalCategoryLabel',
+                             key   => 'Terminal'
+                },
+                Phrasal => { base  => 'PhrasalCategoryLabel',
+                             super => 'NonTerminalCategoryLabel',
+                             key   => 'NonTerminal'
+                },
+                Start => { base  => 'StartCategoryLabel',
+                           super => 'NonTerminalCategoryLabel',
+                           key   => 'Start'
+                } );
 
-my $msg_format = 'The %s category label you provided, %s, is not recognized';
-foreach my $cat_type ( 'Syntactic', @SynCatType ) {
-  my $rs_class  = $cat_type . 'Category';
-  my $sub_type  = $rs_class . 'Label';
-  my $base_type = ( $cat_type eq 'Syntactic' ? 'Str' : 'SyntacticCategoryLabel' );
+my $msg_format = 'The label you provided, %s, is not a %s';
+foreach my $cat_type ( qw( Syntactic NonTerminal Terminal Phrasal Lexical Start ) ) {
+  my @valid_list;
+  if ( exists $typeMap{$cat_type}->{rs} ) {
+    $categoryLabel{$cat_type} =
+      [ map { $_->label }
+        $schema->resultset( $typeMap{$cat_type}->{rs} )->search( @args )->all()
+      ];
+  }
 
-  $categoryLabel{$cat_type} =
-    [ map { $_->label }
-      $schema->resultset( $rs_class )->search( @args )->all() ]
-    unless exists $categoryLabel{$cat_type};
+  my ( $base, $super, $key ) = @{ $typeMap{$cat_type} }{qw( base super key )};
 
-  subtype $sub_type, as $base_type, where {
+  subtype $base, as $super, where {
     my $input = $_;
-    grep { $_ eq $input } @{ $categoryLabel{$cat_type} };
+    grep { $_ eq $input } @{ $categoryLabel{$key} };
   }, message {
-    sprintf( $msg_format, $cat_type, $_ );
+    sprintf( $msg_format, $_, $base );
   };
 }
-
 
 subtype 'SynCatLabelList', as 'ArrayRef[SyntacticCategoryLabel]';
 coerce 'SynCatLabelList', from 'SyntacticCategoryLabel', via { [$_] };
@@ -44,24 +72,10 @@ coerce 'LexCatLabelList', from 'LexicalCategoryLabel', via { [$_] };
 subtype 'PhrCatLabelList', as 'ArrayRef[PhrasalCategoryLabel]';
 coerce 'PhrCatLabelList', from 'PhrasalCategoryLabel', via { [$_] };
 
-# TODO: change this when we have other types of terminal symbols
-subtype 'TerminalCategoryLabel', as 'LexicalCategoryLabel';
-subtype 'TerminalCatLabelList',  as 'LexCatLabelList';
-
-# TODO: change this when we have other types of non-terminal symbols
-subtype 'NonTerminalCategoryLabel', as 'PhrasalCategoryLabel';
-subtype 'NonTerminalCatLabelList',  as 'PhrCatLabelList';
-
-subtype 'StartCategoryLabel', as 'NonTerminalCategoryLabel', where {
-  grep { $_ } @startCategoryLabel;
-}, message {
-  sprintf( $msg_format, 'Start', $_ );
-};
-
 my $lexeme_rs = $schema->resultset( 'Lexeme' )->search();
 
 subtype 'Word', as 'Str',
-  where { scalar $lexeme_rs->search( { word => $_ } )->all() },
+  where { scalar $lexeme_rs->search( { 'LOWER(me.word)' => { 'LIKE' => lc( $_ ) } } )->all() },
   message { "The word you provided, $_, is not in the lexicon" };
 
 subtype 'WordList', as 'ArrayRef[Word]';

@@ -3,6 +3,8 @@ package Syntactic::Practice::Lexicon::Homograph;
 use Moose;
 
 use Syntactic::Practice::Util;
+use Syntactic::Practice::Types;
+use Syntactic::Practice::Lexicon::Lexeme;
 
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
 

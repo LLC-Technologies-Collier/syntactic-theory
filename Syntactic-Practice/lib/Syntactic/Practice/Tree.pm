@@ -1,5 +1,17 @@
 package Syntactic::Practice::Tree;
 
+=head1 NAME
+
+Syntactic::Practice::Tree - Parse Tree Representation
+
+=head1 VERSION
+
+Version 0.01
+
+=cut
+
+our $VERSION = '0.01';
+
 use Carp;
 use Data::Dumper;
 use Moose;

@@ -4,22 +4,15 @@ use Syntactic::Practice::Types;
 use Moose;
 
 extends 'Syntactic::Practice::Tree::Abstract::NonTerminal';
+with 'Syntactic::Practice::Roles::Category::Start';
 
-has '+label' => ( is      => 'ro',
-                  isa     => 'StartCategoryLabel',
-                  default => 'S', );
+has '+mother' => ( is      => 'ro',
+                   isa     => 'Undefined',
+                   lazy    => 1,
+                   builder => '_build_mother' );
 
-has '+mother' => ( is  => 'ro',
-                   isa => 'Undefined' );
-
-has '+frompos' => ( is      => 'ro',
-                    isa     => 'PositiveInt',
-                    default => 1 );
-
-my $symClass = 'Syntactic::Practice::Grammar::Symbol::Start';
-has '+symbol' => ( is      => 'ro',
-                   isa     => $symClass,
-                   default => sub { $symClass->new() }, );
+sub _build_mother { undef }
+sub _build_depth  { 0 }
 
 no Moose;
 

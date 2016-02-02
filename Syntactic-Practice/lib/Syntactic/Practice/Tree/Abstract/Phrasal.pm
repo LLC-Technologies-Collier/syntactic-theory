@@ -4,10 +4,7 @@ use Syntactic::Practice::Types;
 use Moose;
 
 extends 'Syntactic::Practice::Tree::Abstract::NonTerminal';
-
-has '+label' => ( is       => 'ro',
-                  isa      => 'PhrasalCategoryLabel',
-                  required => 1, );
+with 'Syntactic::Practice::Roles::Category::Phrasal';
 
 no Moose;
 

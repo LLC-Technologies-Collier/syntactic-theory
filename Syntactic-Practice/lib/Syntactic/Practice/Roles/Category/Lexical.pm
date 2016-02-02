@@ -13,11 +13,6 @@ has 'label' => ( is      => 'ro',
                  lazy    => 1,
                  builder => '_build_label' );
 
-has 'category' => ( is   => 'ro',
-                    isa  => 'Syntactic::Practice::Grammar::Category::Lexical',
-                    lazy => 1,
-                    builder => '_build_category' );
-
 sub _get_category_class { 'Category::Lexical' }
 
 no Moose::Role;

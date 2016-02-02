@@ -20,9 +20,18 @@ has '+sisters' => ( is       => 'rw',
                     isa      => ( "ArrayRef[$tree_type]" ),
                     required => 0 );
 
+has '+frompos' => ( is       => 'rw',
+                    isa      => ( 'PositiveInt' ),
+                    required => 0 );
+
 has '+prune_nulls' => ( is      => 'ro',
                         isa     => 'False',
                         default => 0 );
+
+sub _build_depth {
+  my( $self ) = @_;
+  exists $self->{mother} ? $self->{mother}->depth + 1 : 0;
+}
 
 my %abstractTreeByName;
 my %abstractTreeByLabel;

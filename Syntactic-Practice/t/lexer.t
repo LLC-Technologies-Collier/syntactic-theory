@@ -14,15 +14,17 @@ my $content = "The dog";
 
 my $lexer     = Syntactic::Practice::Lexer->new();
 
+ok( $lexer, 'Lexer object instantiated' );
+
 my @paragraph = $lexer->scan( $content );
 my @sentence  = @{ $paragraph[0] };
-my @word_list = @{ $sentence[0] };
+my @token_list = @{ $sentence[0] };
 
-is( scalar @word_list, 2 );
+is( scalar @token_list, 2, 'two tokens emitted by the lexer' );
 
-isa_ok( $word_list[0], 'Syntactic::Practice::Tree' );
+isa_ok( $token_list[0], 'Syntactic::Practice::Tree' );
 
-is( $word_list[0]->label, 'D' );
+is( $token_list[0]->label, 'D', 'first token has label D' );
 
 
-done_testing( 4 );
+done_testing( 5 );

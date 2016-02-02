@@ -1,9 +1,5 @@
 package Syntactic::Practice::Roles::Category::Lexical;
 
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
-use Syntactic::Practice::Grammar::Category::Lexical;
-
 use Moose::Role;
 use namespace::autoclean;
 

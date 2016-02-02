@@ -2,9 +2,6 @@ package Syntactic::Practice::Lexicon::Lexeme;
 
 use Moose;
 
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Grammar::Category::Lexical;
-
 with 'Syntactic::Practice::Roles::Category::Lexical';
 
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
@@ -46,4 +43,4 @@ sub _build_resultset {
 }
 
 no Moose;
-__PACKAGE__->meta->make_immutable( inline_constructor => 0 );
+__PACKAGE__->meta->make_immutable;

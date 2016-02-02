@@ -14,16 +14,7 @@ Version 0.01
 
 our $VERSION = '0.01';
 
-use Syntactic::Practice::Lexicon;
-use Syntactic::Practice::Lexicon::Homograph;
-use Syntactic::Practice::Tree::Abstract::Lexical;
 use Moose;
-
-has 'lexicon' => ( is => 'ro',
-                   isa => 'Syntactic::Practice::Lexicon',
-                   default => sub {
-                     Syntactic::Practice::Lexicon->new( { locale => 'en_US.UTF-8' } );
-                   } );
 
 sub scan {
   my ( $self, $input ) = @_;

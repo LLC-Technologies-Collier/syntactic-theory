@@ -12,7 +12,6 @@ Version 0.01
 
 our $VERSION = '0.01';
 
-use Syntactic::Practice::Util;
 use Moose;
 
 with 'Syntactic::Practice::Roles::Category';
@@ -81,4 +80,4 @@ sub _build_logger {
 }
 
 no Moose;
-__PACKAGE__->meta->make_immutable( inline_constructor => 0 );
+__PACKAGE__->meta->make_immutable;

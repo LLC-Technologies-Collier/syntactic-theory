@@ -1,9 +1,5 @@
 package Syntactic::Practice::Roles::Category::Terminal;
 
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
-use Syntactic::Practice::Grammar::Category::Terminal;
-
 use Moose::Role;
 use namespace::autoclean;
 

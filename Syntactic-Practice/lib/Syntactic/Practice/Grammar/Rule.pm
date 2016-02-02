@@ -12,11 +12,6 @@ Version 0.01
 
 our $VERSION = '0.01';
 
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
-use Syntactic::Practice::Grammar::Symbol::Lexical;
-use Syntactic::Practice::Grammar::Symbol::Phrasal;
-
 use Moose;
 
 with 'Syntactic::Practice::Roles::Category';

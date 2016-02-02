@@ -1,6 +1,5 @@
 package Syntactic::Practice::Tree::Lexical;
 
-use Syntactic::Practice::Types;
 use Moose;
 
 with 'Syntactic::Practice::Roles::Category::Terminal';
@@ -12,4 +11,4 @@ has '+daughters' => ( is => 'ro',
                     );
 
 no Moose;
-__PACKAGE__->meta->make_immutable( inline_constructor => 0 );
+__PACKAGE__->meta->make_immutable;

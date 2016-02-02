@@ -12,15 +12,9 @@ Version 0.01
 
 our $VERSION = '0.01';
 
-use Carp;
-use Data::Dumper;
 use Moose;
 
 use namespace::autoclean;
-
-use Syntactic::Practice::Types;
-use Moose::Util::TypeConstraints;
-use Syntactic::Practice::Grammar::Symbol::Start;
 
 with 'Syntactic::Practice::Roles::Category';
 
@@ -78,7 +72,9 @@ sub _build_depth { $_[0]->mother->depth + 1 }
 around 'daughters' => sub {
   my ( $orig, $self ) = @_;
 
-  return $self->{daughters} unless wantarray;
+  warn Data::Dumper::Dumper( { label => $self->label,
+                               daughters => $self->{daughters} } );
+
   return ( ref $self->{daughters} eq 'ARRAY'
            ? @{ $self->{daughters} }
            : ( $self->{daughters} ) );
@@ -114,7 +110,7 @@ sub BUILD {
   my ( $self ) = @_;
 
   $self->_registerTree();
-};
+}
 
 sub cmp {
   my($self,$other) = @_;
@@ -167,17 +163,16 @@ sub as_text {
   my @daughter = map { $_ // '(null)' } $self->daughters;
   return "${output}@daughter\n" if $self->is_terminal;
 
-  $output .= join( ' ', map { $_->label } @daughter ) . "\n${indent}";
-  $output .= join( '',  map { $_->as_text() } @daughter );
+  my $ref = ref $self;
+  my $label = $self->label;
+  warn "$ref - $label";
+
+  $output .= join( ' ', map { ref $_ ? $_->label : $_ } @daughter ) . "\n${indent}";
+  $output .= join( '',  map { ref $_ ? $_->as_text : $_ } @daughter );
 
   return $output;
 }
 
-sub to_concrete {
-  my ( $self ) = @_;
-  return $self;
-}
-
 no Moose;
 
-__PACKAGE__->meta->make_immutable( inline_constructor => 0 );
+__PACKAGE__->meta->make_immutable;

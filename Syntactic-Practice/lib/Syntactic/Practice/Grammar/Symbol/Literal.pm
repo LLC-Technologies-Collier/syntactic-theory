@@ -1,7 +1,5 @@
 package Syntactic::Practice::Grammar::Symbol::Literal;
 
-use Syntactic::Practice::Types;
-
 use Moose;
 
 extends 'Syntactic::Practice::Grammar::Symbol::Terminal';

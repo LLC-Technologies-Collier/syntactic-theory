@@ -12,9 +12,6 @@ Version 0.01
 
 our $VERSION = '0.01';
 
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
-
 use Moose;
 
 with 'MooseX::Log::Log4perl';

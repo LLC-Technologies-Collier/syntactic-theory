@@ -1,8 +1,5 @@
 package Syntactic::Practice::Grammar::Category::Phrasal;
 
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
-
 use Moose;
 
 extends 'Syntactic::Practice::Grammar::Category::NonTerminal';

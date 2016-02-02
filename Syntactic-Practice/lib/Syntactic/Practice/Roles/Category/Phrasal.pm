@@ -1,9 +1,5 @@
 package Syntactic::Practice::Roles::Category::Phrasal;
 
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
-use Syntactic::Practice::Grammar::Category::Phrasal;
-
 use Moose::Role;
 use namespace::autoclean;
 

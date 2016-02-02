@@ -1,9 +1,5 @@
 package Syntactic::Practice::Roles::Category::NonTerminal;
 
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
-use Syntactic::Practice::Grammar::Category::NonTerminal;
-
 use Moose::Role;
 use namespace::autoclean;
 

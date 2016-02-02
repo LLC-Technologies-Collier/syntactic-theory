@@ -1,10 +1,6 @@
 package Syntactic::Practice::Util;
 
-use Syntactic::Practice::Schema;
 use Moose;
-
-use Log::Log4perl;
-Log::Log4perl->init('log4perl.conf') or die "couldn't init logger: $!";
 
 my $hostname = 'localhost';
 my $port     = '3306';

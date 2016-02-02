@@ -1,6 +1,5 @@
 package Syntactic::Practice::Tree::Abstract;
 
-use Syntactic::Practice::Types;
 use Moose;
 
 extends 'Syntactic::Practice::Tree';
@@ -63,6 +62,14 @@ sub _numTrees {
 
 sub to_concrete {
   my ( $self, $arg ) = @_;
+
+  my @concrete_daughters;
+  unless( $self->is_terminal ){
+    foreach my $daughter ( $self->daughters ){
+      push( @concrete_daughters, $daughter->to_concrete );
+    }
+  }
+
   $arg = {} unless $arg;
   my $abstract_class = ref $self;
   ( my $class = $abstract_class ) =~ s/Abstract:://;
@@ -70,4 +77,4 @@ sub to_concrete {
 }
 
 no Moose;
-__PACKAGE__->meta->make_immutable( inline_constructor => 0 );
+__PACKAGE__->meta->make_immutable;

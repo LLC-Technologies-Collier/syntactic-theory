@@ -1,9 +1,5 @@
 package Syntactic::Practice::Grammar::RuleSet;
 
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
-use Syntactic::Practice::Grammar::Rule;
-
 use Moose;
 
 with 'Syntactic::Practice::Roles::Category';

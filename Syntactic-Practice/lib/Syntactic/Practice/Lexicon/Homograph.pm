@@ -2,10 +2,6 @@ package Syntactic::Practice::Lexicon::Homograph;
 
 use Moose;
 
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
-use Syntactic::Practice::Lexicon::Lexeme;
-
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
 
 my $rs_class     = 'Lexeme';
@@ -40,4 +36,4 @@ sub _build_resultset {
 }
 
 no Moose;
-__PACKAGE__->meta->make_immutable( inline_constructor => 0 );
+__PACKAGE__->meta->make_immutable;

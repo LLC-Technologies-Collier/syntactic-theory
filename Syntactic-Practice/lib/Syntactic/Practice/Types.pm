@@ -1,7 +1,5 @@
 package Syntactic::Practice::Types;
 
-use Syntactic::Practice::Util;
-
 use Moose;
 use Moose::Util::TypeConstraints;
 

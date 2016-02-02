@@ -12,20 +12,6 @@ Version 0.01
 
 our $VERSION = '0.01';
 
-use MooseX::Params::Validate;
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
-
-use Syntactic::Practice::Tree::Start;
-use Syntactic::Practice::Tree::Abstract::Null;
-use Syntactic::Practice::Tree::Abstract::Lexical;
-use Syntactic::Practice::Tree::Abstract::Phrasal;
-use Syntactic::Practice::Tree::Abstract::Start;
-use Syntactic::Practice::Tree::Null;
-use Syntactic::Practice::Tree::Lexical;
-use Syntactic::Practice::Tree::Phrasal;
-use Syntactic::Practice::Grammar::RuleSet;
-
 use Moose;
 
 with 'MooseX::Log::Log4perl';
@@ -96,7 +82,11 @@ sub ingest {
     }
     $tree_params{category} = $category;
 
-    $target = Syntactic::Practice::Tree::Abstract->new( %tree_params );
+    $self->log->debug(   'Creating Abstract Phrasal tree with category ['
+                       . $category->label
+                       . ']' );
+
+    $target = Syntactic::Practice::Tree::Abstract::Phrasal->new( %tree_params );
   }
 
   my $ruleSet =
@@ -114,45 +104,7 @@ sub ingest {
   my @symbol_list;
   my $rules = $ruleSet->rules;
   foreach my $rule ( @$rules[0] ) {    # TODO: support multiple rules
-
-    if ( $rule->label eq 'X' ) {
-      my @pre_conj;
-      my $has_conj = 0;
-      foreach my $tree ( ( $self->sentence )[ $from .. $#{ $self->sentence } ] )
-      {
-        if ( $tree->label eq 'CONJ' ) {
-          $has_conj = 1;
-          last;
-        }
-        push( @pre_conj, $tree );
-      }
-      unless ( $has_conj ) {
-        push( @error, q{Rule 'X' requires CONJ, but none found} );
-        next;
-      }
-      if ( scalar @pre_conj == 1 ) {
-        push( @symbol_list, $rule->symbols );
-      } elsif ( scalar @pre_conj > 1 ) {
-        my @r = $self->grammar->rule( daughters => \@pre_conj );
-        if ( scalar @r == 0 ) {
-          push( @error,
-qq{Symbols [@pre_conj] do not combine to make phrase of any known type} );
-          next;
-        }
-        foreach my $r ( @r ) {
-          push( @symbol_list, [ $r->label, 'CONJ', $r->label ] );
-        }
-      } else {
-        push( @error,
-              q{Rule 'X' requires symbols before CONJ, but none found} );
-        next;
-      }
-    } else {
-      push( @symbol_list, $rule->symbols );
-    }
-  }
-
-  while ( my $s = shift( @symbol_list ) ) {
+    my ( $s ) = $rule->symbols;
     my @d_list = ( [] );
     my @symbol = @$s;
     foreach my $symbol ( @symbol ) {
@@ -172,7 +124,9 @@ qq{Symbols [@pre_conj] do not combine to make phrase of any known type} );
 
         if ( $optional && !exists $optAtPos->{$curpos} ) {
           my $class = 'Syntactic::Practice::Tree::Abstract::Null';
-          my $tree = $class->new( %tree_params, frompos => $curpos );
+          my $tree = $class->new( depth   => $self->{current_depth} + 1,
+                                  frompos => $curpos,
+                                  mother  => $target );
           $optAtPos->{$curpos} = $tree;
           splice( @d_list, $dlist_idx, 0, ( [ @$daughter, $tree ] ) );
           next;
@@ -190,6 +144,8 @@ qq{Symbols [@pre_conj] do not combine to make phrase of any known type} );
           next;
         }
         foreach my $tree ( @tree ) {
+          $tree->mother( $target );
+
           my @new = ( [ @$daughter, $tree ] );
           push( @new, [ @$daughter, $tree ] ) if ( $repeat );
           splice( @d_list, $dlist_idx, 0, ( @new ) );
@@ -208,10 +164,9 @@ qq{Symbols [@pre_conj] do not combine to make phrase of any known type} );
       next unless scalar @d;
 
       my $tree =
-        Syntactic::Practice::Tree::Abstract->new(
-                                                 %tree_params,
-                                                 topos => $d[-1]->topos,
-                                                 daughters => \@d );
+        $target->new( %tree_params,
+                      topos     => $d[-1]->topos,
+                      daughters => \@d );
 
       if ( grep { $tree->cmp( $_ ) == 0 } @return ) {
         next unless $self->allow_duplicates;
@@ -225,15 +180,11 @@ qq{Symbols [@pre_conj] do not combine to make phrase of any known type} );
   return ();
 }
 
-around 'new' => sub {
-  my ( $orig, $self, @arg ) = @_;
+sub BUILD {
+  my ( $self ) = @_;
 
-  my $obj = $self->$orig( @arg );
-
-  $obj->{current_depth} = 0;
-
-  return $obj;
-};
+  $self->{current_depth} = 0;
+}
 
 around 'ingest' => sub {
   my ( $orig, $self, @arg ) = @_;
@@ -286,4 +237,4 @@ around 'ingest' => sub {
 };
 
 no Moose;
-__PACKAGE__->meta->make_immutable( inline_constructor => 0 );
+__PACKAGE__->meta->make_immutable;

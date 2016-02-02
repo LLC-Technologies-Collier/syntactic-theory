@@ -1,37 +1,64 @@
 package Syntactic::Practice::Grammar::Symbol;
 
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
+=head1 NAME
 
+Syntactic::Practice::Grammar::Symbol - Symbols on the right hand side of rules
+
+=head1 VERSION
+
+Version 0.01
+
+=cut
+
+our $VERSION = '0.01';
+
+use Syntactic::Practice::Util;
 use Moose;
 
-has 'label' => ( is       => 'ro',
-                 isa      => 'SyntacticCategoryLabel',
-                 required => 1 );
+with 'Syntactic::Practice::Roles::Category';
+with 'MooseX::Log::Log4perl';
 
-has 'name' => ( is => 'ro',
-                isa => 'Str');
+my $rs_class = 'Symbol';
+has 'resultset' => ( is       => 'ro',
+                     isa      => "Syntactic::Practice::Schema::Result::$rs_class",
+                     lazy     => 1,
+                     init_arg => undef,
+                     builder  => '_build_resultset' );
 
-has 'optional' => ( is      => 'ro',
-                    isa     => 'Bool',
-                    default => '0' );
+has 'rule' => ( is      => 'ro',
+                isa     => 'Syntactic::Practice::Grammar::Rule',
+                lazy    => 1,
+                builder => '_build_rule' );
 
-has 'repeat' => ( is      => 'ro',
-                  isa     => 'Bool',
-                  default => '0' );
+sub _build_resultset {
+  my ( $self ) = @_;
+  my $cond = {};
+  die 'Rule was not specified for symbol [' . $self->label . ']'
+    unless ( exists $self->{rule} );
+  Syntactic::Practice::Util->get_schema->resultset( $rs_class )->search(
+                          { rule  => $self->rule->resultset,
+                            label => $self->label,
+                          },
+                          { prefetch => [ 'target', { 'symbols' => ['cat'] } ] }
+  );
+}
 
-has 'is_terminal' => ( is => 'ro',
-                       isa => 'Bool',
-                       required => 1
-                     );
+sub _build_rule {
+  my( $self ) = @_;
+  return $_[0]->resultset->rule;
+}
 
-around 'new' => sub {
-  my ( $orig, $self, @arg ) = @_;
+sub repeat {
+  return $_[0]->resultset->rpt;
+}
 
-  my $obj = $self->$orig( @arg );
+sub optional {
+  return $_[0]->resultset->optional;
+}
 
-  return $obj;
-};
+sub position {
+  return $_[0]->resultset->position;
+}
 
 sub as_string {
   my ( $self ) = @_;
@@ -43,5 +70,15 @@ sub as_string {
   return $str;
 }
 
+has logger => ( is       => 'ro',
+                isa      => 'Log::Log4perl::Logger',
+                lazy     => 1,
+                builder  => '_build_logger',
+                init_arg => undef );
+
+sub _build_logger {
+  return Log::Log4perl->get_logger( 'grammar.symbol' );
+}
+
 no Moose;
-__PACKAGE__->meta->make_immutable();
+__PACKAGE__->meta->make_immutable( inline_constructor => 0 );

@@ -69,7 +69,10 @@ sub _build_name {
   my ( $self ) = @_;
   $self->label . $self->_numTrees( { label => $self->label } );
 }
-sub _build_topos { $_[0]->{daughters}->[-1]->topos }
+sub _build_topos {
+  my( $self) = @_;
+  ref $self->{daughters} eq 'ARRAY' ? $self->daughters->[-1]->topos : $self->frompos + 1
+}
 sub _build_depth { $_[0]->mother->depth + 1 }
 
 around 'daughters' => sub {
@@ -107,28 +110,14 @@ sub _numTrees {
   scalar @{ $treeByLabel{ $arg->{label} } };
 }
 
-around 'new' => sub {
-  my ( $orig, $self, @arg ) = @_;
+sub BUILD {
+  my ( $self ) = @_;
 
-  my $class = ref $self ? ref $self : $self;
-
-  my $arg;
-  if ( scalar @arg == 1 && ref $arg[0] eq 'HASH' ) {
-    $arg = $arg[0];
-  } else {
-    $arg = {@arg};
-  }
-
-  my $obj = $self->$orig( %$arg );
-
-  $obj->_registerTree();
-
-  return $obj;
+  $self->_registerTree();
 };
 
 sub cmp {
-  my ( $self, $other ) = @_;
-
+  my($self,$other) = @_;
   my $result;
   foreach my $attribute ( qw(label frompos topos ) ) {
     $result = $self->$attribute cmp $other->$attribute;
@@ -147,7 +136,7 @@ sub cmp {
   }
 
   return 0;
-}
+};
 
 sub as_forest {
   my ( $self ) = @_;

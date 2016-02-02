@@ -35,11 +35,11 @@ sub _build_resultset {
   my $cond = {};
   die 'Rule was not specified for symbol [' . $self->label . ']'
     unless ( exists $self->{rule} );
-  Syntactic::Practice::Util->get_schema->resultset( $rs_class )->search(
-                          { rule  => $self->rule->resultset,
-                            label => $self->label,
+  Syntactic::Practice::Util->get_schema->resultset( $rs_class )->find(
+                          { 'rule.id'  => $self->rule->resultset->id,
+                            'cat.label' => $self->label,
                           },
-                          { prefetch => [ 'target', { 'symbols' => ['cat'] } ] }
+                          { prefetch => [ 'rule', 'cat' ] }
   );
 }
 

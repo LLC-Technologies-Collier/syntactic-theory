@@ -17,6 +17,8 @@ use Syntactic::Practice::Types;
 
 use Moose;
 
+with 'MooseX::Log::Log4perl';
+
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
 my $rs_class     = 'SyntacticCategory';
 

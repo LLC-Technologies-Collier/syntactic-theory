@@ -4,8 +4,8 @@ use Syntactic::Practice::Tree::Abstract::Terminal;
 use Syntactic::Practice::Types;
 use Moose;
 
-extends 'Syntactic::Practice::Tree::Abstract::Terminal';
-with 'Syntactic::Practice::Roles::Category::Terminal';
+extends 'Syntactic::Practice::Tree::Abstract';
+with 'Syntactic::Practice::Roles::Category';
 
 has '+daughters' => ( is      => 'ro',
                       isa     => 'Undefined',

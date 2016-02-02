@@ -82,7 +82,7 @@ subtype 'WordList', as 'ArrayRef[Word]';
 coerce 'WordList', from 'Word', via { [$_] };
 
 subtype 'SymbolList',
-  as 'ArrayRef[Syntactic::Practice::Schema::Result::Symbol]',
+  as 'ArrayRef[Syntactic::Practice::Grammar::Symbol]',
   where { scalar @$_ > 0 },
   message { "The Symbol list you provided, [@$_], was empty" };
 

@@ -1,1 +1,10 @@
-git-core perl-doc libdbix-class-schema-loader-perl mariadb-server libdbd-mysql-perl libgetopt-long-descriptive-perl libdata-compare-perl libdigest-sha-perl texlive-latex-base libdatetime-perl texlive-pictures texlive-latex-extra config-any libmoosex-params-validate-perl perltidy
+perl-doc perl-base perltidy
+libtest-exception-perl
+libmoose-perl libmoosex-params-validate-perl libmoosex-log-log4perl-perl
+libdbix-class-perl libdbix-class-schema-loader-perl
+libgetopt-long-descriptive-perl libconfig-any-perl
+libdatetime-perl
+liblog-log4perl-perl libdbd-mysql-perl
+mariadb-server
+git-core
+texlive-latex-base texlive-pictures texlive-latex-extra

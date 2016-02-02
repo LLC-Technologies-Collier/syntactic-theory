@@ -2,6 +2,7 @@ package Syntactic::Practice::Roles::Category::Terminal;
 
 use Syntactic::Practice::Util;
 use Syntactic::Practice::Types;
+use Syntactic::Practice::Grammar::Category::Terminal;
 
 use Moose::Role;
 use namespace::autoclean;
@@ -18,8 +19,8 @@ has 'category' => ( is   => 'ro',
                     lazy => 1,
                     builder => '_build_category' );
 
-sub _build_is_terminal { 1 }
-sub _build_is_start    { 0 }
+sub _build_is_terminal  { 1 }
+sub _build_is_start     { 0 }
 sub _get_category_class { 'Category::Terminal' }
 
 no Moose::Role;

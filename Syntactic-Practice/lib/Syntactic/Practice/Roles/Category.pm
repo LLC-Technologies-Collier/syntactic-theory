@@ -1,6 +1,7 @@
 package Syntactic::Practice::Roles::Category;
 
 use Syntactic::Practice::Util;
+use Syntactic::Practice::Grammar::Category;
 
 use Moose::Role;
 use namespace::autoclean;

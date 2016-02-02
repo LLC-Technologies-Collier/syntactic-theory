@@ -5,37 +5,16 @@ use Syntactic::Practice::Types;
 use Moose;
 
 extends 'Syntactic::Practice::Tree::Terminal';
+with 'Syntactic::Practice::Roles::Category::Terminal';
 
 has '+daughters' => ( is      => 'ro',
                       isa     => 'Undefined',
-                      default => undef, );
+                      lazy    => 1,
+                      builder => '_build_daughters', );
 
-has '+symbol' => ( is       => 'ro',
-                   isa      => 'Syntactic::Practice::Grammar::Symbol',
-                   required => 0, );
-
-has '+frompos' => ( is       => 'ro',
-                    isa      => 'PositiveInt',
-                    required => 1, );
-
-sub _build_topos {
-  return $_[0]->frompos;
-}
-
-around 'new' => sub {
-  my ( $orig, $self, @arg ) = @_;
-
-  my $arg;
-  if ( scalar @arg == 1 && ref $arg[0] eq 'HASH' ) {
-    $arg = $arg[0];
-  } else {
-    $arg = {@arg};
-  }
-  $arg->{topos}     = $arg->{frompos};
-  $arg->{name}      = $arg->{label} . "0";
-  $arg->{daughters} = undef;
-  $self->$orig( %$arg );
-};
+sub _build_daughters { undef }
+sub _build_topos     { $_[0]->frompos }
+sub _build_name      { $_[0]->label . '0' }
 
 no Moose;
 

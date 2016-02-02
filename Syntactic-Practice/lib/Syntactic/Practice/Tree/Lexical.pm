@@ -3,14 +3,11 @@ package Syntactic::Practice::Tree::Lexical;
 use Syntactic::Practice::Types;
 use Moose;
 
+with 'Syntactic::Practice::Roles::Category::Terminal';
 extends 'Syntactic::Practice::Tree::Terminal';
 
-has '+label' => ( is       => 'ro',
-                  isa      => 'LexicalCategoryLabel',
-                  required => 0, );
-
 has '+daughters' => ( is => 'ro',
-                      isa => 'Syntactic::Practice::Schema::Result::Lexeme',
+                      isa => 'Syntactic::Practice::Lexicon::Lexeme',
                       required => 1
                     );
 

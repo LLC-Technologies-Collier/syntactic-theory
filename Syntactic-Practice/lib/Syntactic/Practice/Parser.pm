@@ -24,7 +24,6 @@ use Syntactic::Practice::Tree::Abstract::Start;
 use Syntactic::Practice::Tree::Null;
 use Syntactic::Practice::Tree::Lexical;
 use Syntactic::Practice::Tree::Phrasal;
-use Syntactic::Practice::Grammar;
 use Syntactic::Practice::Grammar::RuleSet;
 
 use Moose;
@@ -51,13 +50,6 @@ has sentence => (
                 is  => 'ro',
                 isa => 'ArrayRef[Syntactic::Practice::Tree::Abstract::Lexical]',
                 required => 1, );
-
-has grammar => (
-  is      => 'ro',
-  isa     => 'Syntactic::Practice::Grammar',
-  default => sub {
-    Syntactic::Practice::Grammar->new( { locale => 'en_US.UTF-8' } );
-  } );
 
 sub ingest {
   my ( $self, %opt ) =

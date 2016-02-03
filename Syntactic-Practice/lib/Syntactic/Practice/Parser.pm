@@ -38,22 +38,23 @@ has sentence => (
                 isa => 'ArrayRef[Syntactic::Practice::Tree::Abstract::Lexical]',
                 required => 1, );
 
-method ingest ( PositiveInt :$frompos,
-                Syntactic::Practice::Grammar::Category :$category ){
+method ingest( PositiveInt : $frompos,
+               Syntactic::Practice::Grammar::Category : $category ) {
 
   my $num_words = scalar( @{ $self->sentence } );
-  if ( $frompos >= $num_words ) {
+    if ( $frompos >= $num_words ) {
     $self->log->debug( "insufficient words to license phrase" );
     return ();
   }
 
   my %tree_params = ( frompos => $frompos,
-                      depth   => $self->{current_depth} );
+                      depth   => $self->{current_depth}
+  );
 
-  my $msg_format =
+    my $msg_format =
     'Word [%s] depth [%d], position [%d] with label [%s] not licensed by [%s]';
-  my ( $target );
-  if ( $category->is_start ) {
+    my ( $target );
+    if ( $category->is_start ) {
     $target                = Syntactic::Practice::Tree::Abstract::Start->new();
     $tree_params{label}    = $target->label;
     $tree_params{depth}    = $target->depth;
@@ -82,21 +83,20 @@ method ingest ( PositiveInt :$frompos,
     $target = Syntactic::Practice::Tree::Abstract::Phrasal->new( %tree_params );
   }
 
-  my $rule =
-    Syntactic::Practice::Grammar::Rule->new( category => $category );
+  my $rule = Syntactic::Practice::Grammar::Rule->new( category => $category );
 
-  unless ( $rule ) {
+    unless ( $rule ) {
     $self->log->debug(
                     sprintf( 'bad rule identifier: [%s]!', $category->label ) );
     return ();
   }
 
-  my @error        = ();
-  my @return       = ();
-  my $all_terminal = 1;
-  my @factor_list;
-  my $terms = $rule->terms;
-  foreach my $term ( @$terms[0] ) {    # TODO: support multiple terms
+  my @error          = ();
+    my @return       = ();
+    my $all_terminal = 1;
+    my @factor_list;
+    my $terms = $rule->terms;
+    foreach my $term ( @$terms[0] ) {    # TODO: support multiple terms
     my ( $s ) = $term->factors;
     my @d_list = ( [] );
     my @factor = @$s;
@@ -121,8 +121,7 @@ method ingest ( PositiveInt :$frompos,
           my $tree = $class->new( depth   => $self->{current_depth} + 1,
                                   frompos => $curpos,
                                   %mother,
-                                  label   => $factor->label,
-                                );
+                                  label => $factor->label, );
           $optAtPos->{$curpos} = $tree;
           splice( @d_list, $dlist_idx, 0, ( [ @$daughter, $tree ] ) );
           next;
@@ -172,11 +171,11 @@ method ingest ( PositiveInt :$frompos,
   }
 
   return ( @return ) if scalar @return;
-  $self->log->debug( @error );
-  return ();
-}
+    $self->log->debug( @error );
+    return ();
+               }
 
-sub BUILD {
+  sub BUILD {
   my ( $self ) = @_;
 
   $self->{current_depth} = 0;

@@ -22,7 +22,11 @@ sub get_schema {
 }
 
 sub get_start_category_labels {
-  return( qw( S ) );
+  qw( S );
+}
+
+sub get_syntactic_category_types {
+  qw(Phrasal Lexical);
 }
 
 no Moose;

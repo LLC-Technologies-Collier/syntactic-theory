@@ -2,7 +2,7 @@ package Syntactic::Practice::Grammar::Symbol;
 
 =head1 NAME
 
-Syntactic::Practice::Grammar::Symbol - Symbols on the right hand side of rules
+Syntactic::Practice::Grammar::Symbol - Symbols on the right hand side of terms
 
 =head1 VERSION
 
@@ -29,27 +29,27 @@ has 'resultset' => ( is       => 'ro',
                      init_arg => undef,
                      builder  => '_build_resultset' );
 
-has 'rule' => ( is      => 'ro',
-                isa     => 'Syntactic::Practice::Grammar::Rule',
+has 'term' => ( is      => 'ro',
+                isa     => 'Syntactic::Practice::Grammar::Term',
                 lazy    => 1,
-                builder => '_build_rule' );
+                builder => '_build_term' );
 
 sub _build_resultset {
   my ( $self ) = @_;
   my $cond = {};
-  die 'Rule was not specified for symbol [' . $self->label . ']'
-    unless ( exists $self->{rule} );
+  die 'Term was not specified for symbol [' . $self->label . ']'
+    unless ( exists $self->{term} );
   Syntactic::Practice::Util->get_schema->resultset( $rs_class )->find(
-                          { 'rule.id'  => $self->rule->resultset->id,
+                          { 'term.id'  => $self->term->resultset->id,
                             'cat.label' => $self->label,
                           },
-                          { prefetch => [ 'rule', 'cat' ] }
+                          { prefetch => [ 'term', 'cat' ] }
   );
 }
 
-sub _build_rule {
+sub _build_term {
   my( $self ) = @_;
-  return $_[0]->resultset->rule;
+  return $_[0]->resultset->term;
 }
 
 sub repeat {

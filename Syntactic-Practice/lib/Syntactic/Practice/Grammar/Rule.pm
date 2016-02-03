@@ -2,7 +2,7 @@ package Syntactic::Practice::Grammar::Rule;
 
 =head1 NAME
 
-Syntactic::Practice::Rule - Grammar rule
+Syntactic::Practice::Rule - Grammar Rule
 
 =head1 VERSION
 
@@ -12,52 +12,49 @@ Version 0.01
 
 our $VERSION = '0.01';
 
+use Moose::Util::TypeConstraints;
+
 use Moose;
+use namespace::autoclean;
+
+subtype Rule => as 'Syntactic::Practice::Grammar::Rule';
 
 with 'Syntactic::Practice::Roles::Category';
 
-has 'symbols' => ( is      => 'ro',
-                   isa     => 'SymbolList',
-                   lazy    => 1,
-                   builder => '_build_symbols' );
+my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
+my $rs_class     = 'PhraseStructureRule';
+my $term_class   = 'Syntactic::Practice::Grammar::Term';
 
-sub _build_symbols {
+has 'resultset' => ( is       => 'ro',
+                     isa      => 'DBIx::Class::ResultSet',
+                     lazy     => 1,
+                     init_arg => undef,
+                     builder  => '_build_resultset' );
+
+has 'terms' => ( is       => 'ro',
+                 isa      => "ArrayRef[Syntactic::Practice::Grammar::Term]",
+                 lazy     => 1,
+                 init_arg => undef,
+                 builder  => '_build_terms' );
+
+sub _build_resultset {
+  Syntactic::Practice::Util->get_schema->resultset( $rs_class )
+    ->search( { 'target.label' => $_[0]->category->label },
+              { prefetch => [ 'target', { 'symbols' => ['cat'] } ] } );
+}
+
+sub _build_terms {
   my ( $self ) = @_;
+  my $rs = $self->resultset;
   my @return;
-  my $symbols = $self->resultset->symbols;
-  while ( my $sym = $symbols->next ) {
-    my $class = 'Syntactic::Practice::Grammar::Symbol';
-    my $label = $sym->cat->label;
-    if ( $label eq 'S' ) {
-      $class .= '::Start';
-    } else {
-      $class .= '::' . ucfirst $sym->cat->ctype;
-    }
-    $return[ $sym->position - 1 ] =
-      $class->new( rule => $self, label => $label );
+  while ( my $resultset = $rs->next ) {
+    push( @return,
+          $term_class->new( label     => $self->label,
+                            category  => $self->category,
+                            resultset => $resultset
+          ) );
   }
-
   return \@return;
 }
 
-sub cmp {
-  $_[0]->resultset->id <=> $_[1]->resultset->id
-};
-
-my $rs_class = 'PhraseStructureRule';
-has 'resultset' => ( is   => 'ro',
-                     isa  => "Syntactic::Practice::Schema::Result::$rs_class",
-                     required => 1 );
-
-sub as_string {
-  my ( $self ) = @_;
-
-  my $label = $self->label;
-  my $str = "$label -> " . join( " ", map { $_->as_string } $self->symbols );
-
-  return $str;
-
-}
-
-no Moose;
 __PACKAGE__->meta->make_immutable();

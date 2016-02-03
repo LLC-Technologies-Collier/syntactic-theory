@@ -10,20 +10,30 @@ BEGIN {
   use_ok( 'Syntactic::Practice::Grammar::Rule' ) || print "Bail out!\n";
 }
 
+my $num_tests = 1;
+
 diag(
 "Testing Syntactic::Practice::Grammar::Rule $Syntactic::Practice::Grammar::Rule::VERSION, Perl $], $^X"
 );
 
-my $ruleset = Syntactic::Practice::Grammar::RuleSet->new(label => 'S');
+my $rule = Syntactic::Practice::Grammar::Rule->new(label => 'S');
 
-ok( $ruleset, 'RuleSet instantiated' );
+ok( $rule, 'Rule instantiated' );
+$num_tests++;
 
-my $rules = $ruleset->rules;
+my $terms = $rule->terms;
 
-ok( $rules, 'ruleset->rules returns rules' );
+ok( $terms, 'rule->terms returns terms' );
+$num_tests++;
 
-isa_ok( $rules, 'ARRAY' );
+isa_ok( $terms, 'ARRAY', 'terms' );
+$num_tests++;
 
-ok( $rules->[0], 'First rule is defined' );
+my $num_terms = scalar @$terms;
 
-done_testing( 5 );
+foreach my $term ( @$terms ){
+  ok( $term, 'Term is defined' );
+  $num_tests++;
+}
+
+done_testing( $num_tests );

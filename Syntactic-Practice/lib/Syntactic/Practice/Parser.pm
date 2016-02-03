@@ -82,10 +82,10 @@ method ingest ( PositiveInt :$frompos,
     $target = Syntactic::Practice::Tree::Abstract::Phrasal->new( %tree_params );
   }
 
-  my $ruleSet =
-    Syntactic::Practice::Grammar::RuleSet->new( category => $category );
+  my $rule =
+    Syntactic::Practice::Grammar::Rule->new( category => $category );
 
-  unless ( $ruleSet ) {
+  unless ( $rule ) {
     $self->log->debug(
                     sprintf( 'bad rule identifier: [%s]!', $category->label ) );
     return ();
@@ -95,9 +95,9 @@ method ingest ( PositiveInt :$frompos,
   my @return       = ();
   my $all_terminal = 1;
   my @symbol_list;
-  my $rules = $ruleSet->rules;
-  foreach my $rule ( @$rules[0] ) {    # TODO: support multiple rules
-    my ( $s ) = $rule->symbols;
+  my $terms = $rule->terms;
+  foreach my $term ( @$terms[0] ) {    # TODO: support multiple terms
+    my ( $s ) = $term->symbols;
     my @d_list = ( [] );
     my @symbol = @$s;
     foreach my $symbol ( @symbol ) {

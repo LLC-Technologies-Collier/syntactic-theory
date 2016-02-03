@@ -16,13 +16,13 @@ diag(
 "Testing Syntactic::Practice::Grammar::Symbol $Syntactic::Practice::Grammar::Symbol::VERSION, Perl $], $^X"
 );
 
-my $ruleset = Syntactic::Practice::Grammar::RuleSet->new( label => 'NP' );
+my $rule = Syntactic::Practice::Grammar::Rule->new( label => 'NP' );
 
-my $rules = $ruleset->rules;
+my $terms = $rule->terms;
 
-my $rule = $rules->[0];
+my $term = $terms->[0];
 
-my @symbols = @{ $rule->symbols };
+my @symbols = @{ $term->symbols };
 
 ok( scalar @symbols, q{symbols returned for rule 'NP'} );
 
@@ -30,12 +30,12 @@ my $symbol = $symbols[0];
 
 ok( $symbol, 'first symbol is defined' ) or diag Data::Dumper::Dumper \@symbols;
 
-my $sym_rule = $symbol->rule;
+my $sym_term = $symbol->term;
 
-isa_ok( $sym_rule, 'Syntactic::Practice::Grammar::Rule' );
+isa_ok( $sym_term, 'Syntactic::Practice::Grammar::Term' );
 
 my $label = $symbol->label;
 
-ok( $sym_rule->cmp( $rule ) == 0, q{symbol's rule is as expected} );
+ok( $sym_term->cmp( $term ) == 0, q{symbol's term is as expected} );
 
 done_testing( 5 );

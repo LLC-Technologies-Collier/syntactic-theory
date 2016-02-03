@@ -12,6 +12,8 @@ Version 0.01
 
 our $VERSION = '0.01';
 
+use Moose::Util::TypeConstraints;
+
 use Moose;
 
 use namespace::autoclean;

@@ -1,8 +1,9 @@
 /* Copyright 2015, 2016 Collier Technologies LLC */
 DELETE FROM lexeme;
 
-DELETE FROM symbol;
-DELETE FROM phrase_structure_rule;
+DELETE FROM rule;
+DELETE FROM term;
+DELETE FROM factor;
 DELETE FROM _phrasal_category;
 DELETE FROM phrasal_category_writer;
 DELETE FROM _lexical_category;
@@ -49,76 +50,93 @@ SET @S_catid    = ( SELECT catid_by_label('S') );
 
 
 /* PP -> P NP */
-INSERT INTO phrase_structure_rule ( target_id, symb_count )
-                           VALUES ( @PP_catid, 2 );
+INSERT INTO rule ( target_id ) VALUES ( @PP_catid );
 SET @this_rule_id = LAST_INSERT_ID();
-INSERT INTO symbol ( rule_id,       position, cat_id,             optional, rpt )
-            VALUES ( @this_rule_id, '1',      @preposition_catid, 0,        0 ),
-                   ( @this_rule_id, '2',      @NP_catid,          0,        0 );
+
+INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 2 );
+SET @this_term_id = LAST_INSERT_ID();
+
+INSERT INTO factor ( term_id,       position, optional, rpt )
+            VALUES ( @this_term_id, '1',      0,        0 ),
+                   ( @this_term_id, '2',      0,        0 );
 
 /* VP -> V (NP) (PP) */
-INSERT INTO phrase_structure_rule ( target_id, symb_count )
-                           VALUES ( @VP_catid, 3 );
+INSERT INTO rule ( target_id ) VALUES ( @VP_catid );
 SET @this_rule_id = LAST_INSERT_ID();
-INSERT INTO symbol ( rule_id,       position, cat_id,      optional, rpt )
-            VALUES ( @this_rule_id, '1',      @verb_catid, 0,        0 ),
-                   ( @this_rule_id, '2',      @NP_catid,   1,        0 ),
-                   ( @this_rule_id, '3',      @PP_catid,   1,        0 );
 
-/* VP -> VP PP */
-INSERT INTO phrase_structure_rule ( target_id, symb_count )
-                           VALUES ( @VP_catid, 2 );
-SET @this_rule_id = LAST_INSERT_ID();
-INSERT INTO symbol ( rule_id,       position, cat_id,    optional, rpt )
-            VALUES ( @this_rule_id, '1',      @VP_catid, 0,        0 ),
-                   ( @this_rule_id, '2',      @PP_catid, 0,        0 );
+INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 3 );
+SET @this_term_id = LAST_INSERT_ID();
+
+INSERT INTO factor ( term_id,       position, optional, rpt )
+            VALUES ( @this_term_id, '1',      0,        0 ),
+                   ( @this_term_id, '2',      1,        0 ),
+                   ( @this_term_id, '3',      1,        0 );
+
+INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 2 );
+SET @this_term_id = LAST_INSERT_ID();
+
+INSERT INTO factor ( term_id,       position, optional, rpt )
+            VALUES ( @this_term_id, '1',      0,        0 ),
+                   ( @this_term_id, '2',      0,        0 );
 
 /* NOM -> N */
-INSERT INTO phrase_structure_rule ( target_id, symb_count )
-                           VALUES ( @NOM_catid, 1 );
+INSERT INTO rule ( target_id ) VALUES ( @NOM_catid );
 SET @this_rule_id = LAST_INSERT_ID();
-INSERT INTO symbol ( rule_id,       position, cat_id,      optional, rpt )
-            VALUES ( @this_rule_id, '1',      @noun_catid, 1,        0 );
+
+INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 1 );
+SET @this_term_id = LAST_INSERT_ID();
+
+INSERT INTO factor ( term_id,       position, optional, rpt )
+            VALUES ( @this_term_id, '1',      1,        0 );
 
 /* NOM -> NOM PP */
-INSERT INTO phrase_structure_rule ( target_id, symb_count )
-                           VALUES ( @NOM_catid, 2 );
-SET @this_rule_id = LAST_INSERT_ID();
-INSERT INTO symbol ( rule_id,       position, cat_id,     optional, rpt )
-            VALUES ( @this_rule_id, '1',      @NOM_catid, 0,        0 ),
-                   ( @this_rule_id, '2',      @PP_catid,  0,        0 );
+INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 2 );
+SET @this_term_id = LAST_INSERT_ID();
+
+INSERT INTO factor ( term_id,       position, optional, rpt )
+            VALUES ( @this_term_id, '1',      0,        0 ),
+                   ( @this_term_id, '2',      0,        0 );
 
 /* NP -> (D) A* N P* */
-INSERT INTO phrase_structure_rule ( target_id, symb_count )
-                           VALUES ( @NP_catid, 4 );
+INSERT INTO rule ( target_id ) VALUES ( @NP_catid );
 SET @this_rule_id = LAST_INSERT_ID();
-INSERT INTO symbol ( rule_id,       position, cat_id,            optional, rpt )
-            VALUES ( @this_rule_id, '1',      @determiner_catid, 1,        0 ),
-                   ( @this_rule_id, '2',      @adjective_catid,  1,        1 ),
-                   ( @this_rule_id, '3',      @noun_catid,       0,        0 ),
-                   ( @this_rule_id, '4',      @PP_catid,         1,        1 );
+
+INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 4 );
+SET @this_term_id = LAST_INSERT_ID();
+
+INSERT INTO factor ( term_id,       position, optional, rpt )
+            VALUES ( @this_term_id, '1',      1,        0 ),
+                   ( @this_term_id, '2',      1,        1 ),
+                   ( @this_term_id, '3',      0,        0 ),
+                   ( @this_term_id, '4',      1,        1 );
 
 /* NP -> (D) NOM */
-INSERT INTO phrase_structure_rule ( target_id, symb_count )
-                           VALUES ( @NP_catid, 2 );
-SET @this_rule_id = LAST_INSERT_ID();
-INSERT INTO symbol ( rule_id,       position, cat_id,            optional, rpt )
-            VALUES ( @this_rule_id, '1',      @determiner_catid, 1,        0 ),
-                   ( @this_rule_id, '2',      @NOM_catid,        0,        0 );
+INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 2 );
+SET @this_term_id = LAST_INSERT_ID();
+
+INSERT INTO factor ( term_id,       position, optional, rpt )
+            VALUES ( @this_term_id, '1',      1,        0 ),
+                   ( @this_term_id, '2',      0,        0 );
 
 /* X -> X+ CONJ X */
-INSERT INTO phrase_structure_rule ( target_id, symb_count )
-                           VALUES ( @X_catid, 3 );
+INSERT INTO rule ( target_id ) VALUES ( @X_catid );
 SET @this_rule_id = LAST_INSERT_ID();
-INSERT INTO symbol ( rule_id,       position, cat_id,      optional, rpt )
-            VALUES ( @this_rule_id, '1',      @X_catid,    0,        1 ),
-                   ( @this_rule_id, '2',      @CONJ_catid, 0,        0 ),
-                   ( @this_rule_id, '3',      @X_catid,    0,        0 );
+
+INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 3 );
+SET @this_term_id = LAST_INSERT_ID();
+
+INSERT INTO factor ( term_id,       position, optional, rpt )
+            VALUES ( @this_term_id, '1',      0,        1 ),
+                   ( @this_term_id, '2',      0,        0 ),
+                   ( @this_term_id, '3',      0,        0 );
 
 /* S -> NP VP */
-INSERT INTO phrase_structure_rule ( target_id, symb_count )
-                           VALUES ( ( SELECT catid_by_label('S') ), 2 );
+INSERT INTO rule ( target_id ) VALUES ( @S_catid );
 SET @this_rule_id = LAST_INSERT_ID();
-INSERT INTO symbol ( rule_id,       position, cat_id,    optional, rpt )
-            VALUES ( @this_rule_id, '1',      @NP_catid, 0,        0 ),
-                   ( @this_rule_id, '2',      @VP_catid, 0,        0 );
+
+INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 2 );
+SET @this_term_id = LAST_INSERT_ID();
+
+INSERT INTO factor ( term_id,       position, optional, rpt )
+            VALUES ( @this_term_id, '1',      0,        0 ),
+                   ( @this_term_id, '2',      0,        0 );

@@ -33,7 +33,7 @@ sub cmp {
 };
 
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace;
-my $rs_class = 'PhraseStructureRule';
+my $rs_class = 'Term';
 has 'resultset' => ( is   => 'ro',
                      isa  => "${rs_namespace}::$rs_class",
                      required => 1 );

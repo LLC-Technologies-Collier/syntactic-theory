@@ -22,7 +22,7 @@ subtype Rule => as 'Syntactic::Practice::Grammar::Rule';
 with 'Syntactic::Practice::Roles::Category';
 
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
-my $rs_class     = 'PhraseStructureRule';
+my $rs_class     = 'Rule';
 my $term_class   = 'Syntactic::Practice::Grammar::Term';
 
 has 'resultset' => ( is       => 'ro',

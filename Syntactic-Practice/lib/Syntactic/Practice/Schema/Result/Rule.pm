@@ -1,12 +1,12 @@
 use utf8;
-package Syntactic::Practice::Schema::Result::PhraseStructureRule;
+package Syntactic::Practice::Schema::Result::Rule;
 
 # Created by DBIx::Class::Schema::Loader
 # DO NOT MODIFY THE FIRST PART OF THIS FILE
 
 =head1 NAME
 
-Syntactic::Practice::Schema::Result::PhraseStructureRule - Rules indicating valid grammatical constructs
+Syntactic::Practice::Schema::Result::Rule - Rules indicating valid grammatical constructs
 
 =cut
 
@@ -15,11 +15,11 @@ use warnings;
 
 use base 'DBIx::Class::Core';
 
-=head1 TABLE: C<phrase_structure_rule>
+=head1 TABLE: C<rule>
 
 =cut
 
-__PACKAGE__->table("phrase_structure_rule");
+__PACKAGE__->table("rule");
 
 =head1 ACCESSORS
 
@@ -35,11 +35,6 @@ __PACKAGE__->table("phrase_structure_rule");
   is_foreign_key: 1
   is_nullable: 0
 
-=head2 symb_count
-
-  data_type: 'integer'
-  is_nullable: 0
-
 =cut
 
 __PACKAGE__->add_columns(
@@ -47,8 +42,6 @@ __PACKAGE__->add_columns(
   { data_type => "integer", is_auto_increment => 1, is_nullable => 0 },
   "target_id",
   { data_type => "integer", is_foreign_key => 1, is_nullable => 0 },
-  "symb_count",
-  { data_type => "integer", is_nullable => 0 },
 );
 
 =head1 PRIMARY KEY
@@ -65,24 +58,24 @@ __PACKAGE__->set_primary_key("id");
 
 =head1 RELATIONS
 
-=head2 factors
+=head2 terms
 
 Type: has_many
 
-Related object: L<Syntactic::Practice::Schema::Result::Factor>
+Related object: L<Syntactic::Practice::Schema::Result::Term>
 
 =cut
 
 __PACKAGE__->has_many(
-  "factors",
-  "Syntactic::Practice::Schema::Result::Factor",
+  "terms",
+  "Syntactic::Practice::Schema::Result::Term",
   { "foreign.rule_id" => "self.id" },
   { cascade_copy => 0, cascade_delete => 0 },
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-02-03 12:32:46
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:KW0sRwkN8F62SYhwUStcJg
+# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-02-03 13:09:02
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:b3SgM6AfS1Al3mXlIzKS2Q
 
 
 =head1 RELATIONS

@@ -102,26 +102,9 @@ __PACKAGE__->add_unique_constraint("label", ["label"]);
 
 __PACKAGE__->add_unique_constraint("longname", ["longname"]);
 
-=head1 RELATIONS
 
-=head2 factors
-
-Type: has_many
-
-Related object: L<Syntactic::Practice::Schema::Result::Factor>
-
-=cut
-
-__PACKAGE__->has_many(
-  "factors",
-  "Syntactic::Practice::Schema::Result::Factor",
-  { "foreign.cat_id" => "self.id" },
-  { cascade_copy => 0, cascade_delete => 0 },
-);
-
-
-# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-02-03 12:32:46
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:Kz9JSxCnajhCxEDpBMuoFQ
+# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-02-03 13:09:02
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:8hx7opcbhj9Hb/d4aEz15Q
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

@@ -116,10 +116,11 @@ method ingest ( PositiveInt :$frompos,
         next if $curpos == $num_words;
 
         if ( $optional && !exists $optAtPos->{$curpos} ) {
+          my %mother = ( $symbol->is_start ? () : ( mother => $target ) );
           my $class = 'Syntactic::Practice::Tree::Abstract::Null';
           my $tree = $class->new( depth   => $self->{current_depth} + 1,
                                   frompos => $curpos,
-                                  mother  => $target,
+                                  %mother,
                                   label   => $symbol->label,
                                 );
           $optAtPos->{$curpos} = $tree;

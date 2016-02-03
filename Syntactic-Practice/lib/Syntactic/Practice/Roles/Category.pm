@@ -13,15 +13,15 @@ has 'label' => ( is      => 'ro',
                  lazy    => 1,
                  builder => '_build_label' );
 
+has 'category' => ( is      => 'ro',
+                    isa     => 'SyntacticCategory',
+                    lazy    => 1,
+                    builder => '_build_category' );
+
 has 'name' => ( is      => 'ro',
                 isa     => 'Str',
                 lazy    => 1,
                 builder => '_build_name' );
-
-has 'category' => ( is      => 'ro',
-                    isa     => $category_class,
-                    lazy    => 1,
-                    builder => '_build_category' );
 
 has 'is_start' => ( is      => 'ro',
                     isa     => 'Bool',
@@ -71,6 +71,11 @@ has 'label' => ( is      => 'rw',
                  lazy    => 1,
                  builder => '_build_label' );
 
+has 'category' => ( is   => 'ro',
+                    isa  => 'AbstractCategory',
+                    lazy => 1,
+                    builder => '_build_category' );
+
 has 'is_start' => ( is      => 'rw',
                     isa     => 'Bool',
                     lazy    => 1,
@@ -97,7 +102,7 @@ has 'label' => ( is      => 'ro',
                  builder => '_build_label' );
 
 has 'category' => ( is   => 'ro',
-                    isa  => 'Syntactic::Practice::Grammar::Category::Terminal',
+                    isa  => 'TerminalCategory',
                     lazy => 1,
                     builder => '_build_category' );
 
@@ -119,6 +124,12 @@ has 'label' => ( is      => 'ro',
                  lazy    => 1,
                  builder => '_build_label' );
 
+has 'category' => (is  => 'ro',
+                   isa => 'LexicalCategory',
+                   lazy    => 1,
+                   builder => '_build_category' );
+
+
 sub _get_category_class { 'Category::Lexical' }
 
 1;
@@ -136,7 +147,7 @@ has 'label' => ( is      => 'ro',
                  builder => '_build_label' );
 
 has 'category' => (is  => 'ro',
-                   isa => 'Syntactic::Practice::Grammar::Category::NonTerminal',
+                   isa => 'NonTerminalCategory',
                    lazy    => 1,
                    builder => '_build_category' );
 
@@ -159,7 +170,7 @@ has 'label' => ( is      => 'ro',
                  builder => '_build_label' );
 
 has 'category' => ( is   => 'ro',
-                    isa  => 'Syntactic::Practice::Grammar::Category::Phrasal',
+                    isa  => 'PhrasalCategory',
                     lazy => 1,
                     builder => '_build_category' );
 
@@ -178,6 +189,11 @@ has 'label' => ( is      => 'ro',
                  isa     => 'StartCategoryLabel',
                  lazy    => 1,
                  builder => '_build_label' );
+
+has 'category' => ( is   => 'ro',
+                    isa  => 'NonTerminalCategory',
+                    lazy => 1,
+                    builder => '_build_category' );
 
 has 'is_start' => ( is      => 'ro',
                     isa     => 'True',

@@ -19,7 +19,7 @@ use namespace::autoclean;
 
 with 'Syntactic::Practice::Roles::Category';
 
-subtype 'Tree', as 'Syntactic::Practice::Tree';
+subtype Tree => as 'Syntactic::Practice::Tree';
 
 has name => ( is       => 'ro',
               isa      => 'Str',
@@ -137,19 +137,19 @@ sub cmp {
 sub as_forest {
   my ( $self ) = @_;
 
-  my $indent = " " x ( $self->depth * 2 );
+  my $indent = ' ' x ( $self->depth * 2 );
 
-  my $output   = "";
+  my $output   = '';
   my @daughter = $self->daughters;
 
   $output .= "${indent}[" . $self->label . "\n${indent}";
   if ( $self->symbol->is_terminal ) {
     $output .= "[@daughter] ";
   } else {
-    $output .= join( "", map { $_->as_forest() } @daughter );
+    $output .= join( '', map { $_->as_forest() } @daughter );
     $output .= "\n${indent}";
   }
-  $output .= "]";
+  $output .= ']';
   return $output;
 }
 
@@ -157,8 +157,8 @@ sub as_text {
   my ( $self ) = @_;
   my $output = '';
 
-  my $indent = " " x ( $self->depth * 2 );
-  $output .= $indent . $self->name . ": ";
+  my $indent = ' ' x ( $self->depth * 2 );
+  $output .= $indent . $self->name . ': ';
 
   my @daughter = map { $_ // '(null)' } $self->daughters;
   return "${output}@daughter\n" if $self->is_terminal;
@@ -185,7 +185,7 @@ use namespace::autoclean;
 extends 'Syntactic::Practice::Tree';
 with 'Syntactic::Practice::Roles::Category::NonTerminal';
 
-subtype 'NonTerminalTree', as 'Syntactic::Practice::Tree::NonTerminal';
+subtype NonTerminalTree => as 'Syntactic::Practice::Tree::NonTerminal';
 
 __PACKAGE__->meta->make_immutable;
 
@@ -199,7 +199,7 @@ use namespace::autoclean;
 extends 'Syntactic::Practice::Tree::NonTerminal';
 with 'Syntactic::Practice::Roles::Category::Terminal';
 
-subtype 'PhrasalTree', as 'Syntactic::Practice::Tree::Phrasal';
+subtype PhrasalTree => as 'Syntactic::Practice::Tree::Phrasal';
 
 __PACKAGE__->meta->make_immutable;
 
@@ -213,7 +213,7 @@ use namespace::autoclean;
 extends 'Syntactic::Practice::Tree::NonTerminal';
 with 'Syntactic::Practice::Roles::Category::Start';
 
-subtype 'StartTree', as 'Syntactic::Practice::Tree::Start';
+subtype StartTree => as 'Syntactic::Practice::Tree::Start';
 
 has mother => ( is      => 'ro',
                 isa     => 'Undefined',
@@ -235,7 +235,7 @@ use namespace::autoclean;
 extends 'Syntactic::Practice::Tree';
 with 'Syntactic::Practice::Roles::Category::Terminal';
 
-subtype 'TerminalTree', as 'Syntactic::Practice::Tree::Terminal';
+subtype TerminalTree => as 'Syntactic::Practice::Tree::Terminal';
 
 sub _build_topos { $_[0]->frompos + 1 }
 
@@ -251,7 +251,7 @@ use namespace::autoclean;
 extends 'Syntactic::Practice::Tree::Terminal';
 with 'Syntactic::Practice::Roles::Category::Terminal';
 
-subtype 'LexicalTree', as 'Syntactic::Practice::Tree::Lexical';
+subtype LexicalTree => as 'Syntactic::Practice::Tree::Lexical';
 
 has '+daughters' => ( is => 'ro',
                       isa => 'Syntactic::Practice::Lexicon::Lexeme',
@@ -270,7 +270,7 @@ use namespace::autoclean;
 extends 'Syntactic::Practice::Tree::Terminal';
 with 'Syntactic::Practice::Roles::Category::Terminal';
 
-subtype 'NullTree', as 'Syntactic::Practice::Tree::Null';
+subtype NullTree => as 'Syntactic::Practice::Tree::Null';
 
 has '+label' => ( is      => 'ro',
                   isa     => 'SyntacticCategoryLabel',
@@ -304,18 +304,18 @@ use namespace::autoclean;
 with 'Syntactic::Practice::Roles::Category';
 extends 'Syntactic::Practice::Tree';
 
-subtype 'AbstractTree', as "Tree | Syntactic::Practice::Tree::Abstract";
+subtype AbstractTree => as 'Tree | Syntactic::Practice::Tree::Abstract';
 
 has daughters => ( is       => 'rw',
-                   isa      => "ArrayRef[AbstractTree]",
+                   isa      => 'ArrayRef[AbstractTree]',
                    required => 0, );
 
 has mother => ( is       => 'rw',
-                isa      => ( "AbstractTree" ),
+                isa      => ( 'AbstractTree' ),
                 required => 0 );
 
 has sisters => ( is       => 'rw',
-                 isa      => ( "ArrayRef[AbstractTree]" ),
+                 isa      => ( 'ArrayRef[AbstractTree]' ),
                  required => 0 );
 
 has frompos => ( is       => 'rw',

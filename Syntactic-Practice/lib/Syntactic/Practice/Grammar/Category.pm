@@ -18,7 +18,7 @@ use Moose;
 
 with 'MooseX::Log::Log4perl';
 
-subtype 'Category', as 'Syntactic::Practice::Grammar::Category';
+subtype SyntacticCategory => as 'Syntactic::Practice::Grammar::Category';
 
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
 my $rs_class     = 'SyntacticCategory';
@@ -93,7 +93,8 @@ use Moose::Util::TypeConstraints;
 
 use Moose;
 
-subtype 'TerminalCategory', as 'Syntactic::Practice::Grammar::Category::Terminal';
+subtype TerminalCategory => as
+  'Syntactic::Practice::Grammar::Category::Terminal';
 
 extends 'Syntactic::Practice::Grammar::Category';
 
@@ -120,7 +121,7 @@ use Moose::Util::TypeConstraints;
 
 use Moose;
 
-subtype 'LexicalCategory', as 'Syntactic::Practice::Grammar::Category::Lexical';
+subtype LexicalCategory => as 'Syntactic::Practice::Grammar::Category::Lexical';
 
 extends 'Syntactic::Practice::Grammar::Category::Terminal';
 
@@ -138,7 +139,8 @@ use Moose::Util::TypeConstraints;
 
 use Moose;
 
-subtype 'NonTerminalCategory', as 'Syntactic::Practice::Grammar::Category::NonTerminal';
+subtype NonTerminalCategory => as
+  'Syntactic::Practice::Grammar::Category::NonTerminal';
 
 extends 'Syntactic::Practice::Grammar::Category';
 
@@ -163,7 +165,7 @@ use Moose::Util::TypeConstraints;
 
 use Moose;
 
-subtype 'PhrasalCategory', as 'Syntactic::Practice::Grammar::Category::Phrasal';
+subtype PhrasalCategory => as 'Syntactic::Practice::Grammar::Category::Phrasal';
 
 extends 'Syntactic::Practice::Grammar::Category::NonTerminal';
 
@@ -174,7 +176,6 @@ has '+label' => ( is      => 'ro',
 
 sub _get_category_class { 'Category::Phrasal' }
 
-
 no Moose;
 __PACKAGE__->meta->make_immutable;
 
@@ -184,7 +185,7 @@ use Moose::Util::TypeConstraints;
 
 use Moose;
 
-subtype 'StartCategory', as 'Syntactic::Practice::Grammar::Category::Start';
+subtype StartCategory => as 'Syntactic::Practice::Grammar::Category::Start';
 
 extends 'Syntactic::Practice::Grammar::Category::NonTerminal';
 

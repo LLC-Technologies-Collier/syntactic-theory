@@ -17,7 +17,7 @@ use Moose::Util::TypeConstraints;
 use Moose;
 use namespace::autoclean;
 
-subtype 'Symbol', as 'Syntactic::Practice::Grammar::Symbol';
+subtype Symbol => as 'Syntactic::Practice::Grammar::Symbol';
 
 with 'Syntactic::Practice::Roles::Category';
 with 'MooseX::Log::Log4perl';
@@ -83,7 +83,7 @@ use Moose::Util::TypeConstraints;
 use Moose;
 use namespace::autoclean;
 
-subtype 'NonTerminalSymbol', as 'Syntactic::Practice::Grammar::Symbol::NonTerminal';
+subtype NonTerminalSymbol => as 'Syntactic::Practice::Grammar::Symbol::NonTerminal';
 
 extends 'Syntactic::Practice::Grammar::Symbol';
 with 'Syntactic::Practice::Roles::Category::NonTerminal';
@@ -97,7 +97,7 @@ use Moose::Util::TypeConstraints;
 use Moose;
 use namespace::autoclean;
 
-subtype 'PhrasalSymbol', as 'Syntactic::Practice::Grammar::Symbol::Phrasal';
+subtype PhrasalSymbol => as 'Syntactic::Practice::Grammar::Symbol::Phrasal';
 
 extends 'Syntactic::Practice::Grammar::Symbol::NonTerminal';
 with 'Syntactic::Practice::Roles::Category::Phrasal';
@@ -111,7 +111,7 @@ use Moose::Util::TypeConstraints;
 use Moose;
 use namespace::autoclean;
 
-subtype 'TerminalSymbol', as 'Syntactic::Practice::Grammar::Symbol::Terminal';
+subtype TerminalSymbol => as 'Syntactic::Practice::Grammar::Symbol::Terminal';
 
 extends 'Syntactic::Practice::Grammar::Symbol';
 with 'Syntactic::Practice::Roles::Category::Terminal';
@@ -125,7 +125,7 @@ use Moose::Util::TypeConstraints;
 use Moose;
 use namespace::autoclean;
 
-subtype 'LexicalSymbol', as 'Syntactic::Practice::Grammar::Symbol::Lexical';
+subtype LexicalSymbol => as 'Syntactic::Practice::Grammar::Symbol::Lexical';
 
 extends 'Syntactic::Practice::Grammar::Symbol::Terminal';
 with 'Syntactic::Practice::Roles::Category::Lexical';
@@ -138,7 +138,7 @@ use Moose::Util::TypeConstraints;
 use Moose;
 use namespace::autoclean;
 
-subtype 'LiteralSymbol', as 'Syntactic::Practice::Grammar::Symbol::Literal';
+subtype LiteralSymbol => as 'Syntactic::Practice::Grammar::Symbol::Literal';
 
 extends 'Syntactic::Practice::Grammar::Symbol::Terminal';
 

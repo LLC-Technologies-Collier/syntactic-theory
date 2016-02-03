@@ -63,17 +63,22 @@ sub _build_name {
   my ( $self ) = @_;
   $self->label . $self->_numTrees( { label => $self->label } );
 }
+
 sub _build_topos {
-  my( $self) = @_;
-  ref $self->{daughters} eq 'ARRAY' ? $self->daughters->[-1]->topos : $self->frompos + 1
+  my ( $self ) = @_;
+  ref $self->{daughters} eq 'ARRAY'
+    ? $self->daughters->[-1]->topos
+    : $self->frompos + 1;
 }
 sub _build_depth { $_[0]->mother->depth + 1 }
 
 around 'daughters' => sub {
   my ( $orig, $self ) = @_;
 
-  warn Data::Dumper::Dumper( { label => $self->label,
-                               daughters => $self->{daughters} } );
+  warn Data::Dumper::Dumper(
+                             { label     => $self->label,
+                               daughters => $self->{daughters}
+                             } );
 
   return ( ref $self->{daughters} eq 'ARRAY'
            ? @{ $self->{daughters} }
@@ -113,7 +118,7 @@ sub BUILD {
 }
 
 sub cmp {
-  my($self,$other) = @_;
+  my ( $self, $other ) = @_;
   my $result;
   foreach my $attribute ( qw(label frompos topos ) ) {
     $result = $self->$attribute cmp $other->$attribute;
@@ -132,7 +137,7 @@ sub cmp {
   }
 
   return 0;
-};
+}
 
 sub as_forest {
   my ( $self ) = @_;
@@ -163,12 +168,13 @@ sub as_text {
   my @daughter = map { $_ // '(null)' } $self->daughters;
   return "${output}@daughter\n" if $self->is_terminal;
 
-  my $ref = ref $self;
+  my $ref   = ref $self;
   my $label = $self->label;
   warn "$ref - $label";
 
-  $output .= join( ' ', map { ref $_ ? $_->label : $_ } @daughter ) . "\n${indent}";
-  $output .= join( '',  map { ref $_ ? $_->as_text : $_ } @daughter );
+  $output .=
+    join( ' ', map { ref $_ ? $_->label : $_ } @daughter ) . "\n${indent}";
+  $output .= join( '', map { ref $_ ? $_->as_text : $_ } @daughter );
 
   return $output;
 }
@@ -253,10 +259,9 @@ with 'Syntactic::Practice::Roles::Category::Terminal';
 
 subtype LexicalTree => as 'Syntactic::Practice::Tree::Lexical';
 
-has '+daughters' => ( is => 'ro',
-                      isa => 'Syntactic::Practice::Lexicon::Lexeme',
-                      required => 1
-                    );
+has '+daughters' => ( is       => 'ro',
+                      isa      => 'Syntactic::Practice::Lexicon::Lexeme',
+                      required => 1 );
 
 __PACKAGE__->meta->make_immutable;
 
@@ -292,7 +297,6 @@ sub _build_topos     { $_[0]->frompos }
 sub _build_name      { $_[0]->label . '0' }
 
 __PACKAGE__->meta->make_immutable;
-
 
 package Syntactic::Practice::Tree::Abstract;
 
@@ -386,7 +390,8 @@ use Moose;
 extends 'Syntactic::Practice::Tree::Abstract';
 with 'Syntactic::Practice::Roles::Category::NonTerminal';
 
-subtype 'NonTerminalAbstractTree', as 'NonTerminalTree | Syntactic::Practice::Tree::Abstract::NonTerminal';
+subtype 'NonTerminalAbstractTree',
+  as 'NonTerminalTree | Syntactic::Practice::Tree::Abstract::NonTerminal';
 
 no Moose;
 __PACKAGE__->meta->make_immutable;
@@ -400,11 +405,13 @@ use Moose;
 extends 'Syntactic::Practice::Tree::Abstract::NonTerminal';
 with 'Syntactic::Practice::Roles::Category::Phrasal';
 
-subtype 'PhrasalAbstractTree', as 'PhrasalTree | Syntactic::Practice::Tree::Abstract::Phrasal';
+subtype 'PhrasalAbstractTree',
+  as 'PhrasalTree | Syntactic::Practice::Tree::Abstract::Phrasal';
 
 no Moose;
 
 __PACKAGE__->meta->make_immutable;
+
 package Syntactic::Practice::Tree::Abstract::Start;
 
 use Moose::Util::TypeConstraints;
@@ -414,7 +421,8 @@ use Moose;
 extends 'Syntactic::Practice::Tree::Abstract::NonTerminal';
 with 'Syntactic::Practice::Roles::Category::Start';
 
-subtype 'StartAbstractTree', as 'StartTree | Syntactic::Practice::Tree::Abstract::Start';
+subtype 'StartAbstractTree',
+  as 'StartTree | Syntactic::Practice::Tree::Abstract::Start';
 
 has mother => ( is      => 'ro',
                 isa     => 'Undefined',
@@ -447,7 +455,8 @@ use Moose;
 extends 'Syntactic::Practice::Tree::Abstract::Terminal';
 with 'Syntactic::Practice::Roles::Category::Terminal';
 
-subtype 'NullAbstractTree', as 'NullTree | Syntactic::Practice::Tree::Abstract::Null';
+subtype 'NullAbstractTree',
+  as 'NullTree | Syntactic::Practice::Tree::Abstract::Null';
 
 has '+label' => ( is      => 'ro',
                   isa     => 'SyntacticCategoryLabel',
@@ -481,12 +490,12 @@ use Moose;
 extends 'Syntactic::Practice::Tree::Abstract::Terminal';
 with 'Syntactic::Practice::Roles::Category::Lexical';
 
-subtype 'LexicalAbstractTree', as 'LexicalTree | Syntactic::Practice::Tree::Abstract::Lexical';
+subtype 'LexicalAbstractTree',
+  as 'LexicalTree | Syntactic::Practice::Tree::Abstract::Lexical';
 
-has '+daughters' => ( is => 'ro',
-                      isa => 'Syntactic::Practice::Lexicon::Lexeme',
-                      required => 1
-                    );
+has '+daughters' => ( is       => 'ro',
+                      isa      => 'Syntactic::Practice::Lexicon::Lexeme',
+                      required => 1 );
 
 no Moose;
 __PACKAGE__->meta->make_immutable;

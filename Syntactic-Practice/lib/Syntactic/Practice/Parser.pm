@@ -38,8 +38,8 @@ has sentence => (
                 isa => 'ArrayRef[Syntactic::Practice::Tree::Abstract::Lexical]',
                 required => 1, );
 
-method ingest( PositiveInt : $frompos,
-               Syntactic::Practice::Grammar::Category : $category ) {
+method ingest( PositiveInt :$frompos,
+               SyntacticCategory :$category ) {
 
   my $num_words = scalar( @{ $self->sentence } );
     if ( $frompos >= $num_words ) {
@@ -193,26 +193,19 @@ around 'ingest' => sub {
 
   my @result = $self->$orig( @arg );
 
+  my $num_tokens = scalar @{ $self->sentence };
+
   if ( $self->{current_depth}-- == 0 ) {
 
-    # only return the trees with all factors ingested
-    my $num_factors = scalar @{ $self->sentence };
-    my @num_ingested;
-    my @complete;
-    foreach my $tree ( @result ) {
-      push( @num_ingested, ( $tree->daughters )[-1]->topos );
-      push( @complete, $tree ) if ( $num_ingested[-1] == $num_factors );
-    }
+    # only execute this code after final ingestion
 
-    unless ( $self->allow_partial ) {
-      my $msg_fmt =
-          'Incomplete parse;  '
-        . '%d factors in input, only [ %d ] factors were ingested';
-      unless ( scalar @complete ) {
-        $self->log->debug(
-                          sprintf( $msg_fmt, $num_factors, $num_ingested[0] ) );
-        return ();
-      }
+    my @complete = grep { $_->topos == $num_tokens } @result;
+
+    if ( !scalar @complete && !$self->allow_partial ) {
+      $self->log->debug(
+               sprintf( 'Incomplete parse;  Fewer than %d tokens were ingested',
+                        $num_tokens ) );
+      return ();
     }
 
     return @complete;

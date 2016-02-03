@@ -5,15 +5,11 @@ use warnings FATAL => 'all';
 use Test::More;
 use Test::Exception;
 
+use Syntactic::Practice;
+
 BEGIN {
   use_ok( 'Syntactic::Practice::Grammar::Category' ) || print "Bail out!\n";
 }
-
-use Syntactic::Practice::Grammar::Category::Terminal;
-use Syntactic::Practice::Grammar::Category::NonTerminal;
-use Syntactic::Practice::Grammar::Category::Lexical;
-use Syntactic::Practice::Grammar::Category::Phrasal;
-use Syntactic::Practice::Grammar::Category::Start;
 
 my $ns = 'Syntactic::Practice::Grammar::Category';
 

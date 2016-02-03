@@ -131,6 +131,7 @@ extends 'Syntactic::Practice::Grammar::Symbol::Terminal';
 with 'Syntactic::Practice::Roles::Category::Lexical';
 
 __PACKAGE__->meta->make_immutable;
+
 package Syntactic::Practice::Grammar::Symbol::Literal;
 
 use Moose::Util::TypeConstraints;

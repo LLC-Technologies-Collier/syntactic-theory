@@ -94,17 +94,17 @@ method ingest ( PositiveInt :$frompos,
   my @error        = ();
   my @return       = ();
   my $all_terminal = 1;
-  my @symbol_list;
+  my @factor_list;
   my $terms = $rule->terms;
   foreach my $term ( @$terms[0] ) {    # TODO: support multiple terms
-    my ( $s ) = $term->symbols;
+    my ( $s ) = $term->factors;
     my @d_list = ( [] );
-    my @symbol = @$s;
-    foreach my $symbol ( @symbol ) {
-      my $symbol_label = $symbol->label;
+    my @factor = @$s;
+    foreach my $factor ( @factor ) {
+      my $factor_label = $factor->label;
 
-      my $optional = $symbol->optional;
-      my $repeat   = $symbol->repeat;
+      my $optional = $factor->optional;
+      my $repeat   = $factor->repeat;
 
       my $optAtPos = {};
 
@@ -116,12 +116,12 @@ method ingest ( PositiveInt :$frompos,
         next if $curpos == $num_words;
 
         if ( $optional && !exists $optAtPos->{$curpos} ) {
-          my %mother = ( $symbol->is_start ? () : ( mother => $target ) );
+          my %mother = ( $factor->is_start ? () : ( mother => $target ) );
           my $class = 'Syntactic::Practice::Tree::Abstract::Null';
           my $tree = $class->new( depth   => $self->{current_depth} + 1,
                                   frompos => $curpos,
                                   %mother,
-                                  label   => $symbol->label,
+                                  label   => $factor->label,
                                 );
           $optAtPos->{$curpos} = $tree;
           splice( @d_list, $dlist_idx, 0, ( [ @$daughter, $tree ] ) );
@@ -130,12 +130,12 @@ method ingest ( PositiveInt :$frompos,
 
         splice( @d_list, $dlist_idx, 1 );
         my @tree = $self->ingest( frompos  => $curpos,
-                                  category => $symbol->category );
+                                  category => $factor->category );
 
         unless ( @tree ) {
           my $msg_format =
             'Failed to ingest sentence starting at position [%d] as [%s]';
-          $self->log->debug( sprintf( $msg_format, $curpos, $symbol->label ) );
+          $self->log->debug( sprintf( $msg_format, $curpos, $factor->label ) );
           $dlist_idx--;
           next;
         }
@@ -196,22 +196,22 @@ around 'ingest' => sub {
 
   if ( $self->{current_depth}-- == 0 ) {
 
-    # only return the trees with all symbols ingested
-    my $num_symbols = scalar @{ $self->sentence };
+    # only return the trees with all factors ingested
+    my $num_factors = scalar @{ $self->sentence };
     my @num_ingested;
     my @complete;
     foreach my $tree ( @result ) {
       push( @num_ingested, ( $tree->daughters )[-1]->topos );
-      push( @complete, $tree ) if ( $num_ingested[-1] == $num_symbols );
+      push( @complete, $tree ) if ( $num_ingested[-1] == $num_factors );
     }
 
     unless ( $self->allow_partial ) {
       my $msg_fmt =
           'Incomplete parse;  '
-        . '%d symbols in input, only [ %d ] symbols were ingested';
+        . '%d factors in input, only [ %d ] factors were ingested';
       unless ( scalar @complete ) {
         $self->log->debug(
-                          sprintf( $msg_fmt, $num_symbols, $num_ingested[0] ) );
+                          sprintf( $msg_fmt, $num_factors, $num_ingested[0] ) );
         return ();
       }
     }

@@ -22,7 +22,7 @@ use Syntactic::Practice::Grammar::Category;
 use Syntactic::Practice::Roles::Category;
 use Syntactic::Practice::Grammar::Rule;
 use Syntactic::Practice::Grammar::Term;
-use Syntactic::Practice::Grammar::Symbol;
+use Syntactic::Practice::Grammar::Factor;
 use Syntactic::Practice::Tree;
 use Syntactic::Practice::Lexicon;
 use Syntactic::Practice::Lexicon::Homograph;

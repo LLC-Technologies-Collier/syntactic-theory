@@ -65,24 +65,24 @@ __PACKAGE__->set_primary_key("id");
 
 =head1 RELATIONS
 
-=head2 symbols
+=head2 factors
 
 Type: has_many
 
-Related object: L<Syntactic::Practice::Schema::Result::Symbol>
+Related object: L<Syntactic::Practice::Schema::Result::Factor>
 
 =cut
 
 __PACKAGE__->has_many(
-  "symbols",
-  "Syntactic::Practice::Schema::Result::Symbol",
+  "factors",
+  "Syntactic::Practice::Schema::Result::Factor",
   { "foreign.rule_id" => "self.id" },
   { cascade_copy => 0, cascade_delete => 0 },
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-01-28 19:15:29
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:XRNJMwBJMpjAHHVOFx7Cqg
+# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-02-03 12:32:46
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:KW0sRwkN8F62SYhwUStcJg
 
 
 =head1 RELATIONS

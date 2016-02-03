@@ -1,12 +1,12 @@
 use utf8;
-package Syntactic::Practice::Schema::Result::Symbol;
+package Syntactic::Practice::Schema::Result::Factor;
 
 # Created by DBIx::Class::Schema::Loader
 # DO NOT MODIFY THE FIRST PART OF THIS FILE
 
 =head1 NAME
 
-Syntactic::Practice::Schema::Result::Symbol
+Syntactic::Practice::Schema::Result::Factor
 
 =head1 DESCRIPTION
 
@@ -19,11 +19,11 @@ use warnings;
 
 use base 'DBIx::Class::Core';
 
-=head1 TABLE: C<symbol>
+=head1 TABLE: C<factor>
 
 =cut
 
-__PACKAGE__->table("symbol");
+__PACKAGE__->table("factor");
 
 =head1 ACCESSORS
 
@@ -140,8 +140,8 @@ __PACKAGE__->belongs_to(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-01-28 19:04:46
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:orN54JIcrCoV9bpQJLB+BQ
+# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-02-03 12:32:46
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:PffzEq6hFeTi0mo1Fd2YHw
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

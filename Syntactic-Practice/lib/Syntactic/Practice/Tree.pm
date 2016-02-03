@@ -143,7 +143,7 @@ sub as_forest {
   my @daughter = $self->daughters;
 
   $output .= "${indent}[" . $self->label . "\n${indent}";
-  if ( $self->symbol->is_terminal ) {
+  if ( $self->factor->is_terminal ) {
     $output .= "[@daughter] ";
   } else {
     $output .= join( '', map { $_->as_forest() } @daughter );

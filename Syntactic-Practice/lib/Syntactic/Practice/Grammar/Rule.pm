@@ -40,7 +40,7 @@ has 'terms' => ( is       => 'ro',
 sub _build_resultset {
   Syntactic::Practice::Util->get_schema->resultset( $rs_class )
     ->search( { 'target.label' => $_[0]->category->label },
-              { prefetch => [ 'target', { 'symbols' => ['cat'] } ] } );
+              { prefetch => [ 'target', { 'factors' => ['cat'] } ] } );
 }
 
 sub _build_terms {

@@ -4,17 +4,17 @@ use Moose;
 
 with 'Syntactic::Practice::Roles::Category';
 
-has 'symbols' => ( is      => 'ro',
-                   isa     => 'SymbolList',
+has 'factors' => ( is      => 'ro',
+                   isa     => 'FactorList',
                    lazy    => 1,
-                   builder => '_build_symbols' );
+                   builder => '_build_factors' );
 
-sub _build_symbols {
+sub _build_factors {
   my ( $self ) = @_;
   my @return;
-  my $symbols = $self->resultset->symbols;
-  while ( my $sym = $symbols->next ) {
-    my $class = 'Syntactic::Practice::Grammar::Symbol';
+  my $factors = $self->resultset->factors;
+  while ( my $sym = $factors->next ) {
+    my $class = 'Syntactic::Practice::Grammar::Factor';
     my $label = $sym->cat->label;
     if ( $label eq 'S' ) {
       $class .= '::Start';
@@ -42,7 +42,7 @@ sub as_string {
   my ( $self ) = @_;
 
   my $label = $self->label;
-  my $str = "$label -> " . join( " ", map { $_->as_string } $self->symbols );
+  my $str = "$label -> " . join( " ", map { $_->as_string } $self->factors );
 
   return $str;
 

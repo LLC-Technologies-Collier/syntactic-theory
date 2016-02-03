@@ -83,9 +83,9 @@ subtype 'Word', as 'Str', where {
 subtype 'WordList', as 'ArrayRef[Word]';
 coerce 'WordList', from 'Word', via { [$_] };
 
-subtype 'SymbolList', as 'ArrayRef[Syntactic::Practice::Grammar::Symbol]',
+subtype 'FactorList', as 'ArrayRef[Syntactic::Practice::Grammar::Factor]',
   where { scalar @$_ > 0 },
-  message { "The Symbol list you provided, [@$_], was empty" };
+  message { "The Factor list you provided, [@$_], was empty" };
 
 subtype 'PositiveInt', as 'Int',
   where { $_ >= 0 },

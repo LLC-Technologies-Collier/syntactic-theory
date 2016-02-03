@@ -4,31 +4,11 @@ use strict;
 use warnings FATAL => 'all';
 use Test::More;
 
+use Syntactic::Practice;
+
 BEGIN {
   use_ok( 'Syntactic::Practice::Tree' ) || print "Bail out!\n";
 }
-
-use Syntactic::Practice::Grammar::Category::Terminal;
-use Syntactic::Practice::Grammar::Category::NonTerminal;
-use Syntactic::Practice::Grammar::Category::Lexical;
-use Syntactic::Practice::Grammar::Category::Phrasal;
-use Syntactic::Practice::Grammar::Category::Start;
-
-use Syntactic::Practice::Tree::Terminal;
-use Syntactic::Practice::Tree::NonTerminal;
-use Syntactic::Practice::Tree::Lexical;
-use Syntactic::Practice::Tree::Phrasal;
-use Syntactic::Practice::Tree::Start;
-use Syntactic::Practice::Tree::Null;
-
-use Syntactic::Practice::Tree::Abstract::Terminal;
-use Syntactic::Practice::Tree::Abstract::NonTerminal;
-use Syntactic::Practice::Tree::Abstract::Lexical;
-use Syntactic::Practice::Tree::Abstract::Phrasal;
-use Syntactic::Practice::Tree::Abstract::Start;
-use Syntactic::Practice::Tree::Abstract::Null;
-
-use Syntactic::Practice::Lexicon::Homograph;
 
 my $ns      = 'Syntactic::Practice';
 my $tree_ns = "${ns}::Tree";

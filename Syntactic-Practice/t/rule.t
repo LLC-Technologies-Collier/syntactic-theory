@@ -4,7 +4,7 @@ use strict;
 use warnings FATAL => 'all';
 use Test::More;
 
-use Syntactic::Practice::Grammar::RuleSet;
+use Syntactic::Practice;
 
 BEGIN {
   use_ok( 'Syntactic::Practice::Grammar::Rule' ) || print "Bail out!\n";

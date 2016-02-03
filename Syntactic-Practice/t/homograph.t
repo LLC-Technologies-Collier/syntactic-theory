@@ -4,6 +4,8 @@ use strict;
 use warnings FATAL => 'all';
 use Test::More;
 
+use Syntactic::Practice;
+
 BEGIN {
   use_ok( 'Syntactic::Practice::Lexicon::Homograph' ) || print "Bail out!\n";
 }

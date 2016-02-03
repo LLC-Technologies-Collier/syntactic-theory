@@ -6,7 +6,7 @@ use Test::More;
 
 use Data::Dumper;
 
-use Syntactic::Practice::Grammar::RuleSet;
+use Syntactic::Practice;
 
 BEGIN {
   use_ok( 'Syntactic::Practice::Grammar::Symbol' ) || print "Bail out!\n";

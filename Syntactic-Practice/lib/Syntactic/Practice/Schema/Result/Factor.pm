@@ -44,6 +44,12 @@ __PACKAGE__->table("factor");
   data_type: 'integer'
   is_nullable: 0
 
+=head2 cat_id
+
+  data_type: 'integer'
+  is_foreign_key: 1
+  is_nullable: 0
+
 =head2 optional
 
   data_type: 'tinyint'
@@ -65,6 +71,8 @@ __PACKAGE__->add_columns(
   { data_type => "integer", is_foreign_key => 1, is_nullable => 0 },
   "position",
   { data_type => "integer", is_nullable => 0 },
+  "cat_id",
+  { data_type => "integer", is_foreign_key => 1, is_nullable => 0 },
   "optional",
   { data_type => "tinyint", default_value => 0, is_nullable => 0 },
   "rpt",
@@ -101,6 +109,21 @@ __PACKAGE__->add_unique_constraint("uniq_rule_position", ["term_id", "position"]
 
 =head1 RELATIONS
 
+=head2 cat
+
+Type: belongs_to
+
+Related object: L<Syntactic::Practice::Schema::Result::SyntacticCategory>
+
+=cut
+
+__PACKAGE__->belongs_to(
+  "cat",
+  "Syntactic::Practice::Schema::Result::SyntacticCategory",
+  { id => "cat_id" },
+  { is_deferrable => 1, on_delete => "RESTRICT", on_update => "RESTRICT" },
+);
+
 =head2 term
 
 Type: belongs_to
@@ -117,8 +140,8 @@ __PACKAGE__->belongs_to(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-02-03 13:09:02
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:u8LOzonKx4aE7Ybnd1Z3tw
+# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-02-03 13:22:41
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:KEe1jAlcunE3R3J0z/JChA
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

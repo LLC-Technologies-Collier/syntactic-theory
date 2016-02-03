@@ -3,11 +3,6 @@ package Syntactic::Practice::Roles::Category;
 use Moose::Role;
 use namespace::autoclean;
 
-my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
-
-my $rs_class       = 'Category';
-my $category_class = 'Syntactic::Practice::Grammar::Category';
-
 has 'label' => ( is      => 'ro',
                  isa     => 'SyntacticCategoryLabel',
                  lazy    => 1,
@@ -60,11 +55,6 @@ use Moose::Role;
 use namespace::autoclean;
 
 with 'Syntactic::Practice::Roles::Category';
-
-my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
-
-my $rs_class  = 'SyntacticCategory';
-my $cat_class = 'Syntactic::Practice::Grammar::Category';
 
 has 'label' => ( is      => 'rw',
                  isa     => 'SyntacticCategoryLabel',

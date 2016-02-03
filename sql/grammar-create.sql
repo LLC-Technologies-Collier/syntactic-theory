@@ -30,9 +30,12 @@ CREATE TABLE IF NOT EXISTS factor (
   term_id   INT NOT NULL,
   position  INT NOT NULL,
 
+  cat_id    INT NOT NULL,
+
   optional  TINYINT NOT NULL DEFAULT 0,
   rpt       TINYINT NOT NULL DEFAULT 0, /* short for repeat, but that is a keyword */
 
   CONSTRAINT uniq_rule_position UNIQUE (term_id,position),
-  CONSTRAINT fk_fact_term FOREIGN KEY (term_id) REFERENCES term(id)
+  CONSTRAINT fk_fact_term FOREIGN KEY (term_id) REFERENCES term(id),
+  CONSTRAINT fk_fact_scat FOREIGN KEY (cat_id) REFERENCES syntactic_category(id)
 ) ENGINE=INNODB, COMMENT='Syntactic categories and sequence numbers which make up terms';

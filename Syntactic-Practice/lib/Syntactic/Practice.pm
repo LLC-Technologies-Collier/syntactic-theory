@@ -8,7 +8,7 @@ use Log::Log4perl;
 BEGIN {
   Log::Log4perl->init('log4perl.conf') or die "couldn't init logger: $!";
 
-  my $log = Log::Log4perl->get_logger('syntactic-practice');
+  my $log = Log::Log4perl->get_logger();
   $log->info("Syntactic::Practice startup...");
 };
 

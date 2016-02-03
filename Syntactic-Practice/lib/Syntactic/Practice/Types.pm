@@ -6,8 +6,7 @@ use Moose::Util::TypeConstraints;
 my $schema             = Syntactic::Practice::Util->get_schema();
 my @startCategoryLabel = Syntactic::Practice::Util->get_start_category_labels();
 
-my @args = ( {}, { distinct => 1 } );
-my @SynCatType = qw(Phrasal Lexical);
+my @SynCatType = Syntactic::Practice::Util->get_syntactic_category_types;
 
 enum 'SynCatType', [ map { lc $_ } @SynCatType ];
 
@@ -42,13 +41,15 @@ my %typeMap = (
                 } );
 
 my $msg_format = 'The label you provided, %s, is not a %s';
-foreach my $cat_type ( qw( Syntactic NonTerminal Terminal Phrasal Lexical Start ) ) {
+foreach
+  my $cat_type ( qw( Syntactic NonTerminal Terminal Phrasal Lexical Start ) )
+{
   my @valid_list;
   if ( exists $typeMap{$cat_type}->{rs} ) {
     $categoryLabel{$cat_type} =
       [ map { $_->label }
-        $schema->resultset( $typeMap{$cat_type}->{rs} )->search( @args )->all()
-      ];
+        $schema->resultset( $typeMap{$cat_type}->{rs} )
+        ->search( {}, { distinct => 1 } )->all() ];
   }
 
   my ( $base, $super, $key ) = @{ $typeMap{$cat_type} }{qw( base super key )};
@@ -72,15 +73,17 @@ coerce 'PhrCatLabelList', from 'PhrasalCategoryLabel', via { [$_] };
 
 my $lexeme_rs = $schema->resultset( 'Lexeme' )->search();
 
-subtype 'Word', as 'Str',
-  where { scalar $lexeme_rs->search( { 'LOWER(me.word)' => { 'LIKE' => lc( $_ ) } } )->all() },
-  message { "The word you provided, $_, is not in the lexicon" };
+subtype 'Word', as 'Str', where {
+  scalar $lexeme_rs->search( { 'LOWER(me.word)' => { 'LIKE' => lc( $_ ) } } )
+    ->all();
+}, message {
+  "The word you provided, $_, is not in the lexicon";
+};
 
 subtype 'WordList', as 'ArrayRef[Word]';
 coerce 'WordList', from 'Word', via { [$_] };
 
-subtype 'SymbolList',
-  as 'ArrayRef[Syntactic::Practice::Grammar::Symbol]',
+subtype 'SymbolList', as 'ArrayRef[Syntactic::Practice::Grammar::Symbol]',
   where { scalar @$_ > 0 },
   message { "The Symbol list you provided, [@$_], was empty" };
 

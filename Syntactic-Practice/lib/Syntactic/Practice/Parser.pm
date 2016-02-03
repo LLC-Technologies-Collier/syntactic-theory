@@ -13,6 +13,7 @@ Version 0.01
 our $VERSION = '0.01';
 
 use Moose;
+use MooseX::Method::Signatures;
 
 with 'MooseX::Log::Log4perl';
 
@@ -37,24 +38,16 @@ has sentence => (
                 isa => 'ArrayRef[Syntactic::Practice::Tree::Abstract::Lexical]',
                 required => 1, );
 
-sub ingest {
-  my ( $self, %opt ) =
-    validated_hash(
-           \@_,
-           frompos => { isa => 'PositiveInt', optional => 1, default => 0 },
-           category =>
-             { isa => 'Syntactic::Practice::Grammar::Category', optional => 0 },
-    );
-
-  my ( $from, $category ) = @opt{qw( frompos category )};
+method ingest ( PositiveInt :$frompos,
+                Syntactic::Practice::Grammar::Category :$category ){
 
   my $num_words = scalar( @{ $self->sentence } );
-  if ( $from >= $num_words ) {
+  if ( $frompos >= $num_words ) {
     $self->log->debug( "insufficient words to license phrase" );
     return ();
   }
 
-  my %tree_params = ( frompos => $from,
+  my %tree_params = ( frompos => $frompos,
                       depth   => $self->{current_depth} );
 
   my $msg_format =
@@ -69,7 +62,7 @@ sub ingest {
   } else {
 
     if ( $category->is_terminal ) {
-      $target = $self->sentence->[$from];
+      $target = $self->sentence->[$frompos];
       $target = $target->new( %$target, %tree_params, );
       return $target if ( $target->label eq $category->label );
 
@@ -118,7 +111,7 @@ sub ingest {
       for ( my $dlist_idx = 0; $dlist_idx < scalar @d_list; $dlist_idx++ ) {
         my $daughter = $d_list[$dlist_idx];
 
-        my $curpos = ( scalar @$daughter ? $daughter->[-1]->topos : $from );
+        my $curpos = ( scalar @$daughter ? $daughter->[-1]->topos : $frompos );
 
         next if $curpos == $num_words;
 
@@ -126,7 +119,9 @@ sub ingest {
           my $class = 'Syntactic::Practice::Tree::Abstract::Null';
           my $tree = $class->new( depth   => $self->{current_depth} + 1,
                                   frompos => $curpos,
-                                  mother  => $target );
+                                  mother  => $target,
+                                  label   => $symbol->label,
+                                );
           $optAtPos->{$curpos} = $tree;
           splice( @d_list, $dlist_idx, 0, ( [ @$daughter, $tree ] ) );
           next;
@@ -188,17 +183,6 @@ sub BUILD {
 
 around 'ingest' => sub {
   my ( $orig, $self, @arg ) = @_;
-
-  my ( $s, %opt ) =
-    validated_hash(
-           [ $self, @arg ],
-           frompos => { isa => 'PositiveInt', optional => 1, default => 0 },
-           category =>
-             { isa => 'Syntactic::Practice::Grammar::Category', optional => 1 },
-    );
-
-  my $msg =
-    "calling ingest at depth $self->{current_depth}, position $opt{frompos}";
 
   if ( $self->{current_depth}++ >= $self->max_depth ) {
     --$self->{current_depth};

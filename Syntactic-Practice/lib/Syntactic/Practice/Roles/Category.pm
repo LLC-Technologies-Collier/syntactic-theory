@@ -52,5 +52,152 @@ sub _build_is_terminal  { $_[0]->category->is_terminal }
 sub _build_is_start     { $_[0]->category->is_start }
 sub _get_category_class { 'Category' }
 
-no Moose::Role;
+1;
+
+package Syntactic::Practice::Roles::Category::Abstract;
+
+use Moose::Role;
+use namespace::autoclean;
+
+with 'Syntactic::Practice::Roles::Category';
+
+my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
+
+my $rs_class  = 'SyntacticCategory';
+my $cat_class = 'Syntactic::Practice::Grammar::Category';
+
+has 'label' => ( is      => 'rw',
+                 isa     => 'SyntacticCategoryLabel',
+                 lazy    => 1,
+                 builder => '_build_label' );
+
+has 'is_start' => ( is      => 'rw',
+                    isa     => 'Bool',
+                    lazy    => 1,
+                    builder => '_build_is_start' );
+
+has 'is_terminal' => ( is      => 'rw',
+                       isa     => 'Bool',
+                       lazy    => 1,
+                       builder => '_build_is_terminal' );
+
+
+1;
+
+package Syntactic::Practice::Roles::Category::Terminal;
+
+use Moose::Role;
+use namespace::autoclean;
+
+with 'Syntactic::Practice::Roles::Category';
+
+has 'label' => ( is      => 'ro',
+                 isa     => 'TerminalCategoryLabel',
+                 lazy    => 1,
+                 builder => '_build_label' );
+
+has 'category' => ( is   => 'ro',
+                    isa  => 'Syntactic::Practice::Grammar::Category::Terminal',
+                    lazy => 1,
+                    builder => '_build_category' );
+
+sub _build_is_terminal  { 1 }
+sub _build_is_start     { 0 }
+sub _get_category_class { 'Category::Terminal' }
+
+1;
+
+package Syntactic::Practice::Roles::Category::Lexical;
+
+use Moose::Role;
+use namespace::autoclean;
+
+with 'Syntactic::Practice::Roles::Category::Terminal';
+
+has 'label' => ( is      => 'ro',
+                 isa     => 'LexicalCategoryLabel',
+                 lazy    => 1,
+                 builder => '_build_label' );
+
+sub _get_category_class { 'Category::Lexical' }
+
+1;
+
+package Syntactic::Practice::Roles::Category::NonTerminal;
+
+use Moose::Role;
+use namespace::autoclean;
+
+with 'Syntactic::Practice::Roles::Category';
+
+has 'label' => ( is      => 'ro',
+                 isa     => 'NonTerminalCategoryLabel',
+                 lazy    => 1,
+                 builder => '_build_label' );
+
+has 'category' => (is  => 'ro',
+                   isa => 'Syntactic::Practice::Grammar::Category::NonTerminal',
+                   lazy    => 1,
+                   builder => '_build_category' );
+
+sub _build_is_start     { 0 }
+sub _build_is_terminal  { 0 }
+sub _get_category_class { 'Category::Terminal' }
+
+1;
+
+package Syntactic::Practice::Roles::Category::Phrasal;
+
+use Moose::Role;
+use namespace::autoclean;
+
+with 'Syntactic::Practice::Roles::Category::NonTerminal';
+
+has 'label' => ( is      => 'ro',
+                 isa     => 'PhrasalCategoryLabel',
+                 lazy    => 1,
+                 builder => '_build_label' );
+
+has 'category' => ( is   => 'ro',
+                    isa  => 'Syntactic::Practice::Grammar::Category::Phrasal',
+                    lazy => 1,
+                    builder => '_build_category' );
+
+sub _get_category_class { 'Category::Phrasal' }
+
+1;
+
+package Syntactic::Practice::Roles::Category::Start;
+
+use Moose::Role;
+use namespace::autoclean;
+
+with 'Syntactic::Practice::Roles::Category::NonTerminal';
+
+has 'label' => ( is      => 'ro',
+                 isa     => 'StartCategoryLabel',
+                 lazy    => 1,
+                 builder => '_build_label' );
+
+has 'is_start' => ( is      => 'ro',
+                    isa     => 'True',
+                    lazy    => 1,
+                    builder => '_build_is_start' );
+
+has 'frompos' => ( is       => 'ro',
+                   isa      => 'PositiveInt',
+                   lazy     => 1,
+                   builder  => '_build_frompos',
+                   init_arg => undef );
+
+sub _build_is_start    { 1 }
+sub _build_is_terminal { 0 }
+sub _build_label       { 'S' }
+sub _build_frompos     { 0 }
+sub _build_category {
+  Syntactic::Practice::Grammar::Category::Start->new( label => $_[0]->label );
+}
+
+sub _get_category_class { 'Category::Start' }
+
 1;

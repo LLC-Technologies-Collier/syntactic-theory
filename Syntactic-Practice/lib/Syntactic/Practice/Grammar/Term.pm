@@ -12,16 +12,16 @@ has 'factors' => ( is      => 'ro',
 sub _build_factors {
   my ( $self ) = @_;
   my @return;
-  my $factors = $self->resultset->factors;
-  while ( my $sym = $factors->next ) {
+  my $rs = $self->resultset->factors;
+  while ( my $factor = $rs->next ) {
     my $class = 'Syntactic::Practice::Grammar::Factor';
-    my $label = $sym->cat->label;
+    my $label = $factor->cat->label;
     if ( $label eq 'S' ) {
       $class .= '::Start';
     } else {
-      $class .= '::' . ucfirst $sym->cat->ctype;
+      $class .= '::' . ucfirst $factor->cat->ctype;
     }
-    $return[ $sym->position - 1 ] =
+    $return[ $factor->position - 1 ] =
       $class->new( term => $self, label => $label );
   }
 

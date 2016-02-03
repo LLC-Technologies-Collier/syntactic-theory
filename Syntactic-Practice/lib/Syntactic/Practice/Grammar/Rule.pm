@@ -26,7 +26,7 @@ my $rs_class     = 'Rule';
 my $term_class   = 'Syntactic::Practice::Grammar::Term';
 
 has 'resultset' => ( is       => 'ro',
-                     isa      => 'DBIx::Class::ResultSet',
+                     isa      => 'Syntactic::Practice::Schema::Result::Rule',
                      lazy     => 1,
                      init_arg => undef,
                      builder  => '_build_resultset' );
@@ -39,13 +39,13 @@ has 'terms' => ( is       => 'ro',
 
 sub _build_resultset {
   Syntactic::Practice::Util->get_schema->resultset( $rs_class )
-    ->search( { 'target.label' => $_[0]->category->label },
-              { prefetch => [ 'target', { 'factors' => ['cat'] } ] } );
+    ->find( { 'target.label' => $_[0]->category->label },
+              { prefetch => [ 'target', { 'terms' => { 'factors' => ['cat'] } } ] } );
 }
 
 sub _build_terms {
   my ( $self ) = @_;
-  my $rs = $self->resultset;
+  my $rs = $self->resultset->terms;
   my @return;
   while ( my $resultset = $rs->next ) {
     push( @return,

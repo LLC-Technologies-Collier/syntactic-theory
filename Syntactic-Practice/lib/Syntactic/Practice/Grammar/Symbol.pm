@@ -12,7 +12,12 @@ Version 0.01
 
 our $VERSION = '0.01';
 
+use Moose::Util::TypeConstraints;
+
 use Moose;
+use namespace::autoclean;
+
+subtype 'Symbol', as 'Syntactic::Practice::Grammar::Symbol';
 
 with 'Syntactic::Practice::Roles::Category';
 with 'MooseX::Log::Log4perl';
@@ -69,15 +74,84 @@ sub as_string {
   return $str;
 }
 
-has logger => ( is       => 'ro',
-                isa      => 'Log::Log4perl::Logger',
-                lazy     => 1,
-                builder  => '_build_logger',
-                init_arg => undef );
+__PACKAGE__->meta->make_immutable;
 
-sub _build_logger {
-  return Log::Log4perl->get_logger( 'grammar.symbol' );
+package Syntactic::Practice::Grammar::Symbol::NonTerminal;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+use namespace::autoclean;
+
+subtype 'NonTerminalSymbol', as 'Syntactic::Practice::Grammar::Symbol::NonTerminal';
+
+extends 'Syntactic::Practice::Grammar::Symbol';
+with 'Syntactic::Practice::Roles::Category::NonTerminal';
+
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Grammar::Symbol::Phrasal;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+use namespace::autoclean;
+
+subtype 'PhrasalSymbol', as 'Syntactic::Practice::Grammar::Symbol::Phrasal';
+
+extends 'Syntactic::Practice::Grammar::Symbol::NonTerminal';
+with 'Syntactic::Practice::Roles::Category::Phrasal';
+
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Grammar::Symbol::Terminal;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+use namespace::autoclean;
+
+subtype 'TerminalSymbol', as 'Syntactic::Practice::Grammar::Symbol::Terminal';
+
+extends 'Syntactic::Practice::Grammar::Symbol';
+with 'Syntactic::Practice::Roles::Category::Terminal';
+
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Grammar::Symbol::Lexical;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+use namespace::autoclean;
+
+subtype 'LexicalSymbol', as 'Syntactic::Practice::Grammar::Symbol::Lexical';
+
+extends 'Syntactic::Practice::Grammar::Symbol::Terminal';
+with 'Syntactic::Practice::Roles::Category::Lexical';
+
+__PACKAGE__->meta->make_immutable;
+package Syntactic::Practice::Grammar::Symbol::Literal;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+use namespace::autoclean;
+
+subtype 'LiteralSymbol', as 'Syntactic::Practice::Grammar::Symbol::Literal';
+
+extends 'Syntactic::Practice::Grammar::Symbol::Terminal';
+
+has '+label' => ( is       => 'ro',
+                  isa      => 'Str',
+                  required => 1 );
+
+sub as_string {
+  my ( $self ) = @_;
+
+  my $str = $self->label;
+
+  return qq{"$str"};
 }
 
-no Moose;
-__PACKAGE__->meta->make_immutable;
+__PACKAGE__->meta->make_immutable();

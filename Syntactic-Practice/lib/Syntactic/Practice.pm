@@ -19,32 +19,15 @@ use Syntactic::Practice::Schema;
 use Syntactic::Practice::Util;
 use Syntactic::Practice::Types;
 use Syntactic::Practice::Grammar::Category;
-use Syntactic::Practice::Grammar::Category::Lexical;
-use Syntactic::Practice::Grammar::Category::NonTerminal;
-use Syntactic::Practice::Grammar::Category::Phrasal;
-use Syntactic::Practice::Grammar::Category::Start;
-use Syntactic::Practice::Grammar::Category::Terminal;
+use Syntactic::Practice::Roles::Category;
 use Syntactic::Practice::Grammar::Rule;
 use Syntactic::Practice::Grammar::RuleSet;
 use Syntactic::Practice::Grammar::Symbol;
-use Syntactic::Practice::Grammar::Symbol::Lexical;
-use Syntactic::Practice::Grammar::Symbol::Phrasal;
-use Syntactic::Practice::Grammar::Symbol::Start;
+use Syntactic::Practice::Tree;
 use Syntactic::Practice::Lexicon;
 use Syntactic::Practice::Lexicon::Homograph;
 use Syntactic::Practice::Lexicon::Lexeme;
 use Syntactic::Practice::Lexer;
-use Syntactic::Practice::Tree;
-use Syntactic::Practice::Tree::Abstract::Lexical;
-use Syntactic::Practice::Tree::Abstract::Null;
-use Syntactic::Practice::Tree::Abstract::Phrasal;
-use Syntactic::Practice::Tree::Abstract::Start;
-use Syntactic::Practice::Tree::Abstract::Terminal;
-use Syntactic::Practice::Tree::Lexical;
-use Syntactic::Practice::Tree::Null;
-use Syntactic::Practice::Tree::Phrasal;
-use Syntactic::Practice::Tree::Start;
-use Syntactic::Practice::Tree::Terminal;
 
 
 =head1 NAME

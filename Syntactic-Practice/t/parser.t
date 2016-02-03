@@ -4,8 +4,7 @@ use strict;
 use warnings FATAL => 'all';
 use Test::More;
 
-use Syntactic::Practice::Lexer;
-use Syntactic::Practice::Grammar::Category::Phrasal;
+use Syntactic::Practice;
 
 BEGIN {
   use_ok( 'Syntactic::Practice::Parser' ) || print "Bail out!\n";
@@ -54,6 +53,7 @@ $tree = $tree[0];
 ok( $tree->label eq 'S', 'Parse tree is rooted by an S' );
 is( $tree->frompos, 0, 'from position is 0' ) or diag $tree->frompos;
 is( $tree->topos, 3, 'to position is 3' ) or diag $tree->topos;
+my @daughters = $tree->daughters;
 
 @paragraph = $lexer->scan( 'The big brown dog with fleas watched the birds beside the hunter' );
 

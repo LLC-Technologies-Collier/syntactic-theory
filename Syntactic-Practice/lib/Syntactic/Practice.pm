@@ -12,11 +12,10 @@ BEGIN {
   $log->info("Syntactic::Practice startup...");
 };
 
-use MooseX::Params::Validate;
-use Moose::Util::TypeConstraints;
 use Carp;
 use Data::Dumper;
 
+use Syntactic::Practice::Schema;
 use Syntactic::Practice::Util;
 use Syntactic::Practice::Types;
 use Syntactic::Practice::Grammar::Category;
@@ -34,7 +33,7 @@ use Syntactic::Practice::Grammar::Symbol::Start;
 use Syntactic::Practice::Lexicon;
 use Syntactic::Practice::Lexicon::Homograph;
 use Syntactic::Practice::Lexicon::Lexeme;
-use Syntactic::Practice::Schema;
+use Syntactic::Practice::Lexer;
 use Syntactic::Practice::Tree;
 use Syntactic::Practice::Tree::Abstract::Lexical;
 use Syntactic::Practice::Tree::Abstract::Null;

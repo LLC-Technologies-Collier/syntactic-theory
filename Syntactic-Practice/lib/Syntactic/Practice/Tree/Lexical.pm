@@ -1,9 +1,13 @@
 package Syntactic::Practice::Tree::Lexical;
 
+use Moose::Util::TypeConstraints;
+
 use Moose;
 
-with 'Syntactic::Practice::Roles::Category::Terminal';
 extends 'Syntactic::Practice::Tree::Terminal';
+with 'Syntactic::Practice::Roles::Category::Terminal';
+
+subtype 'LexicalTree', as 'Syntactic::Practice::Tree::Lexical';
 
 has '+daughters' => ( is => 'ro',
                       isa => 'Syntactic::Practice::Lexicon::Lexeme',

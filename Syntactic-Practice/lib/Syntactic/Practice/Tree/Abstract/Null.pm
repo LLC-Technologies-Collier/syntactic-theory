@@ -1,9 +1,13 @@
 package Syntactic::Practice::Tree::Abstract::Null;
 
+use Moose::Util::TypeConstraints;
+
 use Moose;
 
 extends 'Syntactic::Practice::Tree::Abstract::Terminal';
 with 'Syntactic::Practice::Roles::Category::Terminal';
+
+subtype 'NullAbstractTree', as 'NullTree | Syntactic::Practice::Tree::Abstract::Null';
 
 has '+label' => ( is      => 'ro',
                   isa     => 'SyntacticCategoryLabel',

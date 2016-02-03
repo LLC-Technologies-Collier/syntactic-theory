@@ -20,8 +20,7 @@ use namespace::autoclean;
 
 with 'Syntactic::Practice::Roles::Category';
 
-subtype 'MotherValue',
-  as 'Syntactic::Practice::Tree | Syntactic::Practice::Grammar::Symbol::Start';
+subtype 'Tree', as 'Syntactic::Practice::Tree';
 
 has name => ( is       => 'ro',
               isa      => 'Str',
@@ -40,15 +39,15 @@ has topos => ( is       => 'ro',
                init_arg => undef );
 
 has sisters => ( is       => 'ro',
-                 isa      => 'ArrayRef[Syntactic::Practice::Tree]',
+                 isa      => 'ArrayRef[Tree]',
                  required => 1, );
 
 has daughters => ( is       => 'ro',
-                   isa      => 'ArrayRef[Syntactic::Practice::Tree]',
+                   isa      => 'ArrayRef[Tree]',
                    required => 1, );
 
 has mother => ( is       => 'ro',
-                isa      => 'MotherValue',
+                isa      => 'Tree',
                 required => 1 );
 
 has depth => ( is       => 'rw',

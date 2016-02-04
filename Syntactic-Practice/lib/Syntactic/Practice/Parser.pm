@@ -79,7 +79,7 @@ method ingest ( PositiveInt :$frompos,
 
   my @return = ();
   my $terms  = $rule->terms;
-  foreach my $term ( $terms->[0] ) {    # TODO: support multiple terms
+  foreach my $term ( @$terms ) {    # TODO: support multiple terms
     $tree_params{term} = $term;
 
     my ( $target );
@@ -156,7 +156,10 @@ method ingest ( PositiveInt :$frompos,
       } else {
         @d = @$d;
       }
-      next unless scalar @d;
+      my $num_daughters = scalar @d;
+      next unless $num_daughters >= 1;
+
+      next if $num_daughters == 1 && $target->label eq 'NOM';
 
       my $tree =
         $target->new( %$target,

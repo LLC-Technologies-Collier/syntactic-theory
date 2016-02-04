@@ -13,6 +13,7 @@ Version 0.01
 our $VERSION = '0.01';
 
 use Moose;
+use namespace::autoclean;
 use MooseX::Params::Validate;
 use MooseX::Method::Signatures;
 
@@ -39,7 +40,9 @@ has sentence => ( is       => 'ro',
                   required => 1, );
 
 method ingest ( PositiveInt :$frompos,
-                SyntacticCategory :$category ) {
+                SyntacticCategory :$category,
+                MotherValue :$mother
+              ) {
 
   my $num_words = scalar( @{ $self->sentence } );
   if ( $frompos >= $num_words ) {
@@ -47,27 +50,15 @@ method ingest ( PositiveInt :$frompos,
     return ();
   }
 
+  # avoid excessive recursion
+  return () if ( $mother && $category && $mother->label eq $category->label );
+
   my %tree_params = ( frompos  => $frompos,
                       depth    => $self->{current_depth},
                       sentence => $self->sentence,
                       label    => $category->label, );
 
   my $msg = '%2d: %-2s %s [%s]';
-
-  if ( $category->is_terminal ) {
-    my $target = $self->sentence->[$frompos];
-    $tree_params{label} = $target->label;
-    $target = $target->new( %$target, %tree_params, );
-    my @data = ( $frompos, $category->label, ' ->', $target->string );
-    if ( $target->label eq $category->label ) {
-      $data[2] = ' ->';
-      $self->log->info( sprintf( " $msg", @data ) );
-      return ( $target );
-    }
-    $data[2] = '!->';
-    $self->log->info( sprintf( " $msg", @data ) );
-    return ();
-  }
 
   my $rule = Syntactic::Practice::Grammar::Rule->new( category => $category );
 
@@ -126,7 +117,8 @@ method ingest ( PositiveInt :$frompos,
 
         splice( @d_list, $dlist_idx, 1 );
         my @tree = $self->ingest( frompos  => $curpos,
-                                  category => $factor->category );
+                                  category => $factor->category,
+                                  mother   => $target, );
 
         unless ( @tree ) {
           my @s = @{ $self->sentence };
@@ -159,8 +151,10 @@ method ingest ( PositiveInt :$frompos,
       my $num_daughters = scalar @d;
       next unless $num_daughters >= 1;
 
-      next if $num_daughters == 1 && $target->label eq 'NOM';
-      next if $num_daughters == 1 && $target->label eq $d[0]->label;
+      if ( $num_daughters == 1 ) {
+
+#        next if( ( $mother && $mother->label eq $target->label ) && $target->label eq $d[0]->label );
+      }
 
       my $tree =
         $target->new( %$target,
@@ -207,6 +201,14 @@ sub BUILD {
 
   $self->{current_depth} = 0;
   $self->{cached}        = {};
+
+  foreach my $lexeme ( @s ) {
+    my $label   = $lexeme->label;
+    my $frompos = $lexeme->frompos;
+    $self->log->debug( "pre-caching: $frompos -> $label" );
+    $self->{cached}->{$frompos} = { $label   => [$lexeme],
+                                    terminal => $lexeme };
+  }
 }
 
 around ingest => sub {
@@ -216,8 +218,11 @@ around ingest => sub {
     validated_hash( \@args,
                     frompos  => { isa => 'PositiveInt',       optional => 0 },
                     category => { isa => 'SyntacticCategory', optional => 0 },
+                    mother   => { isa => 'MotherValue',       optional => 0 },
     );
-  my ( $frompos, $category ) = ( @params{qw(frompos category)} );
+
+  my ( $frompos, $category, $mother ) =
+    ( @params{qw(frompos category mother)} );
   my $label = $category->label;
 
   if ( $self->{current_depth}++ >= $self->max_depth ) {
@@ -232,45 +237,86 @@ around ingest => sub {
 
   my $cache = $self->{cached}->{$frompos};
 
-  my @result = ();
-  if ( exists $cache->{$label} ) {
+  my @data = ( $frompos, $label );
+  my $msg = '%2d: %-2s %s [%s]';
 
-    push( @result, @{ $cache->{$label} } );
+  my @result;
 
-    my $num_parses = scalar @result;
-    $self->log->info( "cache hit. [$frompos,$label] - $num_parses parse(s)" );
+  if ( $category->is_terminal ) {
+    my $tree = $cache->{terminal};
+    my %tree_params = ( frompos  => $frompos,
+                        mother   => $mother,
+                        depth    => $self->{current_depth},
+                        sentence => $self->sentence );
+
+    push( @result, $tree->new( %$tree, %tree_params ) )
+      if $label eq $tree->label;
+
   } else {
-    push( @result, $self->$orig( @args ) );
-    $cache->{$label} = [ @result ];
+
+    if ( exists $cache->{$label} && $cache->{$label} ne 'incomplete' ) {
+
+      push( @result, @{ $cache->{$label} } );
+
+      my $num_parses = scalar @result;
+      $self->log->info( "cache hit. [$frompos,$label] - $num_parses parse(s)" );
+    } else {
+      if ( exists $cache->{$label} && $cache->{$label} eq 'incomplete' ) {
+        $self->log->info(
+          "cache re-miss. [$frompos,$label] - depth [$self->{current_depth}]" );
+      } else {
+        $cache->{$label} = 'incomplete';
+        $self->log->info(
+             "cache miss. [$frompos,$label] - depth [$self->{current_depth}]" );
+      }
+      push( @result, $self->$orig( @args ) );
+      $cache->{$label} = [@result];
+      my $num_parses = scalar @result;
+      $self->log->info(
+"cache filled at [$frompos,$label] - $num_parses parse(s) ; depth [$self->{current_depth}]"
+      );
+
+    }
+
+    my @filtered;
+    while ( my $tree = shift( @result ) ) {
+      next
+        if ( !$self->allow_duplicates && grep { $tree->cmp( $_ ) == 0 }
+             @result );
+
+      push( @filtered, $tree );
+    }
+    @result = @filtered;
   }
-
-  my $num_tokens = scalar @{ $self->sentence };
-
   if ( $self->{current_depth}-- == 0 ) {
 
     # only execute this code after final ingestion
 
-    unless( $self->allow_duplicates ){
-      my @unique;
-      while( my $tree = shift( @result ) ){
-        next if grep { $tree->cmp( $_ ) == 0 } @result;
-        push(@unique, $tree);
-      }
-      @result = @unique
-    };
-    my @complete = grep { $_->topos == $num_tokens } @result;
-
-    if ( !scalar @complete && !$self->allow_partial ) {
-      $self->log->debug(
+    if ( !$self->allow_partial ) {
+      my $num_tokens = scalar @{ $self->sentence };
+      my @complete = grep { $_->topos == $num_tokens } @result;
+      if ( !scalar @complete ) {
+        $self->log->debug(
                sprintf( 'Incomplete parse;  Fewer than %d tokens were ingested',
                         $num_tokens ) );
-      return ();
+        return ();
+      }
+      @result = @complete;
     }
 
-    return @complete;
+    @result = map { $_->to_concrete } @result;
+  }
+
+  if ( scalar @result ) {
+    foreach my $tree ( @result ) {
+      $self->log->info( sprintf( $msg, @data, ' ->', $tree->string ) );
+    }
+  } else {
+    my @s = @{ $self->sentence };
+    my $string = join( ' ', map { $_->string } @s[ $frompos .. $#s ] );
+    $self->log->info( sprintf( $msg, @data, '!->', $string ) );
   }
   return @result;
 };
 
-no Moose;
 __PACKAGE__->meta->make_immutable;

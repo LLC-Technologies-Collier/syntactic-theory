@@ -79,15 +79,16 @@ INSERT INTO factor ( term_id,       position, cat_id,    optional, rpt )
             VALUES ( @this_term_id, '1',      @VP_catid, 0,        0 ),
                    ( @this_term_id, '2',      @PP_catid, 0,        0 );
 
-/* NOM -> N */
+/* NOM -> A* N */
 INSERT INTO rule ( target_id ) VALUES ( @NOM_catid );
 SET @this_rule_id = LAST_INSERT_ID();
 
-INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 1 );
+INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 2 );
 SET @this_term_id = LAST_INSERT_ID();
 
-INSERT INTO factor ( term_id,       position, cat_id,      optional, rpt )
-            VALUES ( @this_term_id, '1',      @noun_catid, 1,        0 );
+INSERT INTO factor ( term_id,       position, cat_id,            optional, rpt )
+            VALUES ( @this_term_id, '1',      @adjective_catid,  1,        1 ),
+                   ( @this_term_id, '2',      @noun_catid,       1,        0 );
 
 /* NOM -> NOM PP */
 INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 2 );
@@ -97,20 +98,10 @@ INSERT INTO factor ( term_id,       position, cat_id,     optional, rpt )
             VALUES ( @this_term_id, '1',      @NOM_catid, 0,        0 ),
                    ( @this_term_id, '2',      @PP_catid,  0,        0 );
 
-/* NP -> (D) A* N P* */
+/* NP -> (D) NOM */
 INSERT INTO rule ( target_id ) VALUES ( @NP_catid );
 SET @this_rule_id = LAST_INSERT_ID();
 
-INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 4 );
-SET @this_term_id = LAST_INSERT_ID();
-
-INSERT INTO factor ( term_id,       position, cat_id,            optional, rpt )
-            VALUES ( @this_term_id, '1',      @determiner_catid, 1,        0 ),
-                   ( @this_term_id, '2',      @adjective_catid,  1,        1 ),
-                   ( @this_term_id, '3',      @noun_catid,       0,        0 ),
-                   ( @this_term_id, '4',      @PP_catid,         1,        1 );
-
-/* NP -> (D) NOM */
 INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 2 );
 SET @this_term_id = LAST_INSERT_ID();
 

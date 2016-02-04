@@ -20,6 +20,7 @@ use Syntactic::Practice::Util;
 use Syntactic::Practice::Types;
 use Syntactic::Practice::Grammar::Category;
 use Syntactic::Practice::Roles::Category;
+use Syntactic::Practice::Grammar;
 use Syntactic::Practice::Grammar::Rule;
 use Syntactic::Practice::Grammar::Term;
 use Syntactic::Practice::Grammar::Factor;

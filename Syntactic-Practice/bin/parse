@@ -50,7 +50,10 @@ my @word_list = @{ $sentence[0] };
 
 my $parser = Syntactic::Practice::Parser->new(sentence => $sentence[0]);
 
-my @tree = $parser->ingest(frompos => 0, category => Syntactic::Practice::Grammar::Category::Start->new());
+my @tree = $parser->ingest(frompos => 0,
+                           category => Syntactic::Practice::Grammar::Category::Start->new(),
+                           mother => undef,
+                          );
 
 die join("\n",map { $_->{error} } @tree) if ref $tree[0] eq 'HASH' && exists $tree[0]->{error};
 

@@ -1,3 +1,6 @@
+package Syntactic::Practice::Grammar::Factor;
+1;
+
 package Syntactic::Practice::Grammar::Category;
 
 =head1 NAME
@@ -41,6 +44,12 @@ has 'resultset' => ( is        => 'ro',
                      builder   => '_build_resultset',
                      predicate => 'has_resultset', );
 
+has factors => ( is       => 'ro',
+                 isa      => 'ArrayRef[Syntactic::Practice::Grammar::Factor]',
+                 lazy     => 1,
+                 builder  => '_build_factors',
+                 init_arg => undef, );
+
 has 'is_terminal' => ( is      => 'ro',
                        isa     => 'Bool',
                        lazy    => 1,
@@ -70,6 +79,17 @@ sub _build_resultset {
 
   Syntactic::Practice::Util->get_schema->resultset( 'SyntacticCategory' )
     ->find( { label => $self->label } );
+}
+
+sub _build_factors {
+  my ( $self ) = @_;
+  my $rs = $self->resultset->factors;
+  my @return;
+  while ( my $resultset = $rs->next ) {
+    push( @return,
+          Syntactic::Practice::Factor->new( resultset => $resultset ) );
+  }
+  return \@return;
 }
 
 sub _build_is_terminal {

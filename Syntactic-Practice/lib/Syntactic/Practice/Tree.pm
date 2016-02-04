@@ -20,6 +20,7 @@ use namespace::autoclean;
 with 'Syntactic::Practice::Roles::Category';
 
 subtype Tree => as 'Syntactic::Practice::Tree';
+subtype MotherValue => as 'Tree | Undefined';
 
 has name => ( is       => 'ro',
               isa      => 'Str',

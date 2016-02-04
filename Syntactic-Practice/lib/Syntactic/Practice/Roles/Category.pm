@@ -2,6 +2,7 @@ package Syntactic::Practice::Roles::Category;
 
 use Moose::Role;
 use namespace::autoclean;
+use MooseX::Method::Signatures;
 
 has 'label' => ( is      => 'ro',
                  isa     => 'SyntacticCategoryLabel',

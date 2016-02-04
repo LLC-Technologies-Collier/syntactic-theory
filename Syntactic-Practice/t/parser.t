@@ -29,7 +29,9 @@ my $parser =
 ok( $parser, 'Parser instantiated with short NP' );
 
 my @tree = $parser->ingest( category => $np_cat,
-                            frompos  => 0 );
+                            frompos  => 0,
+                            mother => undef
+                          );
 
 is( scalar @tree, 1, 'only one parse found' );
 
@@ -45,7 +47,9 @@ $parser = Syntactic::Practice::Parser->new( sentence => $paragraph[0]->[0] );
 ok( $parser, 'Parser instantiated with short S' );
 
 @tree = $parser->ingest( category => $s_cat,
-                         frompos  => 0 );
+                         frompos  => 0,
+                         mother => undef,
+                       );
 
 is( scalar @tree, 1, 'only one parse found' );
 
@@ -62,7 +66,9 @@ $parser = Syntactic::Practice::Parser->new( sentence => $paragraph[0]->[0] );
 ok( $parser, 'Parser instantiated with ambiguous S' );
 
 @tree = $parser->ingest( category => $s_cat,
-                         frompos  => 0 );
+                         frompos  => 0,
+                         mother => undef
+                       );
 
 is( scalar @tree, 2, 'two parses found' );
 

@@ -28,6 +28,7 @@ use Syntactic::Practice::Lexicon;
 use Syntactic::Practice::Lexicon::Homograph;
 use Syntactic::Practice::Lexicon::Lexeme;
 use Syntactic::Practice::Lexer;
+use Syntactic::Practice::Parser;
 
 
 =head1 NAME

@@ -85,7 +85,7 @@ sub _build_name {
 sub _build_topos {
   my ( $self ) = @_;
   ref $self->{daughters} eq 'ARRAY'
-    ? $self->daughters->[-1]->topos
+    ? $self->{daughters}->[-1]->topos
     : $self->frompos + 1;
 }
 
@@ -105,10 +105,8 @@ sub _build_sentence {
 
 sub _build_depth { $_[0]->mother->depth + 1 }
 
-around 'daughters' => sub {
+around daughters => sub {
   my ( $orig, $self ) = @_;
-
-  warn Data::Printer::p $self;
 
   return ( ref $self->{daughters} eq 'ARRAY'
            ? @{ $self->{daughters} }
@@ -179,7 +177,7 @@ sub as_forest {
   my @daughter = $self->daughters;
 
   $output .= "${indent}[" . $self->label . "\n${indent}";
-  if ( $self->factor->is_terminal ) {
+  if ( $self->category->is_terminal ) {
     $output .= "[@daughter] ";
   } else {
     $output .= join( '', map { $_->as_forest() } @daughter );
@@ -196,7 +194,8 @@ sub as_text {
   my $indent = ' ' x ( $self->depth * 2 );
   $output .= $indent . $self->name . ': ';
 
-  my @daughter = map { $_ // '(null)' } $self->daughters;
+  my @daughter = map { $_ // '(null)' } ($self->daughters);
+  $self->log->debug( Data::Printer::p @daughter );
   return "${output}@daughter\n" if $self->is_terminal;
 
   my $ref   = ref $self;
@@ -358,6 +357,8 @@ use Moose;
 use namespace::autoclean;
 
 with 'Syntactic::Practice::Roles::Category';
+with 'MooseX::Log::Log4perl';
+
 extends 'Syntactic::Practice::Tree';
 
 subtype AbstractTree => as 'Tree | Syntactic::Practice::Tree::Abstract';
@@ -389,6 +390,14 @@ has factor => ( is  => 'rw',
 has '+prune_nulls' => ( is      => 'ro',
                         isa     => 'False',
                         default => 0 );
+
+around daughters => sub {
+  my ( $orig, $self ) = @_;
+
+  return ( ref $self->{daughters} eq 'ARRAY'
+           ? @{ $self->{daughters} }
+           : ( $self->{daughters} ) );
+};
 
 sub _build_depth {
   my ( $self ) = @_;

@@ -1,8 +1,8 @@
 perl-doc perl-base perltidy
-libtest-exception-perl
+libtest-exception-perl libtest-differences-perl libtest-most-perl
 libmoose-perl libmoosex-method-signatures-perl libmoosex-params-validate-perl libmoosex-log-log4perl-perl
 libdbix-class-perl libdbix-class-schema-loader-perl
-libgetopt-long-descriptive-perl libconfig-any-perl
+libgetopt-long-descriptive-perl libconfig-any-perl libdata-printer-perl
 libdatetime-perl
 liblog-log4perl-perl libdbd-mysql-perl
 mariadb-server

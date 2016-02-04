@@ -160,6 +160,7 @@ method ingest ( PositiveInt :$frompos,
       next unless $num_daughters >= 1;
 
       next if $num_daughters == 1 && $target->label eq 'NOM';
+      next if $num_daughters == 1 && $target->label eq $d[0]->label;
 
       my $tree =
         $target->new( %$target,

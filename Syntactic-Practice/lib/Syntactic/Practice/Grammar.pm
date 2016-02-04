@@ -13,6 +13,10 @@ Version 0.01
 our $VERSION = '0.01';
 
 use Moose;
+use namespace::autoclean;
+use MooseX::Params::Validate;
+
+with 'MooseX::Log::Log4perl';
 
 has 'locale' => ( is      => 'ro',
                   isa     => 'Str',
@@ -38,5 +42,4 @@ sub rule {
   $rule{$label} = Syntactic::Practice::Grammar::Rule->new( label => $label );
 }
 
-no Moose;
 __PACKAGE__->meta->make_immutable;

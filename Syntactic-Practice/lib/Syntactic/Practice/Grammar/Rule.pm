@@ -19,9 +19,9 @@ use namespace::autoclean;
 use MooseX::Params::Validate;
 use MooseX::Method::Signatures;
 
-
 subtype Rule => as 'Syntactic::Practice::Grammar::Rule';
 
+with 'MooseX::Log::Log4perl';
 with 'Syntactic::Practice::Roles::Category';
 
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
@@ -34,6 +34,10 @@ has grammar => ( is       => 'ro',
                  lazy     => 1,
                  init_arg => undef,
                  builder  => '_build_grammar' );
+
+has max_depth => ( is      => 'ro',
+                   isa     => 'PositiveInt',
+                   default => 5 );
 
 has resultset => ( is       => 'ro',
                    isa      => 'Syntactic::Practice::Schema::Result::Rule',
@@ -80,7 +84,6 @@ sub _build_terms {
   return \@return;
 }
 
-
 my %expansions;
 
 sub BUILD {
@@ -91,7 +94,7 @@ sub BUILD {
                                   list     => [], };
 }
 
-method expansions ( PositiveInt :$depth ) {
+method expansions ( PositiveInt :$depth = 0 ) {
 
   my $expansions = $expansions{ $self->label };
 
@@ -116,7 +119,7 @@ method expansions ( PositiveInt :$depth ) {
         {
           $expansions->{depends}->{ $factor->label }++;
           push( @$template,
-                $grammar->rule( label => $factor->label )
+                $self->grammar->rule( label => $factor->label )
                   ->expansions( depth => $depth + 1 ) );
         } else {
           $self->log->info(  'rule '

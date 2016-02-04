@@ -500,10 +500,6 @@ subtype 'TerminalAbstractTree',
 extends 'Syntactic::Practice::Tree::Abstract';
 with 'Syntactic::Practice::Roles::Category::Terminal';
 
-has term => ( is      => 'ro',
-              isa     => 'Undefined',
-              default => undef );
-
 no Moose;
 __PACKAGE__->meta->make_immutable;
 
@@ -533,10 +529,6 @@ has '+daughters' => ( is      => 'ro',
                       isa     => 'Undefined',
                       lazy    => 1,
                       builder => '_build_daughters', );
-
-has term => ( is       => 'rw',
-              isa      => 'Term',
-              required => 0, );
 
 sub _build_daughters { undef }
 sub _build_topos     { $_[0]->frompos }

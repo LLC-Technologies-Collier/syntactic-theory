@@ -20,7 +20,7 @@ with 'MooseX::Log::Log4perl';
 
 has max_depth => ( is      => 'ro',
                    isa     => 'PositiveInt',
-                   default => 5 );
+                   default => 10 );
 
 has allow_partial => ( is      => 'ro',
                        isa     => 'Bool',
@@ -79,7 +79,7 @@ method ingest ( PositiveInt :$frompos,
 
   my @return = ();
   my $terms  = $rule->terms;
-  foreach my $term ( @$terms ) {    # TODO: support multiple terms
+  foreach my $term ( $terms->[0] ) {    # TODO: support multiple terms
     $tree_params{term} = $term;
 
     my ( $target );
@@ -228,7 +228,7 @@ around ingest => sub {
 
   my $cache = $self->{cached}->{$frompos};
 
-  my @result;
+  my @result = ();
   if ( exists $cache->{$label} ) {
 
     push( @result, @{ $cache->{$label} } );
@@ -236,9 +236,8 @@ around ingest => sub {
     my $num_parses = scalar @result;
     $self->log->info( "cache hit. [$frompos,$label] - $num_parses parse(s)" );
   } else {
-    $cache->{$label} = \@result;
-
     push( @result, $self->$orig( @args ) );
+    $cache->{$label} = [ @result ];
   }
 
   my $num_tokens = scalar @{ $self->sentence };
@@ -247,6 +246,14 @@ around ingest => sub {
 
     # only execute this code after final ingestion
 
+    unless( $self->allow_duplicates ){
+      my @unique;
+      while( my $tree = shift( @result ) ){
+        next if grep { $tree->cmp( $_ ) == 0 } @result;
+        push(@unique, $tree);
+      }
+      @result = @unique
+    };
     my @complete = grep { $_->topos == $num_tokens } @result;
 
     if ( !scalar @complete && !$self->allow_partial ) {

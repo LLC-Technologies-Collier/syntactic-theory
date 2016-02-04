@@ -178,7 +178,7 @@ sub as_forest {
 
   $output .= "${indent}[" . $self->label . "\n${indent}";
   if ( $self->category->is_terminal ) {
-    $output .= "[@daughter] ";
+    $output .= '['.$daughter[0]->word.'] ';
   } else {
     $output .= join( '', map { $_->as_forest() } @daughter );
     $output .= "\n${indent}";

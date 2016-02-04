@@ -23,7 +23,6 @@ with 'Syntactic::Practice::Roles::Category';
 
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
 my $rs_class     = 'Rule';
-my $term_class   = 'Syntactic::Practice::Grammar::Term';
 
 has 'resultset' => ( is       => 'ro',
                      isa      => 'Syntactic::Practice::Schema::Result::Rule',
@@ -38,11 +37,19 @@ has 'terms' => ( is       => 'ro',
                  builder  => '_build_terms' );
 
 sub _build_resultset {
-  Syntactic::Practice::Util->get_schema->resultset( $rs_class )
-    ->find( { 'target.label' => $_[0]->category->label },
-              { prefetch => [ 'target', { 'terms' => { 'factors' => ['cat'] } } ] } );
+  my $label = $_[0]->category->label;
+  Syntactic::Practice::Util->get_schema->resultset( $rs_class )->find(
+                         { 'target.label' => $label },
+                         {
+                           prefetch => [ 'target',
+                                         { 'terms' => { 'factors' => ['cat'] } }
+                           ]
+                         }
+  ) or confess "No rule for category [$label]";
+
 }
 
+my $term_class   = 'Syntactic::Practice::Grammar::Term';
 sub _build_terms {
   my ( $self ) = @_;
   my $rs = $self->resultset->terms;

@@ -44,6 +44,7 @@ sub scan {
 
           push( @tree, $lexTree );
         }
+        map { $_->sentence( \@tree ) } @tree;
       }
       push( @sentence, \@tree );
     }

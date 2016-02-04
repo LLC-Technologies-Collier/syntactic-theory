@@ -13,6 +13,7 @@ Version 0.01
 our $VERSION = '0.01';
 
 use Moose;
+use MooseX::Params::Validate;
 use MooseX::Method::Signatures;
 
 with 'MooseX::Log::Log4perl';
@@ -33,74 +34,66 @@ has prune_nulls => ( is      => 'ro',
                      isa     => 'Bool',
                      default => 1 );
 
-has sentence => (
-                is  => 'ro',
-                isa => 'ArrayRef[Syntactic::Practice::Tree::Abstract::Lexical]',
-                required => 1, );
+has sentence => ( is       => 'ro',
+                  isa      => 'ArrayRef[TerminalAbstractTree]',
+                  required => 1, );
 
-method ingest( PositiveInt :$frompos,
-               SyntacticCategory :$category ) {
+method ingest ( PositiveInt :$frompos,
+                SyntacticCategory :$category ) {
 
   my $num_words = scalar( @{ $self->sentence } );
-    if ( $frompos >= $num_words ) {
-    $self->log->debug( "insufficient words to license phrase" );
+  if ( $frompos >= $num_words ) {
+    $self->log->error( "insufficient words to license phrase" );
     return ();
   }
 
-  my %tree_params = ( frompos => $frompos,
-                      depth   => $self->{current_depth}
-  );
+  my %tree_params = ( frompos  => $frompos,
+                      depth    => $self->{current_depth},
+                      sentence => $self->sentence,
+                      label    => $category->label, );
 
-    my $msg_format =
-    'Word [%s] depth [%d], position [%d] with label [%s] not licensed by [%s]';
-    my ( $target );
-    if ( $category->is_start ) {
-    $target                = Syntactic::Practice::Tree::Abstract::Start->new();
-    $tree_params{label}    = $target->label;
-    $tree_params{depth}    = $target->depth;
-    $tree_params{category} = $target->category;
-    $category              = $target->category;
-  } else {
+  my $msg = '%2d: %-2s %s [%s]';
 
-    if ( $category->is_terminal ) {
-      $target = $self->sentence->[$frompos];
-      $target = $target->new( %$target, %tree_params, );
-      return $target if ( $target->label eq $category->label );
-
-      $self->log->debug(
-                         sprintf( $msg_format,
-                                  $target->daughters->word, $target->depth,
-                                  $target->frompos,         $target->label,
-                                  $category->label ) );
-      return ();
+  if ( $category->is_terminal ) {
+    my $target = $self->sentence->[$frompos];
+    $tree_params{label} = $target->label;
+    $target = $target->new( %$target, %tree_params, );
+    my @data = ( $frompos, $category->label, ' ->', $target->string );
+    if ( $target->label eq $category->label ) {
+      $data[2] = ' ->';
+      $self->log->info( sprintf( " $msg", @data ) );
+      return ( $target );
     }
-    $tree_params{category} = $category;
-
-    $self->log->debug(   'Creating Abstract Phrasal tree with category ['
-                       . $category->label
-                       . ']' );
-
-    $target = Syntactic::Practice::Tree::Abstract::Phrasal->new( %tree_params );
+    $data[2] = '!->';
+    $self->log->info( sprintf( " $msg", @data ) );
+    return ();
   }
 
   my $rule = Syntactic::Practice::Grammar::Rule->new( category => $category );
 
-    unless ( $rule ) {
+  unless ( $rule ) {
     $self->log->debug(
                     sprintf( 'bad rule identifier: [%s]!', $category->label ) );
     return ();
   }
 
-  my @error          = ();
-    my @return       = ();
-    my $all_terminal = 1;
-    my @factor_list;
-    my $terms = $rule->terms;
-    foreach my $term ( @$terms[0] ) {    # TODO: support multiple terms
-    my ( $s ) = $term->factors;
+  my @return = ();
+  my $terms  = $rule->terms;
+  foreach my $term ( @$terms ) {    # TODO: support multiple terms
+    $tree_params{term} = $term;
+
+    my ( $target );
+    if ( $term->is_start ) {
+      $target = Syntactic::Practice::Tree::Abstract::Start->new( %tree_params );
+      $tree_params{label} = $target->label;
+    } else {
+      $target =
+        Syntactic::Practice::Tree::Abstract::Phrasal->new( %tree_params );
+    }
+
     my @d_list = ( [] );
-    my @factor = @$s;
-    foreach my $factor ( @factor ) {
+    foreach my $factor ( @{ $term->factors } ) {
+      $target->factor( $factor ) unless $target->is_start;
       my $factor_label = $factor->label;
 
       my $optional = $factor->optional;
@@ -109,21 +102,25 @@ method ingest( PositiveInt :$frompos,
       my $optAtPos = {};
 
       for ( my $dlist_idx = 0; $dlist_idx < scalar @d_list; $dlist_idx++ ) {
-        my $daughter = $d_list[$dlist_idx];
+        my @daughter = @{ $d_list[$dlist_idx] };
 
-        my $curpos = ( scalar @$daughter ? $daughter->[-1]->topos : $frompos );
+        my $curpos = ( scalar @daughter ? $daughter[-1]->topos : $frompos );
 
         next if $curpos == $num_words;
 
         if ( $optional && !exists $optAtPos->{$curpos} ) {
           my %mother = ( $factor->is_start ? () : ( mother => $target ) );
           my $class = 'Syntactic::Practice::Tree::Abstract::Null';
-          my $tree = $class->new( depth   => $self->{current_depth} + 1,
-                                  frompos => $curpos,
-                                  %mother,
-                                  label => $factor->label, );
+          my $tree = $class->new( depth    => $self->{current_depth} + 1,
+                                  term     => $term,
+                                  category => $factor->category,
+                                  factor   => $factor,
+                                  frompos  => $curpos,
+                                  sentence => $self->sentence,
+                                  label    => $factor_label,
+                                  %mother, );
           $optAtPos->{$curpos} = $tree;
-          splice( @d_list, $dlist_idx, 0, ( [ @$daughter, $tree ] ) );
+          splice( @d_list, $dlist_idx, 0, ( [ @daughter, $tree ] ) );
           next;
         }
 
@@ -132,20 +129,23 @@ method ingest( PositiveInt :$frompos,
                                   category => $factor->category );
 
         unless ( @tree ) {
-          my $msg_format =
-            'Failed to ingest sentence starting at position [%d] as [%s]';
-          $self->log->debug( sprintf( $msg_format, $curpos, $factor->label ) );
+          my @s = @{ $self->sentence };
+          unless ( $factor->is_terminal ) {
+            my $string = join( ' ', map { $_->string } @s[ $curpos .. $#s ] );
+            my @data = ( $curpos, $factor_label, '!->', $string );
+            $self->log->info( sprintf( $msg, @data ) );
+          }
+
           $dlist_idx--;
           next;
         }
         foreach my $tree ( @tree ) {
           $tree->mother( $target );
 
-          my @new = ( [ @$daughter, $tree ] );
-          push( @new, [ @$daughter, $tree ] ) if ( $repeat );
+          my @new = ( [ @daughter, $tree ] );
+          push( @new, [ @daughter, $tree ] ) if ( $repeat );
           splice( @d_list, $dlist_idx, 0, ( @new ) );
         }
-
       }
     }
     while ( my $d = shift( @d_list ) ) {
@@ -159,9 +159,22 @@ method ingest( PositiveInt :$frompos,
       next unless scalar @d;
 
       my $tree =
-        $target->new( %tree_params,
+        $target->new( %$target,
+                      %tree_params,
+                      frompos   => $d[0]->frompos,
                       topos     => $d[-1]->topos,
                       daughters => \@d );
+
+      foreach my $sib ( @d ) {
+        next unless $sib->isa( 'Tree' );
+        my @sibs = grep { $sib->cmp( $_ ) != 0 } @d;
+        $sib->sisters( \@sibs );
+        $sib->mother( $tree );
+      }
+      my @data = ( $d[0]->frompos, $tree->label, ' ->', $tree->string );
+      $self->log->info( sprintf( $msg, @data ) );
+      $self->log->info( $tree->factor->as_string )
+        if !$tree->is_start && defined $tree->factor;
 
       if ( grep { $tree->cmp( $_ ) == 0 } @return ) {
         next unless $self->allow_duplicates;
@@ -171,18 +184,37 @@ method ingest( PositiveInt :$frompos,
   }
 
   return ( @return ) if scalar @return;
-    $self->log->debug( @error );
-    return ();
-               }
 
-  sub BUILD {
-  my ( $self ) = @_;
-
-  $self->{current_depth} = 0;
+  return ();
 }
 
-around 'ingest' => sub {
-  my ( $orig, $self, @arg ) = @_;
+sub BUILD {
+  my ( $self ) = @_;
+
+  my @s = @{ $self->sentence };
+  my $string;
+  if ( scalar @s == 1 ) {
+    $string = $s[0]->daughters;
+  } else {
+    $string = join( ' ', map { $_->string } @s );
+  }
+
+  $self->log->debug( "Parsing string [$string]" );
+
+  $self->{current_depth} = 0;
+  $self->{cached}        = {};
+}
+
+around ingest => sub {
+  my ( $orig, $self, @args ) = @_;
+
+  my ( %params ) =
+    validated_hash( \@args,
+                    frompos  => { isa => 'PositiveInt',       optional => 0 },
+                    category => { isa => 'SyntacticCategory', optional => 0 },
+    );
+  my ( $frompos, $category ) = ( @params{qw(frompos category)} );
+  my $label = $category->label;
 
   if ( $self->{current_depth}++ >= $self->max_depth ) {
     --$self->{current_depth};
@@ -191,7 +223,23 @@ around 'ingest' => sub {
     return ();
   }
 
-  my @result = $self->$orig( @arg );
+  $self->{cached}->{$frompos} = {}
+    unless exists $self->{cached}->{$frompos};
+
+  my $cache = $self->{cached}->{$frompos};
+
+  my @result;
+  if ( exists $cache->{$label} ) {
+
+    push( @result, @{ $cache->{$label} } );
+
+    my $num_parses = scalar @result;
+    $self->log->info( "cache hit. [$frompos,$label] - $num_parses parse(s)" );
+  } else {
+    $cache->{$label} = \@result;
+
+    push( @result, $self->$orig( @args ) );
+  }
 
   my $num_tokens = scalar @{ $self->sentence };
 

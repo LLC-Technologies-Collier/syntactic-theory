@@ -1,6 +1,23 @@
 package Syntactic::Practice::Grammar::Term;
 
+=head1 NAME
+
+Syntactic::Practice::Term - Grammar Term
+
+=head1 VERSION
+
+Version 0.01
+
+=cut
+
+our $VERSION = '0.01';
+
+use Moose::Util::TypeConstraints;
+
 use Moose;
+use namespace::autoclean;
+
+subtype Term => as 'Syntactic::Practice::Grammar::Term';
 
 with 'Syntactic::Practice::Roles::Category';
 
@@ -48,5 +65,4 @@ sub as_string {
 
 }
 
-no Moose;
 __PACKAGE__->meta->make_immutable();

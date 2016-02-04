@@ -37,6 +37,17 @@ has topos => ( is       => 'ro',
                builder  => '_build_topos',
                init_arg => undef );
 
+has string => ( is       => 'ro',
+                isa      => 'Str',
+                lazy     => 1,
+                builder  => '_build_string',
+                init_arg => undef );
+
+has sentence => ( is      => 'ro',
+                  isa     => 'ArrayRef[Tree]',
+                  lazy    => 1,
+                  builder => '_build_sentence', );
+
 has sisters => ( is       => 'ro',
                  isa      => 'ArrayRef[Tree]',
                  required => 1, );
@@ -49,15 +60,22 @@ has mother => ( is       => 'ro',
                 isa      => 'Tree',
                 required => 1 );
 
-has depth => ( is       => 'rw',
+has depth => ( is       => 'ro',
                isa      => 'PositiveInt',
                lazy     => 1,
                builder  => '_build_depth',
                init_arg => undef, );
 
+has factor => ( is       => 'ro',
+                isa      => 'Term',
+                required => 1 );
+
 has prune_nulls => ( is      => 'ro',
                      isa     => 'Bool',
                      default => 1 );
+
+sub _build_label    { $_[0]->factor->label }
+sub _build_category { $_[0]->factor->category }
 
 sub _build_name {
   my ( $self ) = @_;
@@ -70,15 +88,27 @@ sub _build_topos {
     ? $self->daughters->[-1]->topos
     : $self->frompos + 1;
 }
+
+sub _build_string {
+  my ( $self ) = @_;
+  my @s = @{ $self->sentence };
+  join( ' ', map { $_->string } @s[ $self->frompos .. ( $self->topos - 1 ) ] );
+}
+
+sub _build_sentence {
+  my ( $self ) = @_;
+  foreach my $family ( qw( mother siblings daughters ) ) {
+    return $self->$family->sentence if exists $self->{$family};
+  }
+  confess 'Cannot determine sentence';
+}
+
 sub _build_depth { $_[0]->mother->depth + 1 }
 
 around 'daughters' => sub {
   my ( $orig, $self ) = @_;
 
-  warn Data::Dumper::Dumper(
-                             { label     => $self->label,
-                               daughters => $self->{daughters}
-                             } );
+  warn Data::Printer::p $self;
 
   return ( ref $self->{daughters} eq 'ARRAY'
            ? @{ $self->{daughters} }
@@ -91,7 +121,8 @@ my %treeByLabel;
 sub _treeExists {
   my ( $self, $arg ) = @_;
 
-  return $treeByName{ $arg->{name} } if ( exists $treeByName{ $arg->{name} } );
+  return $treeByName{ $arg->{name} }
+    if ( exists $treeByName{ $arg->{name} } );
   return 0;
 }
 
@@ -177,6 +208,26 @@ sub as_text {
   $output .= join( '', map { ref $_ ? $_->as_text : $_ } @daughter );
 
   return $output;
+}
+
+sub to_concrete {
+  my ( $self, $arg ) = @_;
+
+  my @c_daughters;
+  foreach my $daughter ( $self->daughters ) {
+    if ( $daughter->isa( 'Str' ) ) {
+      push( @c_daughters, $daughter );
+    } elsif ( $daughter->isa( 'Tree' ) ) {
+      push( @c_daughters, $daughter->to_concrete );
+    } else {
+      $self->log->warn( 'Daughter is of unknown type' );
+      push( @c_daughters, undef );
+    }
+  }
+
+  ( my $class = ref $self ) =~ ( s/Abstract::// );
+
+  return $class->new( %$self, %$arg, daughters => \@c_daughters );
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -292,6 +343,7 @@ has '+daughters' => ( is      => 'ro',
                       lazy    => 1,
                       builder => '_build_daughters', );
 
+sub _build_string    { '' }
 sub _build_daughters { undef }
 sub _build_topos     { $_[0]->frompos }
 sub _build_name      { $_[0]->label . '0' }
@@ -318,6 +370,11 @@ has mother => ( is       => 'rw',
                 isa      => ( 'AbstractTree' ),
                 required => 0 );
 
+has sentence => ( is      => 'rw',
+                  isa     => 'ArrayRef[Tree]',
+                  lazy    => 1,
+                  builder => '_build_sentence', );
+
 has sisters => ( is       => 'rw',
                  isa      => ( 'ArrayRef[AbstractTree]' ),
                  required => 0 );
@@ -325,6 +382,9 @@ has sisters => ( is       => 'rw',
 has frompos => ( is       => 'rw',
                  isa      => ( 'PositiveInt' ),
                  required => 0 );
+
+has factor => ( is  => 'rw',
+                isa => 'Factor' );
 
 has '+prune_nulls' => ( is      => 'ro',
                         isa     => 'False',
@@ -363,22 +423,6 @@ sub _numTrees {
   return scalar @{ $abstractTreeByLabel{ $arg->{label} } };
 }
 
-sub to_concrete {
-  my ( $self, $arg ) = @_;
-
-  my @concrete_daughters;
-  unless ( $self->is_terminal ) {
-    foreach my $daughter ( $self->daughters ) {
-      push( @concrete_daughters, $daughter->to_concrete );
-    }
-  }
-
-  $arg = {} unless $arg;
-  my $abstract_class = ref $self;
-  ( my $class = $abstract_class ) =~ s/Abstract:://;
-  return $class->new( %$self, %$arg );
-}
-
 __PACKAGE__->meta->make_immutable;
 
 package Syntactic::Practice::Tree::Abstract::NonTerminal;
@@ -387,8 +431,8 @@ use Moose::Util::TypeConstraints;
 
 use Moose;
 
-extends 'Syntactic::Practice::Tree::Abstract';
 with 'Syntactic::Practice::Roles::Category::NonTerminal';
+extends 'Syntactic::Practice::Tree::Abstract';
 
 subtype 'NonTerminalAbstractTree',
   as 'NonTerminalTree | Syntactic::Practice::Tree::Abstract::NonTerminal';
@@ -402,8 +446,8 @@ use Moose::Util::TypeConstraints;
 
 use Moose;
 
-extends 'Syntactic::Practice::Tree::Abstract::NonTerminal';
 with 'Syntactic::Practice::Roles::Category::Phrasal';
+extends 'Syntactic::Practice::Tree::Abstract::NonTerminal';
 
 subtype 'PhrasalAbstractTree',
   as 'PhrasalTree | Syntactic::Practice::Tree::Abstract::Phrasal';
@@ -429,7 +473,15 @@ has mother => ( is      => 'ro',
                 lazy    => 1,
                 builder => '_build_mother' );
 
+has factor => ( is  => 'ro',
+                isa => 'Undefined',
+                lazy => 1,
+                builder => '_build_factor'
+              );
+
+
 sub _build_mother { undef }
+sub _build_factor { undef }
 sub _build_depth  { 0 }
 
 no Moose;
@@ -438,10 +490,19 @@ __PACKAGE__->meta->make_immutable;
 
 package Syntactic::Practice::Tree::Abstract::Terminal;
 
+use Moose::Util::TypeConstraints;
+
 use Moose;
+
+subtype 'TerminalAbstractTree',
+  as 'TerminalTree | Syntactic::Practice::Tree::Abstract::Terminal';
 
 extends 'Syntactic::Practice::Tree::Abstract';
 with 'Syntactic::Practice::Roles::Category::Terminal';
+
+has term => ( is      => 'ro',
+              isa     => 'Undefined',
+              default => undef );
 
 no Moose;
 __PACKAGE__->meta->make_immutable;
@@ -473,6 +534,10 @@ has '+daughters' => ( is      => 'ro',
                       lazy    => 1,
                       builder => '_build_daughters', );
 
+has term => ( is       => 'rw',
+              isa      => 'Term',
+              required => 0, );
+
 sub _build_daughters { undef }
 sub _build_topos     { $_[0]->frompos }
 sub _build_name      { $_[0]->label . '0' }
@@ -496,6 +561,8 @@ subtype 'LexicalAbstractTree',
 has '+daughters' => ( is       => 'ro',
                       isa      => 'Syntactic::Practice::Lexicon::Lexeme',
                       required => 1 );
+
+sub _build_string { $_[0]->daughters->word }
 
 no Moose;
 __PACKAGE__->meta->make_immutable;

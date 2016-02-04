@@ -13,7 +13,7 @@ BEGIN {
 };
 
 use Carp;
-use Data::Dumper;
+use Data::Printer;
 
 use Syntactic::Practice::Schema;
 use Syntactic::Practice::Util;

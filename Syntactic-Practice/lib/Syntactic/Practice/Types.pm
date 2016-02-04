@@ -1,36 +1,65 @@
 package Syntactic::Practice::Types;
 
-use Syntactic::Practice::Util;
-
 use Moose;
 use Moose::Util::TypeConstraints;
 
-my $schema = Syntactic::Practice::Util->get_schema();
+my $schema             = Syntactic::Practice::Util->get_schema();
+my @startCategoryLabel = Syntactic::Practice::Util->get_start_category_labels();
 
-my @args = ( {}, { distinct => 1 } );
+my @SynCatType = Syntactic::Practice::Util->get_syntactic_category_types;
 
-my @SynCatType = qw(Phrasal Lexical);
+enum 'SynCatType', [ map { lc $_ } @SynCatType ];
 
-enum 'SynCatType', [map { lc $_ } @SynCatType];
+my %categoryLabel = ( Start => \@startCategoryLabel );
+my %typeMap = (
+                Syntactic => { base  => 'SyntacticCategoryLabel',
+                               super => 'Str',
+                               rs    => 'SyntacticCategory',
+                               key   => 'Syntactic'
+                },
+                NonTerminal => { base  => 'NonTerminalCategoryLabel',
+                                 super => 'SyntacticCategoryLabel',
+                                 rs    => 'PhrasalCategory',
+                                 key   => 'NonTerminal'
+                },
+                Terminal => { base  => 'TerminalCategoryLabel',
+                              super => 'SyntacticCategoryLabel',
+                              rs    => 'LexicalCategory',
+                              key   => 'Terminal'
+                },
+                Lexical => { base  => 'LexicalCategoryLabel',
+                             super => 'TerminalCategoryLabel',
+                             key   => 'Terminal'
+                },
+                Phrasal => { base  => 'PhrasalCategoryLabel',
+                             super => 'NonTerminalCategoryLabel',
+                             key   => 'NonTerminal'
+                },
+                Start => { base  => 'StartCategoryLabel',
+                           super => 'NonTerminalCategoryLabel',
+                           key   => 'Start'
+                } );
 
-my %categoryLabel;
+my $msg_format = 'The label you provided, %s, is not a %s';
+foreach
+  my $cat_type ( qw( Syntactic NonTerminal Terminal Phrasal Lexical Start ) )
+{
+  my @valid_list;
+  if ( exists $typeMap{$cat_type}->{rs} ) {
+    $categoryLabel{$cat_type} =
+      [ map { $_->label }
+        $schema->resultset( $typeMap{$cat_type}->{rs} )
+        ->search( {}, { distinct => 1 } )->all() ];
+  }
 
-foreach my $cat_type ( @SynCatType, 'Syntactic' ) {
-  $categoryLabel{$cat_type} =
-    [ map { $_->label }
-      $schema->resultset( "${cat_type}Category" )->search( @args )->all() ];
-}
+  my ( $base, $super, $key ) = @{ $typeMap{$cat_type} }{qw( base super key )};
 
-my $msg_format = 'The %s category label you provided, %s, is not recognized';
-
-subtype 'SyntacticCategoryLabel', as 'Str',
-  where { grep { $_ } @{ $categoryLabel{Syntactic} } },
-  message { sprintf( $msg_format, 'Syntactic', $_ ) };
-
-foreach my $cat_type ( @SynCatType ) {
-  subtype "${cat_type}CategoryLabel", as 'SyntacticCategoryLabel',
-    where { grep { $_ } @{ $categoryLabel{$cat_type} } },
-    message { sprintf( $msg_format, $cat_type, $_ ) };
+  subtype $base, as $super, where {
+    my $input = $_;
+    grep { $_ eq $input } @{ $categoryLabel{$key} };
+  }, message {
+    sprintf( $msg_format, $_, $base );
+  };
 }
 
 subtype 'SynCatLabelList', as 'ArrayRef[SyntacticCategoryLabel]';
@@ -42,30 +71,32 @@ coerce 'LexCatLabelList', from 'LexicalCategoryLabel', via { [$_] };
 subtype 'PhrCatLabelList', as 'ArrayRef[PhrasalCategoryLabel]';
 coerce 'PhrCatLabelList', from 'PhrasalCategoryLabel', via { [$_] };
 
-# TODO: change this when we have other types of terminal symbols
-subtype 'TerminalCategoryLabel', as 'LexicalCategoryLabel';
-subtype 'TerminalCatLabelList', as 'LexCatLabelList';
-
-# TODO: change this when we have other types of non-terminal symbols
-subtype 'NonTerminalCategoryLabel', as 'PhrasalCategoryLabel';
-subtype 'NonTerminalCatLabelList', as 'PhrCatLabelList';
-
 my $lexeme_rs = $schema->resultset( 'Lexeme' )->search();
 
-subtype 'Word', as 'Str',
-  where { scalar $lexeme_rs->search( { word => $_ } )->all() },
-  message { "The word you provided, $_, is not in the lexicon" };
+subtype 'Word', as 'Str', where {
+  scalar $lexeme_rs->search( { 'LOWER(me.word)' => { 'LIKE' => lc( $_ ) } } )
+    ->all();
+}, message {
+  "The word you provided, $_, is not in the lexicon";
+};
 
 subtype 'WordList', as 'ArrayRef[Word]';
 coerce 'WordList', from 'Word', via { [$_] };
 
-subtype 'SymbolList', as 'ArrayRef[Syntactic::Practice::Grammar::Symbol]',
+subtype 'FactorList', as 'ArrayRef[Syntactic::Practice::Grammar::Factor]',
   where { scalar @$_ > 0 },
-  message { "The Symbol list you provided, [@$_], was empty" };
+  message { "The Factor list you provided, [@$_], was empty" };
 
 subtype 'PositiveInt', as 'Int',
   where { $_ >= 0 },
   message { "The number you provided, $_, was not a positive number" };
+
+subtype 'True', as 'Bool', where { $_ },
+  message { "The value you provided, $_, was not true" };
+subtype 'False', as 'Bool', where { !$_ },
+  message { "The value you provided, $_, was not false" };
+subtype 'Undefined', as 'Undef', where { !defined $_ },
+  message { "The value you provided, $_, was not undefined" };
 
 no Moose;
 __PACKAGE__->meta->make_immutable;

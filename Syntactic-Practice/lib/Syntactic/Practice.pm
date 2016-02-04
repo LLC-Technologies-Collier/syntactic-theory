@@ -4,9 +4,36 @@ use 5.006;
 use strict;
 use warnings FATAL => 'all';
 
+use Log::Log4perl;
+BEGIN {
+  Log::Log4perl->init('log4perl.conf') or die "couldn't init logger: $!";
+
+  my $log = Log::Log4perl->get_logger();
+  $log->info("Syntactic::Practice startup...");
+};
+
+use Carp;
+use Data::Printer;
+
+use Syntactic::Practice::Schema;
+use Syntactic::Practice::Util;
+use Syntactic::Practice::Types;
+use Syntactic::Practice::Grammar::Category;
+use Syntactic::Practice::Roles::Category;
+use Syntactic::Practice::Grammar::Rule;
+use Syntactic::Practice::Grammar::Term;
+use Syntactic::Practice::Grammar::Factor;
+use Syntactic::Practice::Tree;
+use Syntactic::Practice::Lexicon;
+use Syntactic::Practice::Lexicon::Homograph;
+use Syntactic::Practice::Lexicon::Lexeme;
+use Syntactic::Practice::Lexer;
+use Syntactic::Practice::Parser;
+
+
 =head1 NAME
 
-Syntactic::Practice - The great new Syntactic::Practice!
+Syntactic::Practice - Natural Language Processing Engine
 
 =head1 VERSION
 

@@ -45,7 +45,7 @@ __PACKAGE__->table("phrasal_category");
 =head2 head
 
   data_type: 'integer'
-  is_nullable: 0
+  is_nullable: 1
 
 =cut
 
@@ -57,12 +57,12 @@ __PACKAGE__->add_columns(
   "longname",
   { data_type => "varchar", is_nullable => 1, size => 64 },
   "head",
-  { data_type => "integer", is_nullable => 0 },
+  { data_type => "integer", is_nullable => 1 },
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07042 @ 2015-12-29 13:13:22
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:+FzH3Y7PU40W7Ddv4xC7lQ
+# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-01-28 19:04:46
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:iydGdYj0wOjcuNwsEC9FQw
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

@@ -2,7 +2,18 @@ package Syntactic::Practice::Lexer;
 
 use strict;
 
-use Syntactic::Practice::Tree::Lexical;
+=head1 NAME
+
+Syntactic::Practice::Lexer - A lexical analyzer
+
+=head1 VERSION
+
+Version 0.01
+
+=cut
+
+our $VERSION = '0.01';
+
 use Moose;
 
 sub scan {
@@ -17,18 +28,25 @@ sub scan {
       chomp $sentence;
 
       # TODO: account for abbreviations such as Mt., Mr., Mrs., etc.
-      my @_word = split( /\s+/, $sentence );
-      my @word;
-      for ( my $i = 0; $i < scalar( @_word ); $i++ ) {
+      my @word = split( /\s+/, $sentence );
+      my @tree;
+      for ( my $i = 0; $i < scalar( @word ); $i++ ) {
 
-        my $lexTree =
-          Syntactic::Practice::Tree::Lexical->new( { daughters => $_word[$i],
-                                                     frompos => $i, }
-                                                 );
+        my $homograph = Syntactic::Practice::Lexicon::Homograph->new( word => $word[$i] );
+        foreach my $lexeme ( @{ $homograph->lexemes } ){
 
-        push( @word, $lexTree );
+          my $lexTree =
+            Syntactic::Practice::Tree::Abstract::Lexical->new(
+                                                              { daughters => $lexeme,
+                                                                frompos   => $i,
+                                                                label     => $lexeme->label,
+                                                              } );
+
+          push( @tree, $lexTree );
+        }
+        map { $_->sentence( \@tree ) } @tree;
       }
-      push( @sentence, \@word );
+      push( @sentence, \@tree );
     }
     push( @paragraph, \@sentence );
   }

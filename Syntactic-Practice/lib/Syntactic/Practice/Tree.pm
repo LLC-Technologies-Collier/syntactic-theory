@@ -1,90 +1,160 @@
 package Syntactic::Practice::Tree;
 
-use Carp;
-use Syntactic::Practice::Types;
+=head1 NAME
+
+Syntactic::Practice::Tree - Parse Tree Representation
+
+=head1 VERSION
+
+Version 0.01
+
+=cut
+
+our $VERSION = '0.01';
+
+use Moose::Util::TypeConstraints;
+
 use Moose;
+use namespace::autoclean;
 
-has name => ( is  => 'ro',
-              isa => 'Str' );
+with 'Syntactic::Practice::Roles::Category';
 
-has label => ( is       => 'ro',
-               isa      => 'SyntacticCategoryLabel',
-               required => 1, );
+subtype Tree => as 'Syntactic::Practice::Tree';
+
+has name => ( is       => 'ro',
+              isa      => 'Str',
+              lazy     => 1,
+              builder  => '_build_name',
+              init_arg => undef );
 
 has frompos => ( is       => 'ro',
                  isa      => 'PositiveInt',
+                 required => 1 );
+
+has topos => ( is       => 'ro',
+               isa      => 'PositiveInt',
+               lazy     => 1,
+               builder  => '_build_topos',
+               init_arg => undef );
+
+has string => ( is       => 'ro',
+                isa      => 'Str',
+                lazy     => 1,
+                builder  => '_build_string',
+                init_arg => undef );
+
+has sentence => ( is      => 'ro',
+                  isa     => 'ArrayRef[Tree]',
+                  lazy    => 1,
+                  builder => '_build_sentence', );
+
+has sisters => ( is       => 'ro',
+                 isa      => 'ArrayRef[Tree]',
                  required => 1, );
 
-has topos => ( is  => 'ro',
-               isa => 'PositiveInt' );
+has daughters => ( is       => 'ro',
+                   isa      => 'ArrayRef[Tree]',
+                   required => 1, );
 
-has is_terminal => ( is      => 'ro',
+has mother => ( is       => 'ro',
+                isa      => 'Tree',
+                required => 1 );
+
+has depth => ( is       => 'ro',
+               isa      => 'PositiveInt',
+               lazy     => 1,
+               builder  => '_build_depth',
+               init_arg => undef, );
+
+has factor => ( is       => 'ro',
+                isa      => 'Term',
+                required => 1 );
+
+has prune_nulls => ( is      => 'ro',
                      isa     => 'Bool',
-                     required => 1 );
+                     default => 1 );
 
-has daughters => ( is => 'ro',
-                   isa => 'ArrayRef[Syntactic::Practice::Tree]',
-                 );
+sub _build_label    { $_[0]->factor->label }
+sub _build_category { $_[0]->factor->category }
 
-around 'daughters' => sub {
-  my( $orig, $self ) = @_;
+sub _build_name {
+  my ( $self ) = @_;
+  $self->label . $self->_numTrees( { label => $self->label } );
+}
 
-  if( ref $self->{daughters} eq 'ARRAY' ){
-    return @{ $self->{daughters} };
-  }else{
-    return ( $self->{daughters} );
+sub _build_topos {
+  my ( $self ) = @_;
+  ref $self->{daughters} eq 'ARRAY'
+    ? $self->{daughters}->[-1]->topos
+    : $self->frompos + 1;
+}
+
+sub _build_string {
+  my ( $self ) = @_;
+  my @s = @{ $self->sentence };
+  join( ' ', map { $_->string } @s[ $self->frompos .. ( $self->topos - 1 ) ] );
+}
+
+sub _build_sentence {
+  my ( $self ) = @_;
+  foreach my $family ( qw( mother siblings daughters ) ) {
+    return $self->$family->sentence if exists $self->{$family};
   }
+  confess 'Cannot determine sentence';
+}
+
+sub _build_depth { $_[0]->mother->depth + 1 }
+
+around daughters => sub {
+  my ( $orig, $self ) = @_;
+
+  return ( ref $self->{daughters} eq 'ARRAY'
+           ? @{ $self->{daughters} }
+           : ( $self->{daughters} ) );
 };
 
-my %treeByNameByLabel;
+my %treeByName;
+my %treeByLabel;
 
-around 'new' => sub {
-  my ( $orig, $self, @arg ) = @_;
+sub _treeExists {
+  my ( $self, $arg ) = @_;
 
-  my $arg;
-  if ( scalar @arg == 1 && ref $arg[0] eq 'HASH' ) {
-    $arg = $arg[0];
-  } else {
-    $arg = {@arg};
-  }
+  return $treeByName{ $arg->{name} }
+    if ( exists $treeByName{ $arg->{name} } );
+  return 0;
+}
 
-  $treeByNameByLabel{ $arg->{label} } = {}
-    unless exists $treeByNameByLabel{ $arg->{label} };
+sub _registerTree {
+  my ( $self ) = @_;
 
-  if ( exists $arg->{name} ) {
-    if ( exists $treeByNameByLabel{ $arg->{label} }->{ $arg->{name} } ){
-      die "Tree name $arg->{name} is already taken." unless $arg->{name} =~ /^\D+0$/;
-    }
-  } else {
-    $arg->{name} =
-      $arg->{label} . scalar keys %{ $treeByNameByLabel{ $arg->{label} } };
-  }
+  $treeByLabel{ $self->label } = []
+    unless exists $treeByLabel{ $self->label };
 
-  if ( exists $arg->{topos} ) {
-    if ( $arg->{topos} < $arg->{frompos} ) {
-      cluck( 'To and From positions are being reversed' );
-      my $tmp = $arg->{topos};
-      $arg->{topos}   = $arg->{frompos};
-      $arg->{frompos} = $tmp;
-    }
-  } else {
-    $arg->{topos} = $arg->{frompos} + 1;
-  }
+  push( @{ $treeByLabel{ $self->label } }, $treeByName{ $self->name } = $self );
+}
 
-  $treeByNameByLabel{ $arg->{label} }->{ $arg->{name} } =
-    $self->$orig( %$arg );
-};
+sub _numTrees {
+  my ( $self, $arg ) = @_;
+  $treeByLabel{ $arg->{label} } = []
+    unless exists $treeByLabel{ $arg->{label} };
+  scalar @{ $treeByLabel{ $arg->{label} } };
+}
+
+sub BUILD {
+  my ( $self ) = @_;
+
+  $self->_registerTree();
+}
 
 sub cmp {
   my ( $self, $other ) = @_;
-
   my $result;
   foreach my $attribute ( qw(label frompos topos ) ) {
     $result = $self->$attribute cmp $other->$attribute;
     return $result unless $result == 0;
   }
 
-  my @self_daughter = $self->daughters;
+  my @self_daughter  = $self->daughters;
   my @other_daughter = $other->daughters;
 
   $result = scalar @self_daughter <=> scalar @other_daughter;
@@ -99,46 +169,401 @@ sub cmp {
 }
 
 sub as_forest {
-  my ( $self, $depth ) = @_;
-  return '' if $self->frompos == $self->topos;
-  $depth = 0 unless $depth;
-  my $indent = " " x ( $depth * 2 );
+  my ( $self ) = @_;
 
-  my $output = "";
+  my $indent = ' ' x ( $self->depth * 2 );
+
+  my $output   = '';
   my @daughter = $self->daughters;
 
-  $output .= "${indent}[".$self->label."\n${indent}";
-  if( $self->is_terminal ){
-    $output .= "[@daughter] ";
-  }else{
-    $output .= join("", map { $_->as_forest( $depth + 1 ) } @daughter );
+  $output .= "${indent}[" . $self->label . "\n${indent}";
+  if ( $self->category->is_terminal ) {
+    $output .= '['.$daughter[0]->word.'] ';
+  } else {
+    $output .= join( '', map { $_->as_forest() } @daughter );
     $output .= "\n${indent}";
   }
-  $output .= "]";
+  $output .= ']';
   return $output;
 }
 
 sub as_text {
-  my ( $self, $depth ) = @_;
+  my ( $self ) = @_;
   my $output = '';
 
-  $depth = 0 unless $depth;
+  my $indent = ' ' x ( $self->depth * 2 );
+  $output .= $indent . $self->name . ': ';
 
-  die "too deep!" if $depth > 5;
-
-  my $indent = " " x ( $depth * 2 );
-  $output .= $indent . $self->name . ": ";
-
-  my @daughter = $self->daughters;
+  my @daughter = map { $_ // '(null)' } ($self->daughters);
+  $self->log->debug( Data::Printer::p @daughter );
   return "${output}@daughter\n" if $self->is_terminal;
 
-  $output .= join( ' ', map { $_->label } @daughter ) . "\n${indent}";
-  $output .= join( '', map { $_->as_text( $depth + 1 ) } @daughter );;
+  my $ref   = ref $self;
+  my $label = $self->label;
+  warn "$ref - $label";
+
+  $output .=
+    join( ' ', map { ref $_ ? $_->label : $_ } @daughter ) . "\n${indent}";
+  $output .= join( '', map { ref $_ ? $_->as_text : $_ } @daughter );
 
   return $output;
 }
 
+sub to_concrete {
+  my ( $self, $arg ) = @_;
+
+  my @c_daughters;
+  foreach my $daughter ( $self->daughters ) {
+    if ( $daughter->isa( 'Str' ) ) {
+      push( @c_daughters, $daughter );
+    } elsif ( $daughter->isa( 'Tree' ) ) {
+      push( @c_daughters, $daughter->to_concrete );
+    } else {
+      $self->log->warn( 'Daughter is of unknown type' );
+      push( @c_daughters, undef );
+    }
+  }
+
+  ( my $class = ref $self ) =~ ( s/Abstract::// );
+
+  return $class->new( %$self, %$arg, daughters => \@c_daughters );
+}
+
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Tree::NonTerminal;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+use namespace::autoclean;
+
+extends 'Syntactic::Practice::Tree';
+with 'Syntactic::Practice::Roles::Category::NonTerminal';
+
+subtype NonTerminalTree => as 'Syntactic::Practice::Tree::NonTerminal';
+
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Tree::Phrasal;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+use namespace::autoclean;
+
+extends 'Syntactic::Practice::Tree::NonTerminal';
+with 'Syntactic::Practice::Roles::Category::Terminal';
+
+subtype PhrasalTree => as 'Syntactic::Practice::Tree::Phrasal';
+
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Tree::Start;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+use namespace::autoclean;
+
+extends 'Syntactic::Practice::Tree::NonTerminal';
+with 'Syntactic::Practice::Roles::Category::Start';
+
+subtype StartTree => as 'Syntactic::Practice::Tree::Start';
+
+has mother => ( is      => 'ro',
+                isa     => 'Undefined',
+                lazy    => 1,
+                builder => '_build_mother' );
+
+sub _build_mother { undef }
+sub _build_depth  { 0 }
+
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Tree::Terminal;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+use namespace::autoclean;
+
+extends 'Syntactic::Practice::Tree';
+with 'Syntactic::Practice::Roles::Category::Terminal';
+
+subtype TerminalTree => as 'Syntactic::Practice::Tree::Terminal';
+
+sub _build_topos { $_[0]->frompos + 1 }
+
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Tree::Lexical;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+use namespace::autoclean;
+
+extends 'Syntactic::Practice::Tree::Terminal';
+with 'Syntactic::Practice::Roles::Category::Terminal';
+
+subtype LexicalTree => as 'Syntactic::Practice::Tree::Lexical';
+
+has '+daughters' => ( is       => 'ro',
+                      isa      => 'Syntactic::Practice::Lexicon::Lexeme',
+                      required => 1 );
+
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Tree::Null;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+use namespace::autoclean;
+
+extends 'Syntactic::Practice::Tree::Terminal';
+with 'Syntactic::Practice::Roles::Category::Terminal';
+
+subtype NullTree => as 'Syntactic::Practice::Tree::Null';
+
+has '+label' => ( is      => 'ro',
+                  isa     => 'SyntacticCategoryLabel',
+                  lazy    => 1,
+                  builder => '_build_label' );
+
+has '+category' => ( is      => 'ro',
+                     isa     => 'Syntactic::Practice::Grammar::Category',
+                     lazy    => 1,
+                     builder => '_build_category' );
+
+has '+daughters' => ( is      => 'ro',
+                      isa     => 'Undefined',
+                      lazy    => 1,
+                      builder => '_build_daughters', );
+
+sub _build_string    { '' }
+sub _build_daughters { undef }
+sub _build_topos     { $_[0]->frompos }
+sub _build_name      { $_[0]->label . '0' }
+
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Tree::Abstract;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+use namespace::autoclean;
+
+with 'Syntactic::Practice::Roles::Category';
+with 'MooseX::Log::Log4perl';
+
+extends 'Syntactic::Practice::Tree';
+
+subtype AbstractTree => as 'Tree | Syntactic::Practice::Tree::Abstract';
+
+has daughters => ( is       => 'rw',
+                   isa      => 'ArrayRef[AbstractTree]',
+                   required => 0, );
+
+has mother => ( is       => 'rw',
+                isa      => ( 'AbstractTree' ),
+                required => 0 );
+
+has sentence => ( is      => 'rw',
+                  isa     => 'ArrayRef[Tree]',
+                  lazy    => 1,
+                  builder => '_build_sentence', );
+
+has sisters => ( is       => 'rw',
+                 isa      => ( 'ArrayRef[AbstractTree]' ),
+                 required => 0 );
+
+has frompos => ( is       => 'rw',
+                 isa      => ( 'PositiveInt' ),
+                 required => 0 );
+
+has factor => ( is  => 'rw',
+                isa => 'Factor' );
+
+has '+prune_nulls' => ( is      => 'ro',
+                        isa     => 'False',
+                        default => 0 );
+
+around daughters => sub {
+  my ( $orig, $self ) = @_;
+
+  return ( ref $self->{daughters} eq 'ARRAY'
+           ? @{ $self->{daughters} }
+           : ( $self->{daughters} ) );
+};
+
+sub _build_depth {
+  my ( $self ) = @_;
+  exists $self->{mother} ? $self->{mother}->depth + 1 : 0;
+}
+
+my %abstractTreeByName;
+my %abstractTreeByLabel;
+
+sub _treeExists {
+  my ( $self, $arg ) = @_;
+
+  return $abstractTreeByName{ $arg->{name} }
+    if ( exists $abstractTreeByName{ $arg->{name} } );
+  return 0;
+}
+
+sub _registerTree {
+  my ( $self ) = @_;
+
+  warn ref $self unless $self->label;
+  $abstractTreeByLabel{ $self->label } = []
+    unless exists $abstractTreeByLabel{ $self->label };
+  push( @{ $abstractTreeByLabel{ $self->label } },
+        $abstractTreeByName{ $self->name } = $self );
+}
+
+sub _numTrees {
+  my ( $self, $arg ) = @_;
+  $abstractTreeByLabel{ $arg->{label} } = []
+    unless exists $abstractTreeByLabel{ $arg->{label} };
+  return scalar @{ $abstractTreeByLabel{ $arg->{label} } };
+}
+
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Tree::Abstract::NonTerminal;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+
+with 'Syntactic::Practice::Roles::Category::NonTerminal';
+extends 'Syntactic::Practice::Tree::Abstract';
+
+subtype 'NonTerminalAbstractTree',
+  as 'NonTerminalTree | Syntactic::Practice::Tree::Abstract::NonTerminal';
+
+no Moose;
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Tree::Abstract::Phrasal;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+
+with 'Syntactic::Practice::Roles::Category::Phrasal';
+extends 'Syntactic::Practice::Tree::Abstract::NonTerminal';
+
+subtype 'PhrasalAbstractTree',
+  as 'PhrasalTree | Syntactic::Practice::Tree::Abstract::Phrasal';
 
 no Moose;
 
-__PACKAGE__->meta->make_immutable(inline_constructor => 0);
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Tree::Abstract::Start;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+
+extends 'Syntactic::Practice::Tree::Abstract::NonTerminal';
+with 'Syntactic::Practice::Roles::Category::Start';
+
+subtype 'StartAbstractTree',
+  as 'StartTree | Syntactic::Practice::Tree::Abstract::Start';
+
+has mother => ( is      => 'ro',
+                isa     => 'Undefined',
+                lazy    => 1,
+                builder => '_build_mother' );
+
+has factor => ( is  => 'ro',
+                isa => 'Undefined',
+                lazy => 1,
+                builder => '_build_factor'
+              );
+
+
+sub _build_mother { undef }
+sub _build_factor { undef }
+sub _build_depth  { 0 }
+
+no Moose;
+
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Tree::Abstract::Terminal;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+
+subtype 'TerminalAbstractTree',
+  as 'TerminalTree | Syntactic::Practice::Tree::Abstract::Terminal';
+
+extends 'Syntactic::Practice::Tree::Abstract';
+with 'Syntactic::Practice::Roles::Category::Terminal';
+
+no Moose;
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Tree::Abstract::Null;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+
+extends 'Syntactic::Practice::Tree::Abstract::Terminal';
+with 'Syntactic::Practice::Roles::Category::Terminal';
+
+subtype 'NullAbstractTree',
+  as 'NullTree | Syntactic::Practice::Tree::Abstract::Null';
+
+has '+label' => ( is      => 'ro',
+                  isa     => 'SyntacticCategoryLabel',
+                  lazy    => 1,
+                  builder => '_build_label' );
+
+has '+category' => ( is      => 'ro',
+                     isa     => 'Syntactic::Practice::Grammar::Category',
+                     lazy    => 1,
+                     builder => '_build_category' );
+
+has '+daughters' => ( is      => 'ro',
+                      isa     => 'Undefined',
+                      lazy    => 1,
+                      builder => '_build_daughters', );
+
+sub _build_daughters { undef }
+sub _build_topos     { $_[0]->frompos }
+sub _build_name      { $_[0]->label . '0' }
+
+no Moose;
+
+__PACKAGE__->meta->make_immutable;
+
+package Syntactic::Practice::Tree::Abstract::Lexical;
+
+use Moose::Util::TypeConstraints;
+
+use Moose;
+
+extends 'Syntactic::Practice::Tree::Abstract::Terminal';
+with 'Syntactic::Practice::Roles::Category::Lexical';
+
+subtype 'LexicalAbstractTree',
+  as 'LexicalTree | Syntactic::Practice::Tree::Abstract::Lexical';
+
+has '+daughters' => ( is       => 'ro',
+                      isa      => 'Syntactic::Practice::Lexicon::Lexeme',
+                      required => 1 );
+
+sub _build_string { $_[0]->daughters->word }
+
+no Moose;
+__PACKAGE__->meta->make_immutable;

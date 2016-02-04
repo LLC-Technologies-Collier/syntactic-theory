@@ -1,0 +1,20 @@
+-l=80
+-i=2
+-ci=2
+-vt=2
+-cti=0
+-pt=0
+-bt=1
+-sbt=1
+-bbt=0
+-nsfs
+--line-up-parentheses
+-fs
+-fsb=string, --format-skipping-begin=#\s*tidyoff\s*
+-fse=string, --format-skipping-end=#\s*tidyon\s*
+-otr
+-lp
+-vt=1
+-vtc=1
+-sot
+-ce

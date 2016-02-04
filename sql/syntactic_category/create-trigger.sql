@@ -5,7 +5,7 @@
 DELIMITER //
 
 DROP TRIGGER IF EXISTS trigger_ins_lcat;
-CREATE TRIGGER trigger_ins_lcat BEFORE INSERT ON lexical_category_
+CREATE TRIGGER trigger_ins_lcat BEFORE INSERT ON lexical_category_writer
 FOR EACH ROW
 BEGIN
   DECLARE ctype VARCHAR(8);
@@ -23,7 +23,7 @@ BEGIN
 END;
 
 DROP TRIGGER IF EXISTS trigger_upd_lcat;
-CREATE TRIGGER trigger_upd_lcat BEFORE UPDATE ON lexical_category_
+CREATE TRIGGER trigger_upd_lcat BEFORE UPDATE ON lexical_category_writer
 FOR EACH ROW
 BEGIN
   /* no support for updates yet */
@@ -31,7 +31,7 @@ BEGIN
 END;
 
 DROP TRIGGER IF EXISTS trigger_ins_pcat;
-CREATE TRIGGER trigger_ins_pcat BEFORE INSERT ON phrasal_category_
+CREATE TRIGGER trigger_ins_pcat BEFORE INSERT ON phrasal_category_writer
 FOR EACH ROW
 BEGIN
   DECLARE ctype VARCHAR(8);
@@ -48,7 +48,7 @@ BEGIN
 END;
 
 DROP TRIGGER IF EXISTS trigger_upd_pcat;
-CREATE TRIGGER trigger_upd_pcat BEFORE UPDATE ON phrasal_category_
+CREATE TRIGGER trigger_upd_pcat BEFORE UPDATE ON phrasal_category_writer
 FOR EACH ROW
 BEGIN
   /* no support for updates yet */

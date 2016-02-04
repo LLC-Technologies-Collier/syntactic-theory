@@ -1,39 +1,67 @@
 package Syntactic::Practice::Grammar::Rule;
 
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
+=head1 NAME
+
+Syntactic::Practice::Rule - Grammar Rule
+
+=head1 VERSION
+
+Version 0.01
+
+=cut
+
+our $VERSION = '0.01';
+
+use Moose::Util::TypeConstraints;
 
 use Moose;
+use namespace::autoclean;
 
-has 'identifier' => ( is       => 'ro',
-                      isa      => 'SyntacticCategoryLabel',
-                      required => 1 );
+subtype Rule => as 'Syntactic::Practice::Grammar::Rule';
 
-has 'symbols' => ( is       => 'ro',
-                   isa      => 'SymbolList',
-                   required => 1,
-                 );
+with 'Syntactic::Practice::Roles::Category';
 
-around 'symbols' => sub {
-  my ( $orig, $self ) = @_;
+my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
+my $rs_class     = 'Rule';
 
-  return
-    ref $self->{symbols}
-    ? @{ $self->{symbols} }
-    : ( $self->{symbols} );
+has 'resultset' => ( is       => 'ro',
+                     isa      => 'Syntactic::Practice::Schema::Result::Rule',
+                     lazy     => 1,
+                     init_arg => undef,
+                     builder  => '_build_resultset' );
 
-};
+has 'terms' => ( is       => 'ro',
+                 isa      => "ArrayRef[Syntactic::Practice::Grammar::Term]",
+                 lazy     => 1,
+                 init_arg => undef,
+                 builder  => '_build_terms' );
 
-sub as_string {
-  my ( $self ) = @_;
-
-  my $identifier = $self->identifier;
-  my $str =
-    "$identifier -> " . join( " ", map { $_->as_string } $self->symbols );
-
-  return $str;
+sub _build_resultset {
+  my $label = $_[0]->category->label;
+  Syntactic::Practice::Util->get_schema->resultset( $rs_class )->find(
+                         { 'target.label' => $label },
+                         {
+                           prefetch => [ 'target',
+                                         { 'terms' => { 'factors' => ['cat'] } }
+                           ]
+                         }
+  ) or confess "No rule for category [$label]";
 
 }
 
-no Moose;
+my $term_class   = 'Syntactic::Practice::Grammar::Term';
+sub _build_terms {
+  my ( $self ) = @_;
+  my $rs = $self->resultset->terms;
+  my @return;
+  while ( my $resultset = $rs->next ) {
+    push( @return,
+          $term_class->new( label     => $self->label,
+                            category  => $self->category,
+                            resultset => $resultset
+          ) );
+  }
+  return \@return;
+}
+
 __PACKAGE__->meta->make_immutable();

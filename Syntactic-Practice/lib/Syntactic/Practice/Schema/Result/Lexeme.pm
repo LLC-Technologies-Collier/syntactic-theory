@@ -65,23 +65,25 @@ __PACKAGE__->add_columns(
 __PACKAGE__->set_primary_key("id");
 
 
-# Created by DBIx::Class::Schema::Loader v0.07042 @ 2015-12-29 13:13:22
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:QGbzSFk2JnnKDPjJx5ujqw
+# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-01-28 19:15:29
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:BEg85lgFts9uEfsP7goKQA
+
+
+=head1 RELATIONS
 
 =head2 cat
 
-Type: has_one
+Type: belongs_to
 
 Related object: L<Syntactic::Practice::Schema::Result::LexicalCategory>
 
 =cut
 
-__PACKAGE__->has_one(
+__PACKAGE__->belongs_to(
   "cat",
   "Syntactic::Practice::Schema::Result::LexicalCategory",
-  { "foreign.id" => "self.cat_id"},
-  { cascade_copy => 0, cascade_delete => 0 },
+  { id => "cat_id" },
+  { is_deferrable => 1, on_delete => "RESTRICT", on_update => "RESTRICT" },
 );
-
 
 1;

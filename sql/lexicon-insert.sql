@@ -28,6 +28,8 @@ INSERT INTO lexeme ( word,         cat_id )
                    ( 'old',        @adjective_catid ),
                    ( 'small',      @adjective_catid ),
 
+                   ( 'never',      @adverb_catid ),
+
                    ( 'astronomer', @noun_catid ),
                    ( 'animals',    @noun_catid ),
                    ( 'birds',      @noun_catid ),
@@ -75,12 +77,14 @@ INSERT INTO lexeme ( word,         cat_id )
                    ( 'use',        @verb_catid ),
                    ( 'watched',    @verb_catid ),
                    ( 'was',        @verb_catid ),
+                   ( 'would',      @verb_catid ),
                    ( 'yelled',     @verb_catid ),
 
                    ( 'at',         @preposition_catid ),
                    ( 'by',         @preposition_catid ),
                    ( 'beside',     @preposition_catid ),
                    ( 'for',        @preposition_catid ),
+                   ( 'of',         @preposition_catid ),
                    ( 'on',         @preposition_catid ),
                    ( 'in',         @preposition_catid ),
                    ( 'with',       @preposition_catid );

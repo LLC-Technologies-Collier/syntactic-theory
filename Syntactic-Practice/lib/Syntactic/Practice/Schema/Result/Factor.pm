@@ -1,16 +1,16 @@
 use utf8;
-package Syntactic::Practice::Schema::Result::RuleNode;
+package Syntactic::Practice::Schema::Result::Factor;
 
 # Created by DBIx::Class::Schema::Loader
 # DO NOT MODIFY THE FIRST PART OF THIS FILE
 
 =head1 NAME
 
-Syntactic::Practice::Schema::Result::RuleNode
+Syntactic::Practice::Schema::Result::Factor
 
 =head1 DESCRIPTION
 
-Syntactic categories and sequence numbers which make up rules
+Syntactic categories and sequence numbers which make up terms
 
 =cut
 
@@ -19,11 +19,11 @@ use warnings;
 
 use base 'DBIx::Class::Core';
 
-=head1 TABLE: C<rule_node>
+=head1 TABLE: C<factor>
 
 =cut
 
-__PACKAGE__->table("rule_node");
+__PACKAGE__->table("factor");
 
 =head1 ACCESSORS
 
@@ -33,7 +33,7 @@ __PACKAGE__->table("rule_node");
   is_auto_increment: 1
   is_nullable: 0
 
-=head2 rule_id
+=head2 term_id
 
   data_type: 'integer'
   is_foreign_key: 1
@@ -67,7 +67,7 @@ __PACKAGE__->table("rule_node");
 __PACKAGE__->add_columns(
   "id",
   { data_type => "integer", is_auto_increment => 1, is_nullable => 0 },
-  "rule_id",
+  "term_id",
   { data_type => "integer", is_foreign_key => 1, is_nullable => 0 },
   "position",
   { data_type => "integer", is_nullable => 0 },
@@ -97,7 +97,7 @@ __PACKAGE__->set_primary_key("id");
 
 =over 4
 
-=item * L</rule_id>
+=item * L</term_id>
 
 =item * L</position>
 
@@ -105,7 +105,7 @@ __PACKAGE__->set_primary_key("id");
 
 =cut
 
-__PACKAGE__->add_unique_constraint("uniq_rule_position", ["rule_id", "position"]);
+__PACKAGE__->add_unique_constraint("uniq_rule_position", ["term_id", "position"]);
 
 =head1 RELATIONS
 
@@ -124,24 +124,24 @@ __PACKAGE__->belongs_to(
   { is_deferrable => 1, on_delete => "RESTRICT", on_update => "RESTRICT" },
 );
 
-=head2 rule
+=head2 term
 
 Type: belongs_to
 
-Related object: L<Syntactic::Practice::Schema::Result::PhraseStructureRule>
+Related object: L<Syntactic::Practice::Schema::Result::Term>
 
 =cut
 
 __PACKAGE__->belongs_to(
-  "rule",
-  "Syntactic::Practice::Schema::Result::PhraseStructureRule",
-  { id => "rule_id" },
+  "term",
+  "Syntactic::Practice::Schema::Result::Term",
+  { id => "term_id" },
   { is_deferrable => 1, on_delete => "RESTRICT", on_update => "RESTRICT" },
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-01-14 17:17:49
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:H7dp47LC1AzaRHiSG9/faw
+# Created by DBIx::Class::Schema::Loader v0.07042 @ 2016-02-03 13:22:41
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:KEe1jAlcunE3R3J0z/JChA
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

@@ -87,7 +87,9 @@ sub _build_factors {
   my @return;
   while ( my $resultset = $rs->next ) {
     push( @return,
-          Syntactic::Practice::Factor->new( resultset => $resultset ) );
+          Syntactic::Practice::Grammar::Factor->new( resultset => $resultset,
+                                                     label => $resultset->cat->label
+                                                   ) );
   }
   return \@return;
 }

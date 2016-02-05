@@ -16,7 +16,6 @@ use Moose::Util::TypeConstraints;
 
 use Moose;
 use namespace::autoclean;
-use MooseX::Params::Validate;
 use MooseX::Method::Signatures;
 
 subtype Rule => as 'Syntactic::Practice::Grammar::Rule';

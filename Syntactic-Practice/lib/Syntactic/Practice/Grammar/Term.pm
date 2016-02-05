@@ -34,11 +34,6 @@ sub _build_factors {
   while ( my $factor = $rs->next ) {
     my $class = 'Syntactic::Practice::Grammar::Factor';
     my $label = $factor->cat->label;
-    if ( $label eq 'S' ) {
-      $class .= '::Start';
-    } else {
-      $class .= '::' . ucfirst $factor->cat->ctype;
-    }
     $return[ $factor->position - 1 ] =
       $class->new( term => $self, label => $label );
   }

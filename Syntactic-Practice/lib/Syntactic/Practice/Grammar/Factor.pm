@@ -26,7 +26,6 @@ my $rs_class = 'Factor';
 has 'resultset' => ( is       => 'ro',
                      isa      => "Syntactic::Practice::Schema::Result::$rs_class",
                      lazy     => 1,
-                     init_arg => undef,
                      builder  => '_build_resultset' );
 
 has 'term' => ( is      => 'ro',
@@ -49,7 +48,8 @@ sub _build_resultset {
 
 sub _build_term {
   my( $self ) = @_;
-  return $_[0]->resultset->term;
+  return Syntactic::Practice::Grammar::Term->new( resultset => $_[0]->resultset->term,
+                                                  label => $self->label,);
 }
 
 sub repeat {

@@ -88,13 +88,44 @@ my %expansions;
 
 sub BUILD {
   my ( $self ) = @_;
-  $expansions{ $self->label } = { complete => 0,
-                                  started  => 0,
-                                  depends  => {},
-                                  list     => [], };
+  $expansions{ $self->label } = { complete  => 0,
+                                  started   => 0,
+                                  compiled  => 0,
+                                  depends   => {},
+                                  list      => [],
+                                  templates => undef, };
 }
 
-method expansions ( PositiveInt :$depth = 0 ) {
+method templates () {
+  my $ex = $expansions{ $self->label };
+  return $ex->{templates} if defined $ex->{templates};
+
+  my $interp = sub {
+    my ( $template, $depth ) = @_;
+    my @interp = ();
+    return @interp unless $depth <= $self->max_depth;
+    foreach my $element ( @{$template} ) {
+      if ( blessed $element && $element->isa( 'Factor' ) ) {
+        if( $element->is_terminal ){
+          push( @interp, $element->label )
+        }
+        push( @interp, { label => $self->label } );
+      } else {
+#        my $subtemplates = $self->grammar->rule( label => $element->{label} )
+#          ->templates();
+        # TODO: do something with these.  Yow.
+      }
+    }
+    return @interp;
+  };
+
+  my $templates = $ex->{templates} = [];
+  foreach my $term ( @{ $self->terms } ) {
+    push( @$templates, $interp->( $term->template, 0 ) );
+  }
+}
+
+method expansions () {
 
   my $expansions = $expansions{ $self->label };
 
@@ -102,41 +133,18 @@ method expansions ( PositiveInt :$depth = 0 ) {
 
   $expansions->{started} = 1;
 
-  return [] unless ( $depth <= $self->max_depth );
+  my @template;
 
-  foreach my $term ( @{ $self->terms } ) {
-    my $template = [];
 
-    foreach my $factor ( @{ $term->factors } ) {
-      if (    $factor->category->is_terminal
-           || $factor->label eq $self->label )
-      {
-        push( @$template, $factor );
-        next;
-      } else {
-        if ( $expansions{ $factor->label }->{complete}
-             || !$expansions{ $factor->label }->{started} )
-        {
-          $expansions->{depends}->{ $factor->label }++;
-          push( @$template,
-                $self->grammar->rule( label => $factor->label )
-                  ->expansions( depth => $depth + 1 ) );
-        } else {
-          $self->log->info(  'rule '
-                           . $self->label
-                           . ' blocked on completion of expansion list by rule '
-                           . $factor->label );
-        }
-      }
+    foreach my $templ ( $self->templates ) {
+
     }
 
     my @interpolated;
 
     # TODO: interpolate template, store interpolated versions in @expansions
 
-  }
-
-  return @{ $expansions->{list} };
+    return @{ $expansions->{list} };
 }
 
 __PACKAGE__->meta->make_immutable();

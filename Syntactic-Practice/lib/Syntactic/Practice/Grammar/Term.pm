@@ -16,6 +16,7 @@ use Moose::Util::TypeConstraints;
 
 use Moose;
 use namespace::autoclean;
+use MooseX::Method::Signatures;
 
 subtype Term => as 'Syntactic::Practice::Grammar::Term';
 
@@ -45,14 +46,42 @@ sub _build_factors {
   return \@return;
 }
 
+my %templates;
+
+sub BUILD {
+  my ( $self ) = @_;
+  $templates{ $self->resultset->id } = { complete => 0,
+                                         list     => [], };
+}
+
+method template () {
+  my $templ = $templates{ $self->resultset->id };
+  return $templ->{list} if $templ->{complete};
+
+  my $template = $templ->{list};
+
+  foreach my $factor ( @{ $self->factors } ) {
+    if ( $factor->category->is_terminal ) {
+      push( @$template, $factor );
+    } elsif ( $factor->label eq $self->label ) {
+      push( @$template, $template );
+    } else {
+      push( @$template, { label => $factor->label } );
+    }
+  }
+  $templ->{complete} = 1;
+
+  return $template;
+}
+
 sub cmp {
-  $_[0]->resultset->id <=> $_[1]->resultset->id
-};
+  $_[0]->resultset->id <=> $_[1]->resultset->id;
+}
 
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace;
-my $rs_class = 'Term';
-has 'resultset' => ( is   => 'ro',
-                     isa  => "${rs_namespace}::$rs_class",
+my $rs_class     = 'Term';
+has 'resultset' => ( is       => 'ro',
+                     isa      => "${rs_namespace}::$rs_class",
                      required => 1 );
 
 sub as_string {

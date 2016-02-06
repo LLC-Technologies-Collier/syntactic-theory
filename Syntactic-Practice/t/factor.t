@@ -6,9 +6,9 @@ use Test::More;
 
 use Data::Dumper;
 
-use Syntactic::Practice;
-
 BEGIN {
+  use Syntactic::Practice;
+
   use_ok( 'Syntactic::Practice::Grammar::Factor' ) || print "Bail out!\n";
 }
 
@@ -28,7 +28,7 @@ ok( scalar @factors, q{factors returned for rule 'NP'} );
 
 my $factor = $factors[0];
 
-ok( $factor, 'first factor is defined' ) or diag Data::Dumper::Dumper \@factors;
+ok( $factor, 'first factor is defined' ) or diag Data::Printer::p @factors;
 
 my $sym_term = $factor->term;
 

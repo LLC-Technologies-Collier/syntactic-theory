@@ -113,41 +113,9 @@ foreach
 Log::Log4perl->get_logger()
   ->debug( "Label types have been defined" );
 
-foreach my $type ( "${ns}::Util"->get_tree_types ) {
-  my ( $type, $class ) = ( "${type}Tree", "${ns}::Tree::${type}" );
-  my $con_type = $type;
-  class_type $type => { class => $class };
-  $class =~ s/Tree/Tree::Abstract/;
-  $type =~ s/Tree/AbstractTree/;
-  Log::Log4perl->get_logger()
-    ->debug( "Abstract Tree: $type  => [$con_type | $class]" );
-  subtype $type => as "$con_type | $class";
-  map { s/AbstractTree/CategoryRole/ }      ( $type );
-  map { s/Tree::Abstract/Roles::Category/ } ( $class );
-  role_type $type => { role => $class };
-  map { s/Role// }         ( $type );
-  map { s/Roles/Grammar/ } ( $class );
-  class_type $type => { class => $class };
-  map { s/Category/Factor/ } ( $type, $class );
-  class_type $type => { class => $class };
-  map { s/Factor/Term/ } ( $type, $class );
-  class_type $type => { class => $class };
-  map { s/Term/Rule/ } ( $type, $class );
-  class_type $type => { class => $class };
-}
-
-Log::Log4perl->get_logger()
-  ->debug( "Category, Role and Tree types have been defined" );
-
-
-subtype 'SynCatLabelList', as 'ArrayRef[SyntacticCategoryLabel]';
-coerce 'SynCatLabelList', from 'SyntacticCategoryLabel', via { [$_] };
-
-subtype 'LexCatLabelList', as 'ArrayRef[LexicalCategoryLabel]';
-coerce 'LexCatLabelList', from 'LexicalCategoryLabel', via { [$_] };
-
-subtype 'PhrCatLabelList', as 'ArrayRef[PhrasalCategoryLabel]';
-coerce 'PhrCatLabelList', from 'PhrasalCategoryLabel', via { [$_] };
+subtype 'PositiveInt', as 'Int',
+  where { $_ >= 0 },
+  message { "The number you provided, $_, was not a positive number" };
 
 my $lexeme_rs = $schema->resultset( 'Lexeme' )->search();
 
@@ -158,15 +126,38 @@ subtype 'Word', as 'Str', where {
   "The word you provided, $_, is not in the lexicon";
 };
 
+Log::Log4perl->get_logger()
+  ->debug( "Word type has been defined" );
+
+Log::Log4perl->get_logger()
+  ->debug( "PositiveInt type has been defined" );
+
+foreach my $t_type ( "${ns}::Util"->get_tree_types ) {
+  class_type "${t_type}Tree" => { class => "${ns}::Tree::${t_type}" };
+#  Log::Log4perl->get_logger()
+#      ->debug( "Abstract Tree: ${t_type}AbstractTree  => [${t_type}Tree | ${ns}::Abstract::Tree::${t_type}" );
+#  subtype "${t_type}AbstractTree" => as "${ns}::Tree::${t_type} | ${ns}::Abstract::Tree::${t_type}";
+  role_type "${t_type}CategoryRole" => { role => "${ns}::Roles::Category::${t_type}" };
+  class_type "${t_type}Category" => { class => "${ns}::Grammar::Category::${t_type}" };
+  class_type "${t_type}Factor" => { class => "${ns}::Grammar::Factor::${t_type}" };
+  class_type "${t_type}Term" => { class => "${ns}::Grammar::Term::${t_type}" };
+  class_type "${t_type}Rule" => { class => "${ns}::Grammar::Rule::${t_type}" };
+}
+
+subtype 'SynCatLabelList', as 'ArrayRef[SyntacticCategoryLabel]';
+coerce 'SynCatLabelList', from 'SyntacticCategoryLabel', via { [$_] };
+
+subtype 'LexCatLabelList', as 'ArrayRef[LexicalCategoryLabel]';
+coerce 'LexCatLabelList', from 'LexicalCategoryLabel', via { [$_] };
+
+subtype 'PhrCatLabelList', as 'ArrayRef[PhrasalCategoryLabel]';
+coerce 'PhrCatLabelList', from 'PhrasalCategoryLabel', via { [$_] };
+
 subtype 'WordList', as 'ArrayRef[Word]';
 coerce 'WordList', from 'Word', via { [$_] };
 
 subtype 'FactorList', as 'ArrayRef[Factor]',
   where { scalar @$_ > 0 },
   message { "The Factor list you provided, [@$_], was empty" };
-
-subtype 'PositiveInt', as 'Int',
-  where { $_ >= 0 },
-  message { "The number you provided, $_, was not a positive number" };
 
 __PACKAGE__->meta->make_immutable;

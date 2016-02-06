@@ -226,7 +226,7 @@ package Syntactic::Practice::Roles::Category::Start;
 use Moose::Role;
 use namespace::autoclean;
 
-with 'Syntactic::Practice::Roles::Category::Base';
+with 'Syntactic::Practice::Roles::Category::Base' => { -excludes => '_build_label' };
 
 has label => ( is      => 'ro',
                isa     => 'StartCategoryLabel',
@@ -249,6 +249,7 @@ has is_terminal => ( is      => 'ro',
                      builder => '_build_is_terminal' );
 
 sub _cat_class { 'Category::Start' }
+sub _build_label { 'S' }
 
 sub BUILD { $_[0]->{cat_class} = 'Category::Start' }
 

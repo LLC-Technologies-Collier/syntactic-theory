@@ -4,9 +4,9 @@ use strict;
 use warnings FATAL => 'all';
 use Test::More;
 
-use Syntactic::Practice;
-
 BEGIN {
+  use Syntactic::Practice;
+
   use_ok( 'Syntactic::Practice::Parser' ) || print "Bail out!\n";
 }
 

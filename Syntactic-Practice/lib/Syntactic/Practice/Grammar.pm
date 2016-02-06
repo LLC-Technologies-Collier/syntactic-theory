@@ -22,10 +22,20 @@ has 'locale' => ( is      => 'ro',
                   isa     => 'Str',
                   default => 'en_US.UTF-8' );
 
-my %rule;
-my %category;
+has _rule => ( is      => 'ro',
+               isa     => 'HashRef',
+               lazy    => 1,
+               builder => '_build_rule' );
 
-sub _init {
+has _cat => ( is      => 'ro',
+              isa     => 'HashRef',
+              lazy    => 1,
+              builder => '_build_cat' );
+
+sub _build_rule {
+  my ( $self ) = @_;
+  my %rule;
+
   foreach my $rule_rs (
        Syntactic::Practice::Util->get_schema->resultset( 'Rule' )
        ->search( {},
@@ -38,7 +48,12 @@ sub _init {
       $class->new( resultset => $rule_rs,
                    label     => $label, );
   }
+  return \%rule;
+}
 
+sub _build_cat {
+  my ( $self ) = @_;
+  my %category;
   foreach my $cat_rs (
          Syntactic::Practice::Util->get_schema->resultset( 'SyntacticCategory' )
          ->search()->all )
@@ -51,40 +66,35 @@ sub _init {
               || $cat_rs->ctype eq 'phrasal' )
     {
       $class = join( '::', $class, ucfirst $cat_rs->ctype );
-      Log::Log4perl->get_logger()->info( "Class for category with label [$label] is [$class]" );
+      $self->log->info( "Class for category with label [$label] is [$class]" );
     } else {
       my $msg = "Unknown syntactic category for label [$label]";
-      Log::Log4perl->get_logger()->error( $msg );
+      $self->log->error( $msg );
       die $msg;
     }
     $category{$label} =
       $class->new( resultset => $cat_rs,
                    label     => $label, );
   }
+  return \%category;
 }
 
 method rule ( PhrasalCategoryLabel :$label ) {
-  _init unless %rule;
-
-  Log::Log4perl->get_logger()->info( "Request received for rule [$label]" );
-
-  return $rule{$label} if exists $rule{$label};
+  my $rule = $self->_rule;
+  return $rule->{$label} if exists $rule->{$label};
 
   my $msg = "Unknown rule with label [$label]";
-  Log::Log4perl->get_logger()->error( $msg );
+  $self->log->error( $msg );
   die $msg;
 
 }
 
 method category ( SyntacticCategoryLabel :$label ) {
-  _init unless %category;
-
-  Log::Log4perl->get_logger()->info( "Request received for category [$label]" );
-
-  return $category{$label} if exists $category{$label};
+  my $category = $self->_cat;
+  return $category->{$label} if exists $category->{$label};
 
   my $msg = "Unknown syntactic category with label [$label]";
-  Log::Log4perl->get_logger()->error( $msg );
+  $self->log->error( $msg );
   die $msg;
 }
 

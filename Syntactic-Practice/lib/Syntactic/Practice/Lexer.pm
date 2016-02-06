@@ -19,10 +19,13 @@ use namespace::autoclean;
 use MooseX::Params::Validate;
 use MooseX::Method::Signatures;
 
+with 'MooseX::Log::Log4perl';
+
 method evaluate ( ArrayRef[HashRef] :$analysis,
                   PositiveInt :$frompos = 0,
                   SyntacticCategoryLabel :$label
                 ) {
+  $self->log->debug("Analyzing [$label] at position [$frompos]");
   my $element = $analysis->[$frompos];
   my $tree    = $element->{$label};
   my @s       = @{ $tree->sentence };
@@ -33,6 +36,7 @@ method evaluate ( ArrayRef[HashRef] :$analysis,
 
   foreach my $term ( map { $_->term } @{ $category->factors } ) {
     next if exists $element->{ $term->label };
+    my $term_label = $term->label;
     my $topos    = $tree->frompos;
     my $licensed = 1;
     my @factor   = @{ $term->factors };
@@ -64,7 +68,7 @@ method evaluate ( ArrayRef[HashRef] :$analysis,
         last;
       }
     }
-
+    $self->log->debug( "Did not find a full parse with term [$term_label] at position [$frompos].  Sad panda." );
     next unless $licensed;
 
     foreach my $l ( keys %{ $analysis->[$topos] } ) {
@@ -86,6 +90,8 @@ method evaluate ( ArrayRef[HashRef] :$analysis,
                                                     category => $term->category,
                                                     frompos  => $frompos,
                                                     topos    => $topos, );
+
+    $self->log->debug( 'Full parse completed!  Yays!' );
 
     $evaluation = 1;
 

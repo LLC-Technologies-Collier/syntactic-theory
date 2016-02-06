@@ -4,7 +4,6 @@ use 5.006;
 use strict;
 use warnings FATAL => 'all';
 
-
 use Data::Printer;
 
 BEGIN {
@@ -30,14 +29,19 @@ BEGIN {
       map {
         ( "${ns}::Tree::${_}", "${ns}::Tree::Abstract::${_}",
           "${ns}::Grammar::Category::${_}", )
-      } Syntactic::Practice::Util->get_tree_types
-       ) ];
+      } Syntactic::Practice::Util->get_syntactic_types
+    ) ];
+
+  Log::Log4perl->get_logger()->info( Data::Printer::p $declared );
 
   eval 'use Syntactic::Practice::Types -declare => $declared';
+  eval 'use Syntactic::Practice::Grammar -declare =>
+        [ qw( Syntactic::Practice::Grammar::Rule Syntactic::Practice::Grammar::Category ) ]';
+
+  die $@ if $@;
 }
 
 use Syntactic::Practice::Grammar::Category;
-use Syntactic::Practice::Grammar;
 use Syntactic::Practice::Grammar::Term;
 use Syntactic::Practice::Grammar::Factor;
 use Syntactic::Practice::Roles::Category;

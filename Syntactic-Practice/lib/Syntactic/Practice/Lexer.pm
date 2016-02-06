@@ -116,17 +116,20 @@ sub scan {
 
           my $lexTree =
             Syntactic::Practice::Tree::Abstract::Lexical->new(
-                                                      { daughters => $lexeme,
-                                                        frompos   => $i,
-                                                        label => $lexeme->label,
-                                                      } );
+                                                { daughters => $lexeme,
+                                                  frompos   => $i,
+                                                  category => $lexeme->category,
+                                                  label    => $lexeme->label,
+                                                } );
 
           push( @tree, $lexTree );
         }
         map { $_->sentence( \@tree ) } @tree;
       }
 
-      my @analysis = map { { $_->label => $_ } } @tree;
+      my @analysis = map {
+        { $_->label => $_ }
+      } @tree;
 
       $self->evaluate( analysis => \@analysis,
                        label    => $tree[0]->label,

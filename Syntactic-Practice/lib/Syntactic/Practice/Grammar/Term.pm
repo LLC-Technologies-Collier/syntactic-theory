@@ -43,6 +43,7 @@ sub BUILD {
   my ( $self ) = @_;
   $templates{ $self->resultset->id } = { complete => 0,
                                          list     => [], };
+  return $self;
 }
 
 method template () {

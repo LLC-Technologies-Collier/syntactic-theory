@@ -58,6 +58,8 @@ method ingest ( PositiveInt :$frompos,
                       sentence => $self->sentence,
                       label    => $category->label, );
 
+  $tree_params{category} = $category if $category;
+
   my $msg = '%2d: %-2s %s [%s]';
 
   my $rule = Syntactic::Practice::Grammar::Rule->new( category => $category );
@@ -78,6 +80,7 @@ method ingest ( PositiveInt :$frompos,
       $target = Syntactic::Practice::Tree::Abstract::Start->new( %tree_params );
       $tree_params{label} = $target->label;
     } else {
+      $self->log->info('Building non-start tree.  params: ', Data::Printer::p %tree_params);
       $target =
         Syntactic::Practice::Tree::Abstract::Phrasal->new( %tree_params );
     }
@@ -209,6 +212,8 @@ sub BUILD {
     $self->{cached}->{$frompos} = { $label   => [$lexeme],
                                     terminal => $lexeme };
   }
+
+  return $self;
 }
 
 around ingest => sub {
@@ -218,7 +223,7 @@ around ingest => sub {
     validated_hash( \@args,
                     frompos  => { isa => 'PositiveInt', optional => 0 },
                     category => { isa => 'Category',    optional => 0 },
-                    mother   => { isa => 'MotherValue', optional => 0 }, );
+                    mother   => { isa => 'Maybe[Tree]', optional => 0 }, );
 
   my ( $frompos, $category, $mother ) =
     ( @params{qw(frompos category mother)} );

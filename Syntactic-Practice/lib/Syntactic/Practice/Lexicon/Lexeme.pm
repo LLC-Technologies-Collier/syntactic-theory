@@ -1,8 +1,11 @@
 package Syntactic::Practice::Lexicon::Lexeme;
 
 use Moose;
+use namespace::autoclean;
 
 with 'Syntactic::Practice::Roles::Category::Lexical';
+with 'MooseX::Log::Log4perl';
+
 
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
 
@@ -29,8 +32,16 @@ sub _build_word {
 sub _build_label { $_[0]->category->label }
 
 sub _build_category {
-  Syntactic::Practice::Grammar::Category::Lexical->new(
-                                        label => $_[0]->resultset->cat->label );
+  my $c =
+    Syntactic::Practice::Grammar->new()
+    ->category( label => $_[0]->resultset->cat->label );
+  unless ( $c->isa( 'Syntactic::Practice::Grammar::Category::Lexical' ) ) {
+    my $msg = 'Category for lexeme is not Lexical!';
+    $_[0]->log->error( $msg );
+    die $msg;
+  }
+
+  return $c;
 }
 
 sub _build_resultset {
@@ -42,5 +53,4 @@ sub _build_resultset {
     ->search( { word => $self->word } );
 }
 
-no Moose;
 __PACKAGE__->meta->make_immutable;

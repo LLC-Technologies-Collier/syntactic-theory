@@ -139,7 +139,10 @@ sub _numTrees {
 sub BUILD {
   my ( $self ) = @_;
 
+  $self->log->info('tree has been built.  Now registering');
   $self->_registerTree();
+
+  return $self;
 }
 
 sub cmp {

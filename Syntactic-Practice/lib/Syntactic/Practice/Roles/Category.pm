@@ -3,7 +3,6 @@ package Syntactic::Practice::Roles::Category::Base;
 use Moose::Role;
 use namespace::autoclean;
 
-
 has name => ( is      => 'ro',
               isa     => 'Str',
               lazy    => 1,
@@ -23,15 +22,13 @@ sub _build_category {
     $self->log->error( $msg );
     die $msg;
   }
-  my $class = 'Syntactic::Practice::Grammar::' . $self->_cat_class;
-  return $class->new( label => $self->{label} );
+
+  return Syntactic::Practice::Grammar->new->category(label => $self->label);
 }
 
 sub _build_name        { $_[0]->category->resultset->longname }
 sub _build_is_terminal { $_[0]->category->is_terminal }
 sub _build_is_start    { $_[0]->category->is_start }
-
-requires '_cat_class';
 
 1;
 
@@ -62,8 +59,6 @@ has is_terminal => ( is      => 'ro',
                      lazy    => 1,
                      builder => '_build_is_terminal' );
 
-sub _cat_class { 'Category' }
-
 1;
 
 package Syntactic::Practice::Roles::Category::Abstract;
@@ -92,8 +87,6 @@ has is_terminal => ( is      => 'rw',
                      isa     => 'Bool',
                      lazy    => 1,
                      builder => '_build_is_terminal' );
-
-sub _cat_class { 'Category::Abstract' }
 
 1;
 
@@ -124,8 +117,6 @@ has is_terminal => ( is      => 'ro',
                      lazy    => 1,
                      builder => '_build_is_terminal' );
 
-sub _cat_class { 'Category::Terminal' }
-
 1;
 
 package Syntactic::Practice::Roles::Category::Lexical;
@@ -154,8 +145,6 @@ has is_terminal => ( is      => 'ro',
                      isa     => 'True',
                      lazy    => 1,
                      builder => '_build_is_terminal' );
-
-sub _cat_class { 'Category::Lexical' }
 
 1;
 
@@ -186,8 +175,6 @@ has is_terminal => ( is      => 'ro',
                      lazy    => 1,
                      builder => '_build_is_terminal' );
 
-sub _cat_class { 'Category::NonTerminal' }
-
 1;
 
 package Syntactic::Practice::Roles::Category::Phrasal;
@@ -217,8 +204,6 @@ has is_terminal => ( is      => 'ro',
                      lazy    => 1,
                      builder => '_build_is_terminal' );
 
-sub _cat_class { 'Category::Phrasal' }
-
 1;
 
 package Syntactic::Practice::Roles::Category::Start;
@@ -226,7 +211,8 @@ package Syntactic::Practice::Roles::Category::Start;
 use Moose::Role;
 use namespace::autoclean;
 
-with 'Syntactic::Practice::Roles::Category::Base' => { -excludes => '_build_label' };
+with 'Syntactic::Practice::Roles::Category::Base' =>
+  { -excludes => '_build_label' };
 
 has label => ( is      => 'ro',
                isa     => 'StartCategoryLabel',
@@ -248,9 +234,6 @@ has is_terminal => ( is      => 'ro',
                      lazy    => 1,
                      builder => '_build_is_terminal' );
 
-sub _cat_class { 'Category::Start' }
 sub _build_label { 'S' }
-
-sub BUILD { $_[0]->{cat_class} = 'Category::Start' }
 
 1;

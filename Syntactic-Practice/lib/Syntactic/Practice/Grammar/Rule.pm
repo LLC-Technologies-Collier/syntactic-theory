@@ -89,6 +89,8 @@ sub BUILD {
                                   depends   => {},
                                   list      => [],
                                   templates => undef, };
+
+  return $self;
 }
 
 method templates () {

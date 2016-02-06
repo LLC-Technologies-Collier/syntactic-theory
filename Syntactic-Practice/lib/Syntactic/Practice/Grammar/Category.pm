@@ -1,6 +1,3 @@
-package Syntactic::Practice::Grammar::Factor;
-1;
-
 package Syntactic::Practice::Grammar::Category;
 
 =head1 NAME
@@ -193,7 +190,7 @@ sub _build_label    { 'S' }
 sub _is_terminal    { 0 }
 
 sub _build_category {
-  Syntactic::Practice::Grammar::Category::Start->new( label => $_[0]->label );
+  Syntactic::Practice::Grammar->category( label => $_[0]->label );
 }
 
 __PACKAGE__->meta->make_immutable;

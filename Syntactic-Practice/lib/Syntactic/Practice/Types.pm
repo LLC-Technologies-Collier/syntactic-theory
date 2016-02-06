@@ -15,9 +15,7 @@ subtype 'True', as 'Bool', where { $_ },
 subtype 'False', as 'Bool', where { !$_ },
   message { "The value you provided, $_, was not false" };
 
-Log::Log4perl->get_logger()
-    ->debug( "False type has been defined" );
-
+Log::Log4perl->get_logger()->debug( "False type has been defined" );
 
 my %type_class = ( Tree         => 'Tree',
                    AbstractTree => 'Tree::Abstract',
@@ -51,25 +49,24 @@ subtype 'Undefined', as 'Undef', where { !defined $_ },
 
 maybe_type 'Tree';
 
-enum 'SynCatType',
-  [ map { lc $_ } "${ns}::Util"->get_syntactic_category_types ];
-
-my %categoryLabel = ( Start => [ "${ns}::Util"->get_start_category_labels ] );
+my %categoryLabel = ( Start       => [ "${ns}::Util"->get_start_labels ],
+                      Lexical     => [ "${ns}::Util"->get_lexical_labels ],
+                      Phrasal     => [ "${ns}::Util"->get_phrasal_labels ],
+                      Terminal    => [ "${ns}::Util"->get_terminal_labels ],
+                      NonTerminal => [ "${ns}::Util"->get_nonterminal_labels ],
+                      Syntactic   => [ "${ns}::Util"->get_syntactic_labels ], );
 
 my %typeMap = (
                 Syntactic => { base  => 'SyntacticCategoryLabel',
                                super => 'Str',
-                               rs    => 'SyntacticCategory',
                                key   => 'Syntactic'
                 },
                 NonTerminal => { base  => 'NonTerminalCategoryLabel',
                                  super => 'SyntacticCategoryLabel',
-                                 rs    => 'PhrasalCategory',
                                  key   => 'NonTerminal'
                 },
                 Terminal => { base  => 'TerminalCategoryLabel',
                               super => 'SyntacticCategoryLabel',
-                              rs    => 'LexicalCategory',
                               key   => 'Terminal'
                 },
                 Lexical => { base  => 'LexicalCategoryLabel',
@@ -89,29 +86,20 @@ my $msg_format = 'The label you provided, %s, is not a %s';
 foreach
   my $cat_type ( qw( Syntactic NonTerminal Terminal Phrasal Lexical Start ) )
 {
-  my @valid_list;
-  if ( exists $typeMap{$cat_type}->{rs} ) {
-    $categoryLabel{$cat_type} =
-      [ map { $_->label }
-        $schema->resultset( $typeMap{$cat_type}->{rs} )
-        ->search( {}, { distinct => 1 } )->all() ];
-    Log::Log4perl->get_logger()
-        ->debug( "$cat_type label list: " . Data::Printer::p( $categoryLabel{$cat_type} ) );
-
-  }
-
   my ( $base, $super, $key ) = @{ $typeMap{$cat_type} }{qw( base super key )};
 
-  subtype $base, as $super, where {
+  subtype $base => as $super => where {
     my $input = $_;
     grep { $_ eq $input } @{ $categoryLabel{$key} };
-  }, message {
+  },
+    message {
     sprintf( $msg_format, $_, $base );
-  };
+    };
+
+  Log::Log4perl->get_logger()->debug( "$base => $super" );
 }
 
-Log::Log4perl->get_logger()
-  ->debug( "Label types have been defined" );
+Log::Log4perl->get_logger()->debug( "Label types have been defined" );
 
 subtype 'PositiveInt', as 'Int',
   where { $_ >= 0 },
@@ -126,23 +114,32 @@ subtype 'Word', as 'Str', where {
   "The word you provided, $_, is not in the lexicon";
 };
 
-Log::Log4perl->get_logger()
-  ->debug( "Word type has been defined" );
+Log::Log4perl->get_logger()->debug( "Word type has been defined" );
 
-Log::Log4perl->get_logger()
-  ->debug( "PositiveInt type has been defined" );
+Log::Log4perl->get_logger()->debug( "PositiveInt type has been defined" );
 
-foreach my $t_type ( "${ns}::Util"->get_tree_types ) {
-  class_type "${t_type}Tree" => { class => "${ns}::Tree::${t_type}" };
+foreach my $s_type ( "${ns}::Util"->get_syntactic_types ) {
+  class_type "${s_type}Tree" => { class => "${ns}::Tree::${s_type}" };
+
+#  class_type "${s_type}AbstractTree" => { class => "${ns}::Tree::${s_type} | ${ns}::Tree::Abstract::${s_type}" };
+  class_type "${s_type}AbstractTree" =>
+    { class => "${ns}::Tree::Abstract::${s_type}" };
+
 #  Log::Log4perl->get_logger()
-#      ->debug( "Abstract Tree: ${t_type}AbstractTree  => [${t_type}Tree | ${ns}::Abstract::Tree::${t_type}" );
-#  subtype "${t_type}AbstractTree" => as "${ns}::Tree::${t_type} | ${ns}::Abstract::Tree::${t_type}";
-  role_type "${t_type}CategoryRole" => { role => "${ns}::Roles::Category::${t_type}" };
-  class_type "${t_type}Category" => { class => "${ns}::Grammar::Category::${t_type}" };
-  class_type "${t_type}Factor" => { class => "${ns}::Grammar::Factor::${t_type}" };
-  class_type "${t_type}Term" => { class => "${ns}::Grammar::Term::${t_type}" };
-  class_type "${t_type}Rule" => { class => "${ns}::Grammar::Rule::${t_type}" };
+#      ->debug( "Abstract Tree: ${s_type}AbstractTree  => [${s_type}Tree | ${ns}::Tree::Abstract::${s_type}" );
+#  subtype "${s_type}AbstractTree" => as "${ns}::Tree::${s_type} | ${ns}::Tree::Abstract::${s_type}";
+  role_type "${s_type}CategoryRole" =>
+    { role => "${ns}::Roles::Category::${s_type}" };
+  class_type "${s_type}Category" =>
+    { class => "${ns}::Grammar::Category::${s_type}" };
+  class_type "${s_type}Factor" =>
+    { class => "${ns}::Grammar::Factor::${s_type}" };
+  class_type "${s_type}Term" => { class => "${ns}::Grammar::Term::${s_type}" };
+  class_type "${s_type}Rule" => { class => "${ns}::Grammar::Rule::${s_type}" };
 }
+
+Log::Log4perl->get_logger()
+  ->debug( "TerminalAbstractTree type has been defined" );
 
 subtype 'SynCatLabelList', as 'ArrayRef[SyntacticCategoryLabel]';
 coerce 'SynCatLabelList', from 'SyntacticCategoryLabel', via { [$_] };

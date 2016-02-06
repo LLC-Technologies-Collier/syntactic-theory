@@ -1,6 +1,6 @@
 perl-doc perl-base perltidy
 libtest-exception-perl libtest-differences-perl libtest-most-perl
-libmoose-perl libmoosex-method-signatures-perl libmoosex-params-validate-perl libmoosex-log-log4perl-perl
+libmoose-perl libmoosex-method-signatures-perl libmoosex-params-validate-perl libmoosex-log-log4perl-perl libmoosex-singleton-perl
 libdbix-class-perl libdbix-class-schema-loader-perl
 libgetopt-long-descriptive-perl libconfig-any-perl libdata-printer-perl
 libdatetime-perl

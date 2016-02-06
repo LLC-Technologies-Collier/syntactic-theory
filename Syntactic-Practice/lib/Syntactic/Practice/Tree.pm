@@ -93,8 +93,10 @@ sub _build_string {
 
 sub _build_sentence {
   my ( $self ) = @_;
-  foreach my $family ( qw( mother siblings daughters ) ) {
-    return $self->$family->sentence if exists $self->{$family};
+  return $self->{mother}->sentence if exists $self->{mother};
+  foreach my $family ( qw( siblings daughters ) ) {
+    $self->log->debug("Checkin $family for tree...");
+    return $self->{$family}->[0]->sentence if exists $self->{$family} && scalar @{ $self->{$family} };
   }
   confess 'Cannot determine sentence';
 }

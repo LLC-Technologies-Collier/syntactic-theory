@@ -140,5 +140,4 @@ sub scan {
   return @paragraph;
 }
 
-no Moose;
 __PACKAGE__->meta->make_immutable;

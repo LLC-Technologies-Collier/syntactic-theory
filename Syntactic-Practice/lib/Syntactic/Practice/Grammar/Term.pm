@@ -12,13 +12,9 @@ Version 0.01
 
 our $VERSION = '0.01';
 
-use Moose::Util::TypeConstraints;
-
 use Moose;
 use namespace::autoclean;
 use MooseX::Method::Signatures;
-
-subtype Term => as 'Syntactic::Practice::Grammar::Term';
 
 with 'Syntactic::Practice::Roles::Category';
 

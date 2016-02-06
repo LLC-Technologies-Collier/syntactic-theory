@@ -4,33 +4,52 @@ use 5.006;
 use strict;
 use warnings FATAL => 'all';
 
-use Log::Log4perl;
-BEGIN {
-  Log::Log4perl->init('log4perl.conf') or die "couldn't init logger: $!";
 
-  my $log = Log::Log4perl->get_logger();
-  $log->info("Syntactic::Practice startup...");
-};
-
-use Carp;
 use Data::Printer;
 
-use Syntactic::Practice::Schema;
-use Syntactic::Practice::Util;
-use Syntactic::Practice::Types;
+BEGIN {
+  use Log::Log4perl;
+
+  Log::Log4perl->init( 'log4perl.conf' ) or die "couldn't init logger: $!";
+
+  Log::Log4perl->get_logger()->info( "Syntactic::Practice startup..." );
+
+  use Syntactic::Practice::Schema;
+  use Syntactic::Practice::Util;
+
+  my $ns = 'Syntactic::Practice';
+
+  my $declared = [
+    ( map { "${ns}::$_" }
+        qw ( Grammar Grammar::Category Grammar::Rule Grammar::Term
+        Grammar::Factor Roles::Category Tree Tree::Abstract Lexicon
+        Lexicon::Homograph Lexicon::Lexeme Lexer::Token Lexer::Analysis
+        Lexer Parser
+        )
+    ), (
+      map {
+        ( "${ns}::Tree::${_}", "${ns}::Tree::Abstract::${_}",
+          "${ns}::Grammar::Category::${_}", )
+      } Syntactic::Practice::Util->get_tree_types
+       ) ];
+
+  eval 'use Syntactic::Practice::Types -declare => $declared';
+}
+
 use Syntactic::Practice::Grammar::Category;
-use Syntactic::Practice::Roles::Category;
 use Syntactic::Practice::Grammar;
-use Syntactic::Practice::Grammar::Rule;
 use Syntactic::Practice::Grammar::Term;
 use Syntactic::Practice::Grammar::Factor;
+use Syntactic::Practice::Roles::Category;
+use Syntactic::Practice::Grammar::Rule;
 use Syntactic::Practice::Tree;
 use Syntactic::Practice::Lexicon;
 use Syntactic::Practice::Lexicon::Homograph;
 use Syntactic::Practice::Lexicon::Lexeme;
+use Syntactic::Practice::Lexer::Token;
+use Syntactic::Practice::Lexer::Analysis;
 use Syntactic::Practice::Lexer;
 use Syntactic::Practice::Parser;
-
 
 =head1 NAME
 
@@ -43,7 +62,6 @@ Version 0.01
 =cut
 
 our $VERSION = '0.01';
-
 
 =head1 SYNOPSIS
 
@@ -136,4 +154,4 @@ See L<http://dev.perl.org/licenses/> for more information.
 
 =cut
 
-1; # End of Syntactic::Practice
+1;    # End of Syntactic::Practice

@@ -40,8 +40,8 @@ has sentence => ( is       => 'ro',
                   required => 1, );
 
 method ingest ( PositiveInt :$frompos,
-                SyntacticCategory :$category,
-                MotherValue :$mother
+                Category :$category,
+                Maybe[Tree] :$mother
               ) {
 
   my $num_words = scalar( @{ $self->sentence } );
@@ -216,10 +216,9 @@ around ingest => sub {
 
   my ( %params ) =
     validated_hash( \@args,
-                    frompos  => { isa => 'PositiveInt',       optional => 0 },
-                    category => { isa => 'SyntacticCategory', optional => 0 },
-                    mother   => { isa => 'MotherValue',       optional => 0 },
-    );
+                    frompos  => { isa => 'PositiveInt', optional => 0 },
+                    category => { isa => 'Category',    optional => 0 },
+                    mother   => { isa => 'MotherValue', optional => 0 }, );
 
   my ( $frompos, $category, $mother ) =
     ( @params{qw(frompos category mother)} );

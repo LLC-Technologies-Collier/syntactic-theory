@@ -29,5 +29,17 @@ sub get_syntactic_category_types {
   qw(Phrasal Lexical);
 }
 
+sub get_terminal_types {
+  qw( Null Lexical Literal );
+}
+
+sub get_nonterminal_types {
+  qw( Phrasal Start );
+}
+
+sub get_tree_types {
+  qw( Terminal NonTerminal ), get_terminal_types, get_nonterminal_types
+}
+
 no Moose;
 __PACKAGE__->meta->make_immutable;

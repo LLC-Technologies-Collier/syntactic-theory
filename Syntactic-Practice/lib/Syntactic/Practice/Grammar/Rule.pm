@@ -12,16 +12,12 @@ Version 0.01
 
 our $VERSION = '0.01';
 
-use Moose::Util::TypeConstraints;
-
 use Moose;
 use namespace::autoclean;
 use MooseX::Method::Signatures;
 
-subtype Rule => as 'Syntactic::Practice::Grammar::Rule';
-
 with 'MooseX::Log::Log4perl';
-with 'Syntactic::Practice::Roles::Category';
+with 'Syntactic::Practice::Roles::Category::NonTerminal';
 
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
 my $rs_class     = 'Rule';

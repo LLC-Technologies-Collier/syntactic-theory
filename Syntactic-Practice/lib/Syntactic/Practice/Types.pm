@@ -1,16 +1,61 @@
 package Syntactic::Practice::Types;
 
+use Syntactic::Practice::Util;
+
 use Moose;
 use Moose::Util::TypeConstraints;
+use namespace::autoclean;
 
-my $schema             = Syntactic::Practice::Util->get_schema();
-my @startCategoryLabel = Syntactic::Practice::Util->get_start_category_labels();
+my $ns = 'Syntactic::Practice';
 
-my @SynCatType = Syntactic::Practice::Util->get_syntactic_category_types;
+my $schema = "${ns}::Util"->get_schema();
 
-enum 'SynCatType', [ map { lc $_ } @SynCatType ];
+subtype 'True', as 'Bool', where { $_ },
+  message { "The value you provided, $_, was not true" };
+subtype 'False', as 'Bool', where { !$_ },
+  message { "The value you provided, $_, was not false" };
 
-my %categoryLabel = ( Start => \@startCategoryLabel );
+Log::Log4perl->get_logger()
+    ->debug( "False type has been defined" );
+
+
+my %type_class = ( Tree         => 'Tree',
+                   AbstractTree => 'Tree::Abstract',
+                   Category     => 'Grammar::Category',
+                   Grammar      => 'Grammar',
+                   Category     => 'Grammar::Category',
+                   Rule         => 'Grammar::Rule',
+                   Term         => 'Grammar::Term',
+                   Factor       => 'Grammar::Factor',
+                   Tree         => 'Tree',
+                   AbstractTree => 'Tree::Abstract',
+                   Lexicon      => 'Lexicon',
+                   Homograph    => 'Lexicon::Homograph',
+                   Lexeme       => 'Lexicon::Lexeme',
+                   Token        => 'Lexer::Token',
+                   Analysis     => 'Lexer::Analysis',
+                   Lexer        => 'Lexer',
+                   Parser       => 'Parser', );
+my %type_role = ( CategoryRole => 'Roles::Category' );
+
+while ( my ( $type, $class ) = each %type_class ) {
+  class_type $type => { class => "${ns}::$class" };
+}
+
+while ( my ( $type, $role ) = each %type_role ) {
+  role_type $type => { role => "${ns}::$role" };
+}
+
+subtype 'Undefined', as 'Undef', where { !defined $_ },
+  message { "The value you provided, $_, was not undefined" };
+
+maybe_type 'Tree';
+
+enum 'SynCatType',
+  [ map { lc $_ } "${ns}::Util"->get_syntactic_category_types ];
+
+my %categoryLabel = ( Start => [ "${ns}::Util"->get_start_category_labels ] );
+
 my %typeMap = (
                 Syntactic => { base  => 'SyntacticCategoryLabel',
                                super => 'Str',
@@ -50,6 +95,9 @@ foreach
       [ map { $_->label }
         $schema->resultset( $typeMap{$cat_type}->{rs} )
         ->search( {}, { distinct => 1 } )->all() ];
+    Log::Log4perl->get_logger()
+        ->debug( "$cat_type label list: " . Data::Printer::p( $categoryLabel{$cat_type} ) );
+
   }
 
   my ( $base, $super, $key ) = @{ $typeMap{$cat_type} }{qw( base super key )};
@@ -61,6 +109,36 @@ foreach
     sprintf( $msg_format, $_, $base );
   };
 }
+
+Log::Log4perl->get_logger()
+  ->debug( "Label types have been defined" );
+
+foreach my $type ( "${ns}::Util"->get_tree_types ) {
+  my ( $type, $class ) = ( "${type}Tree", "${ns}::Tree::${type}" );
+  my $con_type = $type;
+  class_type $type => { class => $class };
+  $class =~ s/Tree/Tree::Abstract/;
+  $type =~ s/Tree/AbstractTree/;
+  Log::Log4perl->get_logger()
+    ->debug( "Abstract Tree: $type  => [$con_type | $class]" );
+  subtype $type => as "$con_type | $class";
+  map { s/AbstractTree/CategoryRole/ }      ( $type );
+  map { s/Tree::Abstract/Roles::Category/ } ( $class );
+  role_type $type => { role => $class };
+  map { s/Role// }         ( $type );
+  map { s/Roles/Grammar/ } ( $class );
+  class_type $type => { class => $class };
+  map { s/Category/Factor/ } ( $type, $class );
+  class_type $type => { class => $class };
+  map { s/Factor/Term/ } ( $type, $class );
+  class_type $type => { class => $class };
+  map { s/Term/Rule/ } ( $type, $class );
+  class_type $type => { class => $class };
+}
+
+Log::Log4perl->get_logger()
+  ->debug( "Category, Role and Tree types have been defined" );
+
 
 subtype 'SynCatLabelList', as 'ArrayRef[SyntacticCategoryLabel]';
 coerce 'SynCatLabelList', from 'SyntacticCategoryLabel', via { [$_] };
@@ -83,7 +161,7 @@ subtype 'Word', as 'Str', where {
 subtype 'WordList', as 'ArrayRef[Word]';
 coerce 'WordList', from 'Word', via { [$_] };
 
-subtype 'FactorList', as 'ArrayRef[Syntactic::Practice::Grammar::Factor]',
+subtype 'FactorList', as 'ArrayRef[Factor]',
   where { scalar @$_ > 0 },
   message { "The Factor list you provided, [@$_], was empty" };
 
@@ -91,12 +169,4 @@ subtype 'PositiveInt', as 'Int',
   where { $_ >= 0 },
   message { "The number you provided, $_, was not a positive number" };
 
-subtype 'True', as 'Bool', where { $_ },
-  message { "The value you provided, $_, was not true" };
-subtype 'False', as 'Bool', where { !$_ },
-  message { "The value you provided, $_, was not false" };
-subtype 'Undefined', as 'Undef', where { !defined $_ },
-  message { "The value you provided, $_, was not undefined" };
-
-no Moose;
 __PACKAGE__->meta->make_immutable;

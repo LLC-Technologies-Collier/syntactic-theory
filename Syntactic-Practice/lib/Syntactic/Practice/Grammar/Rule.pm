@@ -63,6 +63,13 @@ sub _build_grammar {
   $grammar = Syntactic::Practice::Grammar->new( locale => 'en_US.UTF-8' );
 }
 
+sub _build_label {
+  $_[0]->resultset->target->label;
+}
+sub _build_category {
+  Syntactic::Practice::Grammar->new->category( label => $_[0]->label );
+}
+
 my $term_class = 'Syntactic::Practice::Grammar::Term';
 
 sub _build_terms {
@@ -70,11 +77,7 @@ sub _build_terms {
   my $rs = $self->resultset->terms;
   my @return;
   while ( my $resultset = $rs->next ) {
-    push( @return,
-          $term_class->new( label     => $self->label,
-                            category  => $self->category,
-                            resultset => $resultset
-          ) );
+    push( @return, $term_class->new( resultset => $resultset ) );
   }
   return \@return;
 }
@@ -103,14 +106,15 @@ method templates () {
     return @interp unless $depth <= $self->max_depth;
     foreach my $element ( @{$template} ) {
       if ( blessed $element && $element->isa( 'Factor' ) ) {
-        if( $element->is_terminal ){
-          push( @interp, $element->label )
+        if ( $element->is_terminal ) {
+          push( @interp, $element->label );
         }
         push( @interp, { label => $self->label } );
       } else {
-#        my $subtemplates = $self->grammar->rule( label => $element->{label} )
-#          ->templates();
-        # TODO: do something with these.  Yow.
+
+  #        my $subtemplates = $self->grammar->rule( label => $element->{label} )
+  #          ->templates();
+  # TODO: do something with these.  Yow.
       }
     }
     return @interp;
@@ -132,16 +136,15 @@ method expansions () {
 
   my @template;
 
+  foreach my $templ ( $self->templates ) {
 
-    foreach my $templ ( $self->templates ) {
+  }
 
-    }
+  my @interpolated;
 
-    my @interpolated;
+  # TODO: interpolate template, store interpolated versions in @expansions
 
-    # TODO: interpolate template, store interpolated versions in @expansions
-
-    return @{ $expansions->{list} };
+  return @{ $expansions->{list} };
 }
 
 __PACKAGE__->meta->make_immutable();

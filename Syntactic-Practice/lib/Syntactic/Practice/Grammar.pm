@@ -66,7 +66,6 @@ sub _build_cat {
               || $cat_rs->ctype eq 'phrasal' )
     {
       $class = join( '::', $class, ucfirst $cat_rs->ctype );
-      $self->log->info( "Class for category with label [$label] is [$class]" );
     } else {
       my $msg = "Unknown syntactic category for label [$label]";
       $self->log->error( $msg );

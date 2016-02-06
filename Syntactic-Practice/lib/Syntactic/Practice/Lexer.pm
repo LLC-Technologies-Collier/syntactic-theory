@@ -31,17 +31,29 @@ method evaluate ( ArrayRef[HashRef] :$analysis,
   my @s       = @{ $tree->sentence };
 
   my $category = $tree->category;
+  my $cat_label = $category->label;
+  my @cat_factors = @{ $category->factors };
+  my $num_cat_factors = scalar @cat_factors;
+  $self->log->debug("The category of our tree [$cat_label] is associated with $num_cat_factors factor(s)");
 
   my $evaluation = 0;
 
-  foreach my $term ( map { $_->term } @{ $category->factors } ) {
-    next if exists $element->{ $term->label };
+  for( my $i = 0; $i < $num_cat_factors; $i++ ){
+    my $cat_factor = $cat_factors[$i];
+    my $cat_factor_position = $cat_factor->position;
+    my $term = $cat_factor->term;
     my $term_label = $term->label;
+    my $term_id = $term->resultset->id;
+    $self->log->debug("Factor #$i is in position #$cat_factor_position of term [$term_label($term_id)]");
     my $topos    = $tree->frompos;
     my $licensed = 1;
-    my @factor   = @{ $term->factors };
+    my @term_factor   = @{ $term->factors };
+    my $num_term_factors = scalar @term_factor;
+    my @term_factor_labels = map { $_->label } @term_factor;
+    $self->log->debug("Term [$term_label($term_id)] has $num_term_factors factor(s): [@term_factor_labels]");
+    next if exists $element->{ $term->label };
     my @daughters;
-    foreach my $factor ( @factor ) {
+    foreach my $factor ( @term_factor ) {
       my $f_label = $factor->label;
 
       if ( exists $analysis->[$topos]->{$f_label}

@@ -23,6 +23,17 @@ has 'factors' => ( is      => 'ro',
                    lazy    => 1,
                    builder => '_build_factors' );
 
+has resultset => ( is       => 'ro',
+                   isa      => 'Syntactic::Practice::Schema::Result::Term',
+                   required => 1, );
+
+sub _build_label {
+  $_[0]->resultset->rule->target->label;
+}
+sub _build_category {
+  Syntactic::Practice::Grammar->new->category( label => $_[0]->label );
+}
+
 sub _build_factors {
   my ( $self ) = @_;
   my @return;

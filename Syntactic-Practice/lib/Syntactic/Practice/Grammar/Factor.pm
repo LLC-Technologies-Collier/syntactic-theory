@@ -45,7 +45,7 @@ sub _build_term {
   my ( $self ) = @_;
   return
     Syntactic::Practice::Grammar::Term->new(resultset => $_[0]->resultset->term,
-                                            label     => $self->label, );
+                                            label     => $self->resultset->term->rule->target->label, );
 }
 
 sub repeat {

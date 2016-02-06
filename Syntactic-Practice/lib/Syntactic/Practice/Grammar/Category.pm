@@ -15,13 +15,10 @@ Version 0.01
 
 our $VERSION = '0.01';
 
-use Moose::Util::TypeConstraints;
-
 use Moose;
+use namespace::autoclean;
 
 with 'MooseX::Log::Log4perl';
-
-subtype SyntacticCategory => as 'Syntactic::Practice::Grammar::Category';
 
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
 my $rs_class     = 'SyntacticCategory';
@@ -87,9 +84,10 @@ sub _build_factors {
   my @return;
   while ( my $resultset = $rs->next ) {
     push( @return,
-          Syntactic::Practice::Grammar::Factor->new( resultset => $resultset,
-                                                     label => $resultset->cat->label
-                                                   ) );
+          Syntactic::Practice::Grammar::Factor->new(
+                                                 resultset => $resultset,
+                                                 label => $resultset->cat->label
+          ) );
   }
   return \@return;
 }
@@ -106,17 +104,12 @@ sub _build_is_start {
   return 1 if ( $label eq 'S' );
 }
 
-no Moose;
 __PACKAGE__->meta->make_immutable;
 
 package Syntactic::Practice::Grammar::Category::Terminal;
 
-use Moose::Util::TypeConstraints;
-
 use Moose;
-
-subtype TerminalCategory => as
-  'Syntactic::Practice::Grammar::Category::Terminal';
+use namespace::autoclean;
 
 extends 'Syntactic::Practice::Grammar::Category';
 
@@ -134,16 +127,12 @@ sub _build_is_terminal  { 1 }
 sub _build_is_start     { 0 }
 sub _get_category_class { 'Category::Terminal' }
 
-no Moose;
 __PACKAGE__->meta->make_immutable;
 
 package Syntactic::Practice::Grammar::Category::Lexical;
 
-use Moose::Util::TypeConstraints;
-
 use Moose;
-
-subtype LexicalCategory => as 'Syntactic::Practice::Grammar::Category::Lexical';
+use namespace::autoclean;
 
 extends 'Syntactic::Practice::Grammar::Category::Terminal';
 
@@ -152,62 +141,40 @@ has '+label' => ( is      => 'ro',
                   lazy    => 1,
                   builder => '_build_label' );
 
-no Moose;
 __PACKAGE__->meta->make_immutable;
 
 package Syntactic::Practice::Grammar::Category::NonTerminal;
 
-use Moose::Util::TypeConstraints;
-
 use Moose;
-
-subtype NonTerminalCategory => as
-  'Syntactic::Practice::Grammar::Category::NonTerminal';
+use namespace::autoclean;
 
 extends 'Syntactic::Practice::Grammar::Category';
 
-has '+label' => ( is      => 'ro',
-                  isa     => 'NonTerminalCategoryLabel',
-                  lazy    => 1,
-                  builder => '_build_label' );
+has '+label' => ( isa => 'NonTerminalCategoryLabel' );
 
-has '+is_terminal' => ( is      => 'ro',
-                        isa     => 'False',
-                        lazy    => 1,
-                        builder => '_build_is_terminal' );
+has '+is_terminal' => ( isa => 'False' );
 
 sub _build_is_terminal { 0 }
 
-no Moose;
 __PACKAGE__->meta->make_immutable;
 
 package Syntactic::Practice::Grammar::Category::Phrasal;
 
-use Moose::Util::TypeConstraints;
-
 use Moose;
-
-subtype PhrasalCategory => as 'Syntactic::Practice::Grammar::Category::Phrasal';
+use namespace::autoclean;
 
 extends 'Syntactic::Practice::Grammar::Category::NonTerminal';
 
-has '+label' => ( is      => 'ro',
-                  isa     => 'PhrasalCategoryLabel',
-                  lazy    => 1,
-                  builder => '_build_label' );
+has '+label' => ( isa => 'PhrasalCategoryLabel' );
 
 sub _get_category_class { 'Category::Phrasal' }
 
-no Moose;
 __PACKAGE__->meta->make_immutable;
 
 package Syntactic::Practice::Grammar::Category::Start;
 
-use Moose::Util::TypeConstraints;
-
 use Moose;
-
-subtype StartCategory => as 'Syntactic::Practice::Grammar::Category::Start';
+use namespace::autoclean;
 
 extends 'Syntactic::Practice::Grammar::Category::NonTerminal';
 
@@ -223,10 +190,10 @@ has '+is_start' => ( is      => 'ro',
 
 sub _build_is_start { 1 }
 sub _build_label    { 'S' }
+sub _is_terminal    { 0 }
 
 sub _build_category {
-  Syntactic::Practice::Grammar::Start->new( label => $_[0]->label );
+  Syntactic::Practice::Grammar::Category::Start->new( label => $_[0]->label );
 }
 
-no Moose;
 __PACKAGE__->meta->make_immutable;

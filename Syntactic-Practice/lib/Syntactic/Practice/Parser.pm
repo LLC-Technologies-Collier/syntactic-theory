@@ -39,10 +39,129 @@ has sentence => ( is       => 'ro',
                   isa      => 'ArrayRef[TerminalAbstractTree]',
                   required => 1, );
 
+# method ingest ( PositiveInt :$frompos,
+#                 Rule :$rule,
+#                 Maybe[Tree] :$mother
+#               ) {
+#   my @daughters;
+#   foreach my $term ( @{ $rule->terms } ){
+#     my $tree = $self->sentence->[$frompos];
+#     my $depth = $term->licenses( $tree );
+#     next unless defined $depth;
+#     my @factors = @{ $term->factors };
+#     if( $depth > 0 ){
+#       foreach my $factor ( @factors ){
+#         if( $factor->licenses( $tree ) ){
+#           return $self->ingest( frompos => $frompos,
+#                                 rule => Syntactic::Practice::Grammar->new->rule( label => $factor->label ),
+#                                 mother => $mother );
+#         }
+#       }
+#       my $msg = 'one of those factors should have licensed that tree.  investigate';
+#       $self->log->error($msg);
+#       die $msg;
+#     }
+#     my $curpos = $frompos;
+#     foreach my $factor ( @factor ){
+#       if( $factor->label eq $curtree->label ){
+#         push(@daughters, $curtree);
+#         $tree = $self->sentence->[++$curpos]
+#       }elsif( $factor->optional ){
+#         next;
+#       }else{
+#         my $msg = 'one of those factors should have licensed that tree.  investigate';
+#         $self->log->error($msg);
+#         die $msg;
+#       }
+#     }
+#   }
+# }
+
+method process_factor ( PositiveInt :$frompos!,
+                        Factor :$factor!,
+                        NonTerminalAbstractTree :$target!,
+                        ArrayRef[ArrayRef] :$d_list!,
+                        Maybe[Tree] :$mother ) {
+# sub process_factor {
+#   my ( $self,     %args )    = @_;
+#   my ( $frompos, $factor, $target, $d_list, $mother ) =
+#     @args{qw( frompos factor target d_list mother )};
+
+  my $num_words = scalar( @{ $self->sentence } );
+  my $msg = '%2d: %-2s %s [%s]';
+
+  $target->factor( $factor ) unless $target->is_start;
+  my $factor_label = $factor->label;
+
+  my $optional = $factor->optional;
+  my $repeat   = $factor->repeat;
+
+  my $optAtPos = {};
+
+  for ( my $dlist_idx = 0; $dlist_idx < scalar @$d_list; $dlist_idx++ ) {
+    my @daughter = @{ $d_list->[$dlist_idx] };
+
+    my $curpos = ( scalar @daughter ? $daughter[-1]->topos : $frompos );
+
+    next if $curpos == $num_words;
+
+    my $depth = $factor->licenses( $self->sentence->[$curpos] );
+    if ( !defined $depth ) {
+      my $lex_label = $self->sentence->[$curpos]->label;
+      $self->log->debug(
+                       "Factor [$factor_label] does not license [$lex_label]" );
+    }
+
+    if ( $optional && !exists $optAtPos->{$curpos} ) {
+      my %mother = ( $factor->is_start ? () : ( mother => $target ) );
+      my $class = 'Syntactic::Practice::Tree::Abstract::Null';
+      my $tree = $class->new( depth    => $self->{current_depth} + 1,
+                              term     => $factor->term,
+                              category => $factor->category,
+                              factor   => $factor,
+                              frompos  => $curpos,
+                              sentence => $self->sentence,
+                              label    => $factor_label,
+                              %mother, );
+      $optAtPos->{$curpos} = $tree;
+      splice( @$d_list, $dlist_idx, 0, ( [ @daughter, $tree ] ) );
+      next;
+    }
+
+    splice( @$d_list, $dlist_idx, 1 );
+    my @tree = $self->ingest( frompos  => $curpos,
+                              category => $factor->category,
+                              mother   => $target, );
+
+    unless ( @tree ) {
+      my @s = @{ $self->sentence };
+      unless ( $factor->is_terminal ) {
+        my $string = join( ' ', map { $_->string } @s[ $curpos .. $#s ] );
+        my @data = ( $curpos, $factor_label, '!->', $string );
+        $self->log->info( sprintf( $msg, @data ) );
+      }
+
+      $dlist_idx--;
+      next;
+    }
+    foreach my $tree ( @tree ) {
+      $tree->mother( $target );
+
+      my @new = ( [ @daughter, $tree ] );
+      push( @new, [ @daughter, $tree ] ) if ( $repeat );
+      splice( @$d_list, $dlist_idx, 0, ( @new ) );
+    }
+  }
+}
+
 method ingest ( PositiveInt :$frompos,
-                Category :$category,
-                Maybe[Tree] :$mother
-              ) {
+               Category :$category,
+               Maybe[Tree] :$mother
+             ) {
+# sub ingest {
+#   my ( $self,     %args )    = @_;
+#   my ( $frompos, $category, $mother ) =
+#     @args{qw( frompos category mother )};
 
   my $num_words = scalar( @{ $self->sentence } );
   if ( $frompos >= $num_words ) {
@@ -80,68 +199,19 @@ method ingest ( PositiveInt :$frompos,
       $target = Syntactic::Practice::Tree::Abstract::Start->new( %tree_params );
       $tree_params{label} = $target->label;
     } else {
-      $self->log->info('Building non-start tree.  params: ', Data::Printer::p %tree_params);
+
+#$self->log->info('Building non-start tree.  params: ', Data::Printer::p %tree_params);
       $target =
         Syntactic::Practice::Tree::Abstract::Phrasal->new( %tree_params );
     }
 
     my @d_list = ( [] );
     foreach my $factor ( @{ $term->factors } ) {
-      $target->factor( $factor ) unless $target->is_start;
-      my $factor_label = $factor->label;
-
-      my $optional = $factor->optional;
-      my $repeat   = $factor->repeat;
-
-      my $optAtPos = {};
-
-      for ( my $dlist_idx = 0; $dlist_idx < scalar @d_list; $dlist_idx++ ) {
-        my @daughter = @{ $d_list[$dlist_idx] };
-
-        my $curpos = ( scalar @daughter ? $daughter[-1]->topos : $frompos );
-
-        next if $curpos == $num_words;
-
-        if ( $optional && !exists $optAtPos->{$curpos} ) {
-          my %mother = ( $factor->is_start ? () : ( mother => $target ) );
-          my $class = 'Syntactic::Practice::Tree::Abstract::Null';
-          my $tree = $class->new( depth    => $self->{current_depth} + 1,
-                                  term     => $term,
-                                  category => $factor->category,
-                                  factor   => $factor,
-                                  frompos  => $curpos,
-                                  sentence => $self->sentence,
-                                  label    => $factor_label,
-                                  %mother, );
-          $optAtPos->{$curpos} = $tree;
-          splice( @d_list, $dlist_idx, 0, ( [ @daughter, $tree ] ) );
-          next;
-        }
-
-        splice( @d_list, $dlist_idx, 1 );
-        my @tree = $self->ingest( frompos  => $curpos,
-                                  category => $factor->category,
-                                  mother   => $target, );
-
-        unless ( @tree ) {
-          my @s = @{ $self->sentence };
-          unless ( $factor->is_terminal ) {
-            my $string = join( ' ', map { $_->string } @s[ $curpos .. $#s ] );
-            my @data = ( $curpos, $factor_label, '!->', $string );
-            $self->log->info( sprintf( $msg, @data ) );
-          }
-
-          $dlist_idx--;
-          next;
-        }
-        foreach my $tree ( @tree ) {
-          $tree->mother( $target );
-
-          my @new = ( [ @daughter, $tree ] );
-          push( @new, [ @daughter, $tree ] ) if ( $repeat );
-          splice( @d_list, $dlist_idx, 0, ( @new ) );
-        }
-      }
+      $self->process_factor( frompos => $frompos,
+                             factor  => $factor,
+                             target  => $target,
+                             d_list  => \@d_list,
+                             mother  => $mother, );
     }
     while ( my $d = shift( @d_list ) ) {
       my @d;

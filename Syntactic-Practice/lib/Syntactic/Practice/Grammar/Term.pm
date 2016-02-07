@@ -23,13 +23,26 @@ has 'factors' => ( is      => 'ro',
                    lazy    => 1,
                    builder => '_build_factors' );
 
+my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace;
+my $rs_class     = 'Term';
 has resultset => ( is       => 'ro',
-                   isa      => 'Syntactic::Practice::Schema::Result::Term',
-                   required => 1, );
+                   isa      => "${rs_namespace}::$rs_class",
+                   required => 1 );
+
+has id => ( is      => 'ro',
+            isa     => 'PositiveInt',
+            lazy    => 1,
+            builder => '_build_id' );
+
+sub _build_id {
+  my ( $self ) = @_;
+  $_[0]->resultset->id;
+}
 
 sub _build_label {
   $_[0]->resultset->rule->target->label;
 }
+
 sub _build_category {
   Syntactic::Practice::Grammar->new->category( label => $_[0]->label );
 }
@@ -80,12 +93,6 @@ method template () {
 sub cmp {
   $_[0]->resultset->id <=> $_[1]->resultset->id;
 }
-
-my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace;
-my $rs_class     = 'Term';
-has 'resultset' => ( is       => 'ro',
-                     isa      => "${rs_namespace}::$rs_class",
-                     required => 1 );
 
 sub as_string {
   my ( $self ) = @_;

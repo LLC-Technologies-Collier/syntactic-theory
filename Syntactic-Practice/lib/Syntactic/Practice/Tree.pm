@@ -62,10 +62,6 @@ has depth => ( is       => 'ro',
                builder  => '_build_depth',
                init_arg => undef, );
 
-has factor => ( is       => 'ro',
-                isa      => 'Term',
-                required => 1 );
-
 has prune_nulls => ( is      => 'ro',
                      isa     => 'Bool',
                      default => 1 );
@@ -440,15 +436,7 @@ has mother => ( is      => 'ro',
                 lazy    => 1,
                 builder => '_build_mother' );
 
-has factor => ( is  => 'ro',
-                isa => 'Undefined',
-                lazy => 1,
-                builder => '_build_factor'
-              );
-
-
 sub _build_mother { undef }
-sub _build_factor { undef }
 sub _build_depth  { 0 }
 
 __PACKAGE__->meta->make_immutable;

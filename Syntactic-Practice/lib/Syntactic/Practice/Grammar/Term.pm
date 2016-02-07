@@ -34,6 +34,44 @@ has id => ( is      => 'ro',
             lazy    => 1,
             builder => '_build_id' );
 
+has bnf => ( is       => 'ro',
+             isa      => 'Str',
+             lazy     => 1,
+             init_arg => undef,
+             builder  => '_build_bnf' );
+
+has identifier => ( is       => 'ro',
+                    isa      => 'Str',
+                    lazy     => 1,
+                    init_arg => undef,
+                    builder  => '_build_identifier' );
+
+has expression => ( is       => 'ro',
+                    isa      => 'Str',
+                    lazy     => 1,
+                    init_arg => undef,
+                    builder  => '_build_expression' );
+
+sub _build_identifier { '<' . $_[0]->label . '>' }
+
+sub _build_expression {
+  my @factor;
+  foreach my $factor ( @{ $_[0]->factors } ) {
+    my $f = $factor->identifier;
+    if ( $factor->repeat ) {
+      $f = "{ $f }";
+    } elsif ( $factor->optional ) {
+      $f = "[ $f ]";
+    }
+    push(@factor,$f);
+  }
+  join( ' ', @factor );
+}
+
+sub _build_bnf {
+  join( ' ::= ', $_[0]->identifier, $_[0]->expression );
+}
+
 sub _build_id {
   my ( $self ) = @_;
   $_[0]->resultset->id;

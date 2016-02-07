@@ -46,6 +46,19 @@ TODO: {
   $num_tests++;
 };
 
+$rule = Syntactic::Practice::Grammar::Rule->new(label => 'NOM');
 
+$terms = $rule->terms;
+
+is( scalar @$terms, 2, 'Two terms for rule NOM' );
+$num_tests++;
+
+my $bnf = $rule->bnf;
+
+ok( $bnf, 'BNF was generated' );
+
+$num_tests++;
+
+diag $bnf;
 
 done_testing( $num_tests );

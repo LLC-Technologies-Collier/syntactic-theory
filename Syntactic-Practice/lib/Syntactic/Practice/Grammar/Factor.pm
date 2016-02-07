@@ -35,6 +35,39 @@ has id => ( is      => 'ro',
             lazy    => 1,
             builder => '_build_id' );
 
+has bnf => ( is       => 'ro',
+             isa      => 'Str',
+             lazy     => 1,
+             init_arg => undef,
+             builder  => '_build_bnf' );
+
+has identifier => ( is       => 'ro',
+                    isa      => 'Str',
+                    lazy     => 1,
+                    init_arg => undef,
+                    builder  => '_build_identifier' );
+
+has expression => ( is       => 'ro',
+                    isa      => 'Str',
+                    lazy     => 1,
+                    init_arg => undef,
+                    builder  => '_build_expression' );
+
+sub _build_identifier {
+  my ( $self ) = @_;
+  my $identifier = $self->label;
+  $identifier = "<$identifier>" unless $self->is_terminal;
+  return $identifier;
+}
+
+sub _build_expression {
+  join ' ', map { $_->expression } @{ $_[0]->factors };
+}
+
+sub _build_bnf {
+  join( ' ::= ', $_[0]->identifier, $_[0]->expression );
+}
+
 my $required_msg =
   'Neither Term + Label, resultset, nor ID were specified for factor';
 

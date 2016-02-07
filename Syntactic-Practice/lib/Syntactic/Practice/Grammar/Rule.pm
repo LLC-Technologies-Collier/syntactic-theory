@@ -46,6 +46,34 @@ has terms => ( is       => 'ro',
                init_arg => undef,
                builder  => '_build_terms' );
 
+has bnf => ( is       => 'ro',
+             isa      => 'Str',
+             lazy     => 1,
+             init_arg => undef,
+             builder  => '_build_bnf' );
+
+has identifier => ( is       => 'ro',
+                    isa      => 'Str',
+                    lazy     => 1,
+                    init_arg => undef,
+                    builder  => '_build_identifier' );
+
+has expression => ( is       => 'ro',
+                    isa      => 'Str',
+                    lazy     => 1,
+                    init_arg => undef,
+                    builder  => '_build_expression' );
+
+sub _build_identifier { '<' . $_[0]->label . '>' }
+
+sub _build_expression {
+  join ' | ', map { $_->expression } @{ $_[0]->terms };
+}
+
+sub _build_bnf {
+  join( ' ::= ', $_[0]->identifier, $_[0]->expression );
+}
+
 sub _build_resultset {
   my $label = $_[0]->category->label;
   Syntactic::Practice::Util->get_schema->resultset( $rs_class )->find(
@@ -66,6 +94,7 @@ sub _build_grammar {
 sub _build_label {
   $_[0]->resultset->target->label;
 }
+
 sub _build_category {
   Syntactic::Practice::Grammar->new->category( label => $_[0]->label );
 }

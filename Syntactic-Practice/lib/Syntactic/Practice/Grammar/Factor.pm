@@ -128,15 +128,16 @@ my $max_depth = 5;
 
 sub licenses {
   my( $self, $type, $depth ) = @_;
+  $self->log->debug($type->label);
+  $depth //= 0;
   return undef if $depth >= $max_depth;
-  $depth = 0 unless $depth;
   return undef unless $type->can('label');
   return $depth if $self->label eq $type->label;
   return undef if $self->is_terminal;
   my $rule = Syntactic::Practice::Grammar->new->rule(label => $self->label);
   my $min = undef;
-  foreach my $term ( $rule->terms ){
-    foreach my $factor ( $term->factors ){
+  foreach my $term ( @{ $rule->terms } ){
+    foreach my $factor ( @{ $term->factors } ){
       my $d = $factor->licenses( $type, $depth + 1 );
       unless( defined $min ){
         $min = $d;

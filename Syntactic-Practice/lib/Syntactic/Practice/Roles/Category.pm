@@ -23,12 +23,21 @@ sub _build_category {
     die $msg;
   }
 
-  return Syntactic::Practice::Grammar->new->category(label => $self->label);
+  return Syntactic::Practice::Grammar->new->category( label => $self->label );
 }
 
-sub _build_name        { $_[0]->category->resultset->longname }
-sub _build_is_terminal { $_[0]->category->is_terminal }
-sub _build_is_start    { $_[0]->category->is_start }
+sub _build_is_terminal {
+  grep { $_ eq $_[0]->label } Syntactic::Practice::Util->get_terminal_labels;
+}
+
+sub _build_is_recursive {
+  grep { $_ eq $_[0]->label } Syntactic::Practice::Util->get_recursive_labels;
+}
+
+sub _build_is_start {
+  grep { $_ eq $_[0]->label } Syntactic::Practice::Util->get_start_labels;
+}
+sub _build_name         { $_[0]->category->resultset->longname }
 
 1;
 
@@ -174,6 +183,35 @@ has is_terminal => ( is      => 'ro',
                      isa     => 'False',
                      lazy    => 1,
                      builder => '_build_is_terminal' );
+
+1;
+
+package Syntactic::Practice::Roles::Category::Recursive;
+
+use Moose::Role;
+use namespace::autoclean;
+
+with( 'Syntactic::Practice::Roles::Category::Base',
+      'Syntactic::Practice::Roles::Category::NonTerminal', );
+
+has is_recursive => ( is      => 'ro',
+                      isa     => 'True',
+                      lazy    => 1,
+                      builder => '_build_is_recursive' );
+
+1;
+
+package Syntactic::Practice::Roles::Category::NonRecursive;
+
+use Moose::Role;
+use namespace::autoclean;
+
+with 'Syntactic::Practice::Roles::Category::Base';
+
+has is_recursive => ( is      => 'ro',
+                      isa     => 'False',
+                      lazy    => 1,
+                      builder => '_build_is_recursive' );
 
 1;
 

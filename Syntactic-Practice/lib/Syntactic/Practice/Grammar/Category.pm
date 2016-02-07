@@ -14,6 +14,7 @@ our $VERSION = '0.01';
 
 use Moose;
 use namespace::autoclean;
+use Moose::Util qw( apply_all_roles );
 
 with 'MooseX::Log::Log4perl';
 
@@ -54,6 +55,12 @@ has 'is_start' => ( is      => 'ro',
                     lazy    => 1,
                     builder => '_build_is_start' );
 
+has 'is_start' => ( is      => 'ro',
+                    isa     => 'Bool',
+                    lazy    => 1,
+                    builder => '_build_is_start' );
+
+
 sub _build_label {
   my ( $self ) = @_;
   confess 'Neither label nor resultset were specified'
@@ -91,16 +98,28 @@ sub _build_factors {
 }
 
 sub _build_is_terminal {
-  my $ctype = $_[0]->resultset->ctype;
-  return 0 if ( $ctype eq 'phrasal' );
-  return 1 if ( $ctype eq 'lexical' );
+  grep { $_ eq $_[0]->label } Syntactic::Practice::Util->get_terminal_labels;
+}
+
+sub _build_is_recursive {
+  grep { $_ eq $_[0]->label } Syntactic::Practice::Util->get_recursive_labels;
 }
 
 sub _build_is_start {
-  my $label = $_[0]->label;
-  return 0 if ( $label ne 'S' );
-  return 1 if ( $label eq 'S' );
+  grep { $_ eq $_[0]->label } Syntactic::Practice::Util->get_start_labels;
 }
+
+sub BUILD {
+  my ( $self ) = @_;
+
+  if( grep { $self->label eq $_ } Syntactic::Practice::Util->get_recursive_labels ){
+    apply_all_roles( $self, 'Syntactic::Practice::Roles::Category::Recursive' );
+  }else{
+    apply_all_roles( $self, 'Syntactic::Practice::Roles::Category::NonRecursive' );
+  }
+  return $self;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 

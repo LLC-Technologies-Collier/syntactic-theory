@@ -45,6 +45,7 @@ my @syntactic_labels =
   ->all();
 
 sub get_syntactic_labels   { @syntactic_labels }
+sub get_recursive_labels   { qw( NOM PP ) }
 sub get_nonterminal_labels { get_phrasal_labels }
 sub get_terminal_labels    { get_lexical_labels }
 sub get_start_labels       { qw( S ) }

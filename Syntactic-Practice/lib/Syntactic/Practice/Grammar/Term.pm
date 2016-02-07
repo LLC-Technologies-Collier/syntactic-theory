@@ -15,6 +15,7 @@ our $VERSION = '0.01';
 use Moose;
 use namespace::autoclean;
 use MooseX::Method::Signatures;
+use Moose::Util qw( apply_all_roles );
 
 with 'Syntactic::Practice::Roles::Category';
 
@@ -105,6 +106,12 @@ sub BUILD {
   my ( $self ) = @_;
   $templates{ $self->resultset->id } = { complete => 0,
                                          list     => [], };
+
+  if( grep { $self->label eq $_ } Syntactic::Practice::Util->get_recursive_labels ){
+    apply_all_roles( $self, 'Syntactic::Practice::Roles::Category::Recursive' );
+  }else{
+    apply_all_roles( $self, 'Syntactic::Practice::Roles::Category::NonRecursive' );
+  }
   return $self;
 }
 

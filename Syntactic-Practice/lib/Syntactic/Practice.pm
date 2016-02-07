@@ -32,8 +32,6 @@ BEGIN {
       } Syntactic::Practice::Util->get_syntactic_types
     ) ];
 
-  Log::Log4perl->get_logger()->info( Data::Printer::p $declared );
-
   eval 'use Syntactic::Practice::Types -declare => $declared';
   eval 'use Syntactic::Practice::Grammar -declare =>
         [ qw( Syntactic::Practice::Grammar::Rule Syntactic::Practice::Grammar::Category ) ]';

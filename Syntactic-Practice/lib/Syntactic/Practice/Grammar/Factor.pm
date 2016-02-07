@@ -14,6 +14,7 @@ our $VERSION = '0.01';
 
 use Moose;
 use namespace::autoclean;
+use Moose::Util qw( apply_all_roles );
 
 with 'Syntactic::Practice::Roles::Category';
 with 'MooseX::Log::Log4perl';
@@ -61,7 +62,14 @@ sub _build_identifier {
 }
 
 sub _build_expression {
-  join ' ', map { $_->expression } @{ $_[0]->factors };
+  my( $self ) = @_;
+  my $f = $self->identifier;
+  if ( $self->repeat ) {
+    $f = "{ $f }";
+  } elsif ( $self->optional ) {
+    $f = "[ $f ]";
+  }
+  return $f
 }
 
 sub _build_bnf {
@@ -103,6 +111,41 @@ sub _build_term {
                                          id    => $term_rs->id );
 
   return $term;
+}
+
+sub BUILD {
+  my ( $self ) = @_;
+
+  if( grep { $self->label eq $_ } Syntactic::Practice::Util->get_recursive_labels ){
+    apply_all_roles( $self, 'Syntactic::Practice::Roles::Category::Recursive' );
+  }else{
+    apply_all_roles( $self, 'Syntactic::Practice::Roles::Category::NonRecursive' );
+  }
+  return $self;
+}
+
+my $max_depth = 5;
+
+sub licenses {
+  my( $self, $type, $depth ) = @_;
+  return undef if $depth >= $max_depth;
+  $depth = 0 unless $depth;
+  return undef unless $type->can('label');
+  return $depth if $self->label eq $type->label;
+  return undef if $self->is_terminal;
+  my $rule = Syntactic::Practice::Grammar->new->rule(label => $self->label);
+  my $min = undef;
+  foreach my $term ( $rule->terms ){
+    foreach my $factor ( $term->factors ){
+      my $d = $factor->licenses( $type, $depth + 1 );
+      unless( defined $min ){
+        $min = $d;
+        next
+      }
+      $min = $d if $d < $min;
+    }
+  }
+  return $min;
 }
 
 sub repeat {

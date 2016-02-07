@@ -82,8 +82,9 @@ sub _build_factors {
   while ( my $resultset = $rs->next ) {
     push( @return,
           Syntactic::Practice::Grammar::Factor->new(
-                                                 resultset => $resultset,
-                                                 label => $resultset->cat->label
+                                                resultset => $resultset,
+                                                label => $resultset->cat->label,
+                                                id    => $resultset->id,
           ) );
   }
   return \@return;
@@ -120,9 +121,8 @@ has '+is_terminal' => ( is      => 'ro',
                         lazy    => 1,
                         builder => '_build_is_terminal' );
 
-sub _build_is_terminal  { 1 }
-sub _build_is_start     { 0 }
-sub _get_category_class { 'Category::Terminal' }
+sub _build_is_terminal { 1 }
+sub _build_is_start    { 0 }
 
 __PACKAGE__->meta->make_immutable;
 
@@ -163,8 +163,6 @@ use namespace::autoclean;
 extends 'Syntactic::Practice::Grammar::Category::NonTerminal';
 
 has '+label' => ( isa => 'PhrasalCategoryLabel' );
-
-sub _get_category_class { 'Category::Phrasal' }
 
 __PACKAGE__->meta->make_immutable;
 

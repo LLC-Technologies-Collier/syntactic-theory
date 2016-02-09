@@ -48,6 +48,7 @@ subtype 'Undefined', as 'Undef', where { !defined $_ },
   message { "The value you provided, $_, was not undefined" };
 
 maybe_type 'Tree';
+maybe_type 'NonTerminalAbstractTree';
 
 my %categoryLabel = ( Start       => [ "${ns}::Util"->get_start_labels ],
                       Lexical     => [ "${ns}::Util"->get_lexical_labels ],

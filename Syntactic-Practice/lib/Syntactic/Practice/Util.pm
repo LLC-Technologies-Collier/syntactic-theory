@@ -1,6 +1,6 @@
 package Syntactic::Practice::Util;
 
-use Moose;
+use MooseX::Singleton;
 
 my $hostname = 'localhost';
 my $port     = '3306';
@@ -35,6 +35,8 @@ my @phrasal_labels =
   $schema->resultset( 'PhrasalCategory' )->search( {}, { distinct => 1 } )
   ->all();
 
+Log::Log4perl->get_logger()->debug( "Phrasal labels: @phrasal_labels" );
+
 sub get_phrasal_labels {
   @phrasal_labels;
 }
@@ -53,31 +55,6 @@ sub get_null_labels        { }
 
 my %label_cat;
 
-sub get_cat_for_label {
-  my ( $label ) = @_;
-
-  Log::Log4perl->get_logger()->debug( "Finding category for label [$label]" );
-
-  return $label_cat{$label} if exists $label_cat{$label};
-
-  Log::Log4perl->get_logger()->debug( 'lexical: ', Data::Printer::p get_lexical_labels );
-  return $label_cat{$label} = 'Lexical'
-    if grep { $_ eq $label } get_lexical_labels;
-    Log::Log4perl->get_logger()->debug( 'start: ', Data::Printer::p get_start_labels );
-  return $label_cat{$label} = 'Start' if grep { $_ eq $label } get_start_labels;
-  Log::Log4perl->get_logger()->debug( 'phrasal: ', Data::Printer::p get_phrasal_labels );
-  return $label_cat{$label} = 'Phrasal'
-    if grep { $_ eq $label } get_phrasal_labels;
-  Log::Log4perl->get_logger()->debug( 'nonterminal: ', Data::Printer::p get_nonterminal_labels );
-  return $label_cat{$label} = 'NonTerminal'
-    if grep { $_ eq $label } get_nonterminal_labels;
-  Log::Log4perl->get_logger()->debug( 'terminal: ', Data::Printer::p get_terminal_labels );
-  return $label_cat{$label} = 'Terminal'
-    if grep { $_ eq $label } get_terminal_labels;
-
-  return 'Syntactic';
-}
-
 sub get_terminal_types {
   qw( Null Lexical Literal );
 }
@@ -87,7 +64,28 @@ sub get_nonterminal_types {
 }
 
 sub get_syntactic_types {
-  qw( Terminal NonTerminal ), get_terminal_types, get_nonterminal_types;
+  get_nonterminal_types, get_terminal_types, qw( Terminal NonTerminal );
+}
+
+sub get_cat_for_label {
+  my ( $self, $label )  = @_;
+
+  $label //= $self;
+
+  Log::Log4perl->get_logger()->debug( "Finding category for label [$label]" );
+
+  return $label_cat{$label} if exists $label_cat{$label};
+
+  foreach my $stype ( get_syntactic_types ){
+    my $method = 'get_'.lc($stype).'_labels';
+    unless( $self->can($method) ){
+      Log::Log4perl->get_logger->debug( "Unrecognized stype [$stype]" );
+      confess($stype);
+    }
+    return $stype if grep { $_ eq $label } $self->$method;
+  }
+
+  return 'Syntactic';
 }
 
 no Moose;

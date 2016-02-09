@@ -128,7 +128,6 @@ my $max_depth = 5;
 
 sub licenses {
   my( $self, $type, $depth ) = @_;
-  $self->log->debug($type->label);
   $depth //= 0;
   return undef if $depth >= $max_depth;
   return undef unless $type->can('label');
@@ -139,6 +138,7 @@ sub licenses {
   foreach my $term ( @{ $rule->terms } ){
     foreach my $factor ( @{ $term->factors } ){
       my $d = $factor->licenses( $type, $depth + 1 );
+      next unless defined $d;
       unless( defined $min ){
         $min = $d;
         next
@@ -159,6 +159,12 @@ sub optional {
 
 sub position {
   return $_[0]->resultset->position;
+}
+
+sub next {
+  my( $self ) = @_;
+  return undef if $self->position >= $self->term->num_factors; # indexed from 1
+  return $self->term->factors->[$self->position];
 }
 
 sub as_string {

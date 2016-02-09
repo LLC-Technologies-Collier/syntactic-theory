@@ -399,7 +399,6 @@ sub evaluate {
   my $topos   = 0;
   my $element = $analysis->[$frompos]->{$alto};
 
-  my ( $tree )  = values( %{ $element->{factor} } );
   my $tree_name = $tree->name;
   my $category  = $tree->category;
   my $label     = $category->label;

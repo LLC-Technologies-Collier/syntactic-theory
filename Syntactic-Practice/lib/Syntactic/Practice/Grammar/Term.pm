@@ -19,13 +19,20 @@ use Moose::Util qw( apply_all_roles );
 
 with 'Syntactic::Practice::Roles::Category';
 
+my $grammar      = Syntactic::Practice::Grammar->new;
+my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace;
+my $rs_class     = 'Term';
+
 has 'factors' => ( is      => 'ro',
                    isa     => 'FactorList',
                    lazy    => 1,
                    builder => '_build_factors' );
 
-my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace;
-my $rs_class     = 'Term';
+has 'num_factors' => ( is      => 'ro',
+                       isa     => 'PositiveInt',
+                       lazy    => 1,
+                       builder => '_build_num_factors' );
+
 has resultset => ( is       => 'ro',
                    isa      => "${rs_namespace}::$rs_class",
                    required => 1 );
@@ -64,7 +71,7 @@ sub _build_expression {
     } elsif ( $factor->optional ) {
       $f = "[ $f ]";
     }
-    push(@factor,$f);
+    push( @factor, $f );
   }
   join( ' ', @factor );
 }
@@ -83,8 +90,10 @@ sub _build_label {
 }
 
 sub _build_category {
-  Syntactic::Practice::Grammar->new->category( label => $_[0]->label );
+  $grammar->category( label => $_[0]->label );
 }
+
+sub _build_num_factors { $_[0]->resultset->fact_count }
 
 sub _build_factors {
   my ( $self ) = @_;
@@ -107,10 +116,13 @@ sub BUILD {
   $templates{ $self->resultset->id } = { complete => 0,
                                          list     => [], };
 
-  if( grep { $self->label eq $_ } Syntactic::Practice::Util->get_recursive_labels ){
+  if ( grep { $self->label eq $_ }
+       Syntactic::Practice::Util->get_recursive_labels )
+  {
     apply_all_roles( $self, 'Syntactic::Practice::Roles::Category::Recursive' );
-  }else{
-    apply_all_roles( $self, 'Syntactic::Practice::Roles::Category::NonRecursive' );
+  } else {
+    apply_all_roles( $self,
+                     'Syntactic::Practice::Roles::Category::NonRecursive' );
   }
   return $self;
 }

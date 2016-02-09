@@ -36,9 +36,17 @@ my @tree = $parser->ingest( category => $np_cat,
 is( scalar @tree, 1, 'one parse found' );
 
 my $tree = $tree[0];
-ok( $tree && $tree->label eq 'NP', 'Parse tree is rooted by a NP' );
+is( $tree && $tree->label, 'NP', 'Parse tree is rooted by a NP' );
 
-is( $tree->frompos, 0, 'frompos is 0') or diag Data::Printer::p $tree;
+is( $tree && $tree->string, 'The dog', 'tree string renders correctly' );
+
+is( $tree && $tree->frompos, 0, 'frompos is 0');
+
+is( $tree && $tree->depth, 0, 'depth is 0');
+
+is( $tree && $tree->is_start, 0, 'not a start node');
+
+is( $tree && scalar ( $tree->daughters ), 2, 'two daughters') or diag Data::Printer::p $tree;
 
 my $s_cat = 'Syntactic::Practice::Grammar::Category::Start'->new;
 

@@ -39,43 +39,7 @@ has sentence => ( is       => 'ro',
                   isa      => 'ArrayRef[TerminalAbstractTree]',
                   required => 1, );
 
-# method ingest ( PositiveInt :$frompos,
-#                 Rule :$rule,
-#                 Maybe[Tree] :$mother
-#               ) {
-#   my @daughters;
-#   foreach my $term ( @{ $rule->terms } ){
-#     my $tree = $self->sentence->[$frompos];
-#     my $depth = $term->licenses( $tree );
-#     next unless defined $depth;
-#     my @factors = @{ $term->factors };
-#     if( $depth > 0 ){
-#       foreach my $factor ( @factors ){
-#         if( $factor->licenses( $tree ) ){
-#           return $self->ingest( frompos => $frompos,
-#                                 rule => Syntactic::Practice::Grammar->new->rule( label => $factor->label ),
-#                                 mother => $mother );
-#         }
-#       }
-#       my $msg = 'one of those factors should have licensed that tree.  investigate';
-#       $self->log->error($msg);
-#       die $msg;
-#     }
-#     my $curpos = $frompos;
-#     foreach my $factor ( @factor ){
-#       if( $factor->label eq $curtree->label ){
-#         push(@daughters, $curtree);
-#         $tree = $self->sentence->[++$curpos]
-#       }elsif( $factor->optional ){
-#         next;
-#       }else{
-#         my $msg = 'one of those factors should have licensed that tree.  investigate';
-#         $self->log->error($msg);
-#         die $msg;
-#       }
-#     }
-#   }
-# }
+my $grammar = Syntactic::Practice::Grammar->new;
 
 #   method process_factors ( PositiveInt             :$frompos!,
 #                            Factor                  :$factor!,
@@ -91,9 +55,14 @@ sub process_factor {
   my $f_position = $factor->position;
   $do_optional //= 1;
 
-  my $msg       = '%2d: %-2s %s [%s]';
-  my $sentence  = $self->sentence;
-  my $lex_label = $sentence->[$frompos]->label;
+  my $msg      = '%2d: %-2s %s [%s]';
+  my $sentence = $self->sentence;
+
+  if ( $frompos >= $self->sentence->[-1]->topos ) {
+    $self->log->debug( "Opting not to process factors past end of sentence" );
+    return;
+  }
+  my $lex_label = $sentence->[0]->label;
 
   if ( $factor->optional && $do_optional ) {
     $self->log->debug(
@@ -119,16 +88,20 @@ sub process_factor {
                              factor      => $factor,
                              do_optional => 0, );
 
+    $self->log->debug( map  { " @$_ " }
+                       grep { ref $_ eq 'ARRAY' } @non_opt_trees );
+
     return ( @non_opt_trees ) unless $next_licenses;
 
     my $class = 'Syntactic::Practice::Tree::Abstract::Null';
-    my $tree = $class->new( depth    => $self->{current_depth} + 1,
-                            term     => $factor->term,
-                            category => $factor->category,
-                            factor   => $factor,
-                            frompos  => $frompos,
-                            sentence => $sentence,
-                            label    => $f_label );
+    my $tree = $self->build_tree( class    => $class,
+                                  depth    => $self->{current_depth} + 1,
+                                  term     => $factor->term,
+                                  category => $factor->category,
+                                  factor   => $factor,
+                                  frompos  => $frompos,
+                                  sentence => $sentence,
+                                  label    => $f_label );
 
     return ( [$tree], @non_opt_trees );
   }
@@ -137,7 +110,8 @@ sub process_factor {
   my @tree  = ();
   unless ( defined $depth ) {
     $self->log->debug( "Factor [$f_label] does not license [$lex_label]" );
-    my $string = join( ' ', map { $_->string } @{$sentence}[ $frompos .. $#{$sentence} ] );
+    my $string =
+      join( ' ', map { $_->string } @{$sentence}[ $frompos .. $#{$sentence} ] );
     my @data = ( $frompos, $factor->label, ' ->', $string );
     $self->log->info( sprintf( $msg, @data ) );
 
@@ -150,7 +124,8 @@ sub process_factor {
   my @daughter_list;
   foreach my $tree ( @tree ) {
 
-    $self->log->debug( "Matched factor [$f_label($f_id)] at depth [$self->{current_depth}]: $tree" );
+    $self->log->debug(
+"Matched factor [$f_label($f_id)] at depth [$self->{current_depth}]: $tree" );
     my @data = ( $tree->frompos, $tree->label, ' ->', $tree->string );
     $self->log->info( sprintf( $msg, @data ) );
 
@@ -164,8 +139,9 @@ sub process_factor {
                              factor      => $factor,
                              do_optional => 0, );
 
-    push( @daughter_list, [ $tree, @daughters ] );
+    push( @daughter_list, @daughters );
   }
+
   return @daughter_list;
 }
 
@@ -177,19 +153,18 @@ sub append_factor_daughters {
   my $f_id    = $factor->id;
 
   my $analysis =
-    $self->{analysis}->[$frompos]->{depth}->[ $self->{current_depth} ];
+    $self->{analysis}->[$frompos]->{depth}->[ $self->{current_depth} ]
+    ->{factor}->{$f_id};
 
-  unless ( exists $analysis->{factor}->{ $factor->id } ) {
-    my $msg = "Factor [$f_label($f_id)] has no results at [$frompos,$self->{current_depth},$f_id].  Failing hard.";
+  unless ( scalar @$analysis ) {
+    my $msg =
+"Factor [$f_label($f_id)] has no results at [$frompos,$self->{current_depth},$f_id].  Failing hard.";
     $self->log->error( $msg );
+
     die $msg;
   }
 
-  $self->log->debug(
-             "Factor data at position [$frompos,$self->{current_depth},$f_id]: "
-               . Data::Printer::p $analysis->{factor}->{$f_id} );
-
-  my @f_daughters_list = @{ $analysis->{factor}->{ $factor->id } };
+  my @f_daughters_list = @$analysis;
 
   my $num_term_daughters   = scalar( @$d_list );
   my $num_factor_daughters = scalar( @f_daughters_list );
@@ -206,13 +181,10 @@ sub append_factor_daughters {
     my $max_j       = scalar @f_daughters_list;
     my @t_daughters = ( defined $ds ? @$ds : () );
     while ( my $f_daughters = shift( @f_daughters_list ) ) {
+
       $self->log->debug(
               "processing factor daughter list #$j/${max_j}: [@$f_daughters]" );
-      $self->log->debug( "t_daughters: @t_daughters" );
-      $self->log->debug( "f_daughters: @$f_daughters" );
-      $self->log->debug( "ds: @$ds" );
       push( @new_d_list, [ @t_daughters, @$f_daughters ] );
-      $self->log->debug( "new_d_list: @new_d_list" );
       $self->log->debug(
          "done processing factor daughter list #$j/${max_j}: [@$f_daughters]" );
       $j++;
@@ -252,17 +224,22 @@ sub process_term {
 
   my ( $target );
   if ( $term->is_start ) {
-    $target = Syntactic::Practice::Tree::Abstract::Start->new( %tree_params );
+    $target = $self->build_tree(
+                          class => 'Syntactic::Practice::Tree::Abstract::Start',
+                          %tree_params );
     $tree_params{label} = $target->label;
   } else {
 
 #$self->log->info('Building non-start tree.  params: ', Data::Printer::p %tree_params);
-    $target = Syntactic::Practice::Tree::Abstract::Phrasal->new( %tree_params );
+    $target = $self->build_tree(
+                        class => 'Syntactic::Practice::Tree::Abstract::Phrasal',
+                        %tree_params );
   }
 
   my $curpos         = $frompos;
   my $daughters_list = [ [] ];
   my @factors        = @{ $term->factors };
+  my @return;
   for ( my $i = 0; $i < scalar @factors; $i++ ) {
     my $factor = $factors[$i];
 
@@ -275,12 +252,16 @@ sub process_term {
     $self->log->debug(
           "Pre term daughters count: [$num_term_daughters]: @$daughters_list" );
 
-    my @s = @{ $self->sentence };
+    my @s       = @{ $self->sentence };
+    my $lastpos = $s[-1]->topos;
 
     foreach my $d ( @{$daughters_list} ) {
-      if ( $d && scalar $d->[0] ) {
+
+      if ( $d && ref $d eq 'ARRAY' && $d->[0] ) {
+
+        #        $self->log->debug(Data::Printer::p $d->[-1]);
         $curpos = $d->[-1]->topos;
-        if ( $curpos == $self->sentence->[-1]->topos ) {
+        if ( $curpos == $lastpos ) {
           $self->log->debug( "Final token processed" );
           last;
         }
@@ -290,21 +271,23 @@ sub process_term {
       $self->log->debug( "Cursor at position [$curpos]" );
 
       my $analysis =
-        ( $self->{analysis}->[$curpos]->{depth}->[ $self->{current_depth} ]->{factor}->{$f_id} //= [] );
+        $self->{analysis}->[$frompos]->{depth}->[ $self->{current_depth} ]
+        ->{factor};
 
       my @factor_daughters;
 
       my $msg =
         (   'Factor data at position '
-          . "[$frompos,$self->{current_depth},$f_id]"
+          . "[pos=$frompos,dep=$self->{current_depth},fact=$f_label($f_id)]"
           . ' %s fetched from cache' );
 
-      if ( defined $analysis ) {
-        @factor_daughters = @{ $analysis };
+      if (    exists $analysis->{$f_id}
+           && ref $analysis->{$f_id} eq 'ARRAY'
+           && scalar @{ $analysis->{$f_id} } )
+      {
+        @factor_daughters = @{ $analysis->{$f_id} };
 
         $self->log->debug( sprintf( $msg, 'was' ) );
-
-        next unless @factor_daughters;
 
       } else {
         @factor_daughters =
@@ -314,17 +297,20 @@ sub process_term {
 
         $self->log->debug( sprintf( $msg, 'was not' ) );
 
-        push( @{$analysis}, @factor_daughters );
 
+        if ( $self->prune_nulls ){
+          my $null_class = 'Syntactic::Practice::Tree::Abstract::Null';
+          my @filtered_factor_daughters;
+          foreach my $f_d_list ( @factor_daughters ){
+            my @filtered_f_d_list = grep { ! ( $_->isa( $null_class ) ) } @$f_d_list;
+            next unless @filtered_f_d_list;
+            push( @filtered_factor_daughters, \@filtered_f_d_list );
+          }
+          @factor_daughters = @filtered_factor_daughters;
+        }
+
+        push( @{ $analysis->{$f_id} }, @factor_daughters );
       }
-
-      my $num_found = scalar @factor_daughters;
-      $self->log->debug( "found [$num_found] match(es) for [$f_label($f_id)] at depth [$self->{current_depth}]: @factor_daughters" );
-
-      $self->log->debug(
-                        "Factor data at position [$frompos,$self->{current_depth},$f_id]: "
-                        . Data::Printer::p $analysis );
-
 
       next unless @factor_daughters;
 
@@ -333,51 +319,98 @@ sub process_term {
                                       factor  => $factor, );
 
     }
+
     $self->log->debug( "Post term daughters count: [$num_term_daughters]" );
   }
 
-  return @$daughters_list;
+  my $analysis =
+    $self->{analysis}->[$frompos]->{depth}->[ $self->{current_depth} ]->{term};
 
+  $self->log->info("Daughters list: [@$daughters_list]");
+
+  $analysis->{$t_id} = $daughters_list;
+
+  return @{ $analysis->{$t_id} };
 }
 
-# method build_tree ( Term                           :$term!,
+# method build_tree ( Factor                           :$factor!,
 #                       PositiveInt                    :$frompos!,
 #                       NonTerminalCategory            :$category!,
 #                       Maybe[NonTerminalAbstractTree] :$mother,
 #                     ) {
 sub build_tree {
   my ( $self, %args ) = @_;
-  my ( $frompos, $daughters, $mother, $category ) =
-    @args{qw( frompos daughters mother category )};
+  my ( $frompos, $topos,    $factor, $term,  $daughters,
+       $mother,  $category, $class,  $depth, $sisters )
+    = @args{
+    qw( frompos topos factor term daughters mother category class depth sisters)
+    };
 
-  if ( scalar @$daughters == 1 ) {
+  if ( ref $daughters eq 'ARRAY' && scalar @$daughters == 1 ) {
 
 #        next if( ( $mother && $mother->label eq $target->label ) && $target->label eq $daughters[0]->label );
   }
 
-  my $label      = $category->label;
-  my $cat_class  = Syntactic::Practice::Util->get_cat_for_label( $label );
-  my $tree_class = "Syntactic::Practice::Tree::Abstract";
-
-  $self->log->debug(
-                   "Building tree with label [$label] of class [$tree_class]" );
-
-  $tree_class .= "::$cat_class" unless $cat_class eq 'Syntactic';
-
-  my $tree = $tree_class->new( frompos   => $daughters->[0]->frompos,
-                               topos     => $daughters->[-1]->topos,
-                               category  => $category,
-                               daughters => $daughters,
-                               mother    => $mother,
-                               depth     => $self->{current_depth}, );
-
-  foreach my $sib ( @$daughters ) {
-    next unless $sib->isa( 'Tree' );
-    my @sibs = grep { $sib->cmp( $_ ) != 0 } @$daughters;
-    $sib->sisters( \@sibs );
-    $sib->mother( $tree );
+  my $label = $category->label;
+  unless ( $class ) {
+    my $cat_class = Syntactic::Practice::Util->get_cat_for_label( $label );
+    $class = "Syntactic::Practice::Tree::Abstract";
+    $class .= "::$cat_class" unless $cat_class eq 'Syntactic';
+    $self->log->debug( "Building tree with label [$label] of class [$class]" );
   }
-  my @data = ( $daughters->[0]->frompos, $tree->label, ' ->', $tree->string );
+
+  my %options = ( sentence => $self->sentence,
+                  category => $category, );
+
+  if ( $category->is_start ) {
+    $options{depth} = $depth = 0;
+  } elsif ( $category->is_terminal ) {
+    $daughters = undef;
+  }
+
+  if ( defined $daughters ) {
+    $options{frompos} = $frompos = $daughters->[0]->frompos;
+    $options{topos}   = $topos   = $daughters->[-1]->topos;
+  }
+
+  if ( defined $depth ) {
+    if ( $depth == 0 ) {
+      $options{depth}   = 0;
+      $options{mother}  = $mother = undef;
+      $options{frompos} = $frompos = 0;
+      $options{sisters} = $sisters = undef;
+    }
+  }
+
+  if ( defined $frompos ) {
+    $options{frompos} = $frompos;
+  }
+
+  if ( defined $topos ) {
+    $options{frompos} = $frompos;
+  }
+
+  if ( defined $mother ) {
+    $options{mother} = $mother;
+  }
+
+  if ( defined $factor ) {
+    $options{factor} = $factor;
+    $options{term} = $term = $factor->term;
+  }
+
+  my $tree = $class->new( %options );
+
+  if ( defined $daughters ) {
+    foreach my $sib ( @$daughters ) {
+      next unless $sib->isa( 'Tree' );
+      my @sibs = grep { $sib->cmp( $_ ) != 0 } @$daughters;
+      $sib->sisters( \@sibs );
+      $sib->mother( $tree );
+    }
+  }
+
+  my @data = ( $tree->frompos, $tree->label, ' ->', $tree->string );
   my $msg = '%2d: %-2s %s [%s]';
 
   $self->log->info( sprintf( $msg, @data ) );
@@ -408,7 +441,7 @@ sub ingest {
 
   my $msg = '%2d: %-2s %s [%s]';
 
-  my $rule = Syntactic::Practice::Grammar::Rule->new( category => $category );
+  my $rule = $grammar->rule( label => $category->label );
 
   unless ( $rule ) {
     $self->log->debug(
@@ -422,6 +455,8 @@ sub ingest {
   my @trees = ();
   my $terms = $rule->terms;
   foreach my $term ( @$terms ) {    # TODO: support multiple terms
+    my $t_label = $term->label;
+    my $t_id    = $term->id;
 
     if ( exists $analysis->{term}->{ $term->id } ) {
       push( @trees, @{ $analysis->{term}->{ $term->id } } );
@@ -433,17 +468,14 @@ sub ingest {
                            frompos  => $frompos,
                            category => $category,
                            mother   => $mother );
-
+    my $num_daughters = scalar @daughters_list;
+    $self->log->debug(
+        "Process_term returned $num_daughters parses for term [$t_label($t_id)]"
+    );
     my @term_trees;
     while ( my $d = shift( @daughters_list ) ) {
       my @daughters;
-      if ( $self->prune_nulls ) {
-        @daughters =
-          grep { !$_->isa( 'Syntactic::Practice::Tree::Abstract::Null' ) } @$d;
-      } else {
-        @daughters = @$d;
-      }
-
+      $self->log->debug( "Daughters: [ @$d ]" );
       my $num_daughters = scalar @daughters;
       next unless $num_daughters >= 1;
 
@@ -538,7 +570,14 @@ around ingest => sub {
   my $depth = $self->_incr_depth;
   return unless defined $depth;
 
-  $self->{analysis}->[$frompos]->{depth}->[ $self->{current_depth} ] //= {};
+  my $analysis = $self->{analysis}->[$frompos]->{depth};
+
+  $analysis->[ $self->{current_depth} ] = { factor => {},
+                                            term   => {},
+                                            label  => {} }
+    unless exists $analysis->[ $self->{current_depth} ];
+
+  $analysis = $analysis->[ $self->{current_depth} ];
 
   $self->{cached}->{$frompos} = {}
     unless exists $self->{cached}->{$frompos};
@@ -597,8 +636,7 @@ around ingest => sub {
     @result = @filtered;
   }
 
-  $self->{analysis}->[$frompos]->{depth}->[ $self->{current_depth} ]->{label}
-    ->{$label} = \@result;
+  $analysis->{label}->{$label} = \@result;
 
   $depth = $self->_decr_depth();
 
@@ -625,7 +663,7 @@ around ingest => sub {
       @result = @complete;
     }
 
-    @result = map { $_->to_concrete } @result;
+    #@result = map { $_->to_concrete } @result;
   }
 
   if ( scalar @result ) {

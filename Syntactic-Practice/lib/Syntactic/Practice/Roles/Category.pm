@@ -3,11 +3,6 @@ package Syntactic::Practice::Roles::Category::Base;
 use Moose::Role;
 use namespace::autoclean;
 
-has name => ( is      => 'ro',
-              isa     => 'Str',
-              lazy    => 1,
-              builder => '_build_name' );
-
 sub _build_label {
   my ( $self ) = @_;
   confess 'Neither label nor category specified'
@@ -37,7 +32,6 @@ sub _build_is_recursive {
 sub _build_is_start {
   grep { $_ eq $_[0]->label } Syntactic::Practice::Util->get_start_labels;
 }
-sub _build_name         { $_[0]->category->resultset->longname }
 
 1;
 

@@ -64,7 +64,9 @@ sub _build_string {
 
 sub _build_sentence {
   my ( $self ) = @_;
-  return $self->{mother}->sentence if exists $self->{mother};
+
+  return $self->mother->sentence
+    if exists $self->{mother} && defined $self->{mother};
   foreach my $family ( qw( siblings daughters ) ) {
     $self->log->debug( "Checkin $family for tree..." );
     return $self->{$family}->[0]->sentence
@@ -74,6 +76,14 @@ sub _build_sentence {
 }
 
 sub _build_depth { $_[0]->mother->depth + 1 }
+
+sub _build_sisters {
+  my ( $self ) = @_;
+  if ( $self->mother ) {
+    return [ grep { $_[0]->cmp( $_ ) != 0 } @{ $_[0]->mother->daughters } ];
+  }
+  confess 'neither mother nor sisters were specified';
+}
 
 my %treeByName;
 my %treeByLabel;
@@ -191,7 +201,17 @@ sub to_concrete {
 
   ( my $class = ref $self ) =~ ( s/Abstract::// );
 
-  return $class->new( %$self, %$arg, daughters => \@c_daughters );
+  return
+    $class->new( category  => $self->category,
+                 mother    => $self->mother,
+                 sisters   => $self->sisters,
+                 daughters => \@c_daughters,
+                 depth     => $self->depth,
+                 frompos   => $self->frompos,
+                 topos     => $self->topos,
+                 label     => $self->label,
+                 factor    => $self->factor,
+                 %$arg );
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -383,10 +403,14 @@ with 'Syntactic::Practice::Roles::Category::Start';
 has mother => ( is      => 'ro',
                 isa     => 'Undefined',
                 lazy    => 1,
-                builder => '_build_mother' );
+                builder => '_build_undef' );
+has sisters => ( is      => 'ro',
+                 isa     => 'Undefined',
+                 lazy    => 1,
+                 builder => '_build_undef' );
 
-sub _build_mother { undef }
-sub _build_depth  { 0 }
+sub _build_undef { undef }
+sub _build_depth { 0 }
 
 __PACKAGE__->meta->make_immutable;
 
@@ -434,7 +458,8 @@ has '+daughters' => ( is       => 'ro',
                       isa      => 'Syntactic::Practice::Lexicon::Lexeme',
                       required => 1 );
 
-sub _build_string { $_[0]->daughters->word }
+sub _build_daughters { $_[0]->sentence->[ $_[0]->frompos ]->daughters }
+sub _build_string    { $_[0]->daughters->word }
 
 __PACKAGE__->meta->make_immutable;
 
@@ -549,10 +574,15 @@ with 'Syntactic::Practice::Roles::Category::Start';
 has mother => ( is      => 'ro',
                 isa     => 'Undefined',
                 lazy    => 1,
-                builder => '_build_mother' );
+                builder => '_build_undef' );
 
-sub _build_mother { undef }
-sub _build_depth  { 0 }
+has sisters => ( is      => 'ro',
+                 isa     => 'Undefined',
+                 lazy    => 1,
+                 builder => '_build_undef' );
+
+sub _build_undef { undef }
+sub _build_depth { 0 }
 
 __PACKAGE__->meta->make_immutable;
 

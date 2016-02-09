@@ -38,6 +38,8 @@ is( scalar @tree, 1, 'one parse found' );
 my $tree = $tree[0];
 ok( $tree && $tree->label eq 'NP', 'Parse tree is rooted by a NP' );
 
+is( $tree->frompos, 0, 'frompos is 0') or diag Data::Printer::p $tree;
+
 my $s_cat = 'Syntactic::Practice::Grammar::Category::Start'->new;
 
 @paragraph = $lexer->scan( 'The dog watched' );
@@ -55,9 +57,9 @@ is( scalar @tree, 1, 'only one parse found' );
 
 $tree = $tree[0];
 ok( $tree && $tree->label eq 'S', 'Parse tree is rooted by an S' );
-is( $tree && $tree->frompos, 0, 'from position is 0' ) or diag $tree->frompos;
-is( $tree && $tree->topos, 3, 'to position is 3' ) or diag $tree->topos;
-my @daughters = $tree->daughters;
+is( $tree && $tree->frompos, 0, 'from position is 0' ) or diag Data::Printer::p $tree;
+is( $tree && $tree->topos, 3, 'to position is 3' ) or diag Data::Printer::p $tree;
+my @daughters = $tree->daughters if $tree;
 
 @paragraph = $lexer->scan( 'The big brown dog with fleas watched the birds beside the hunter' );
 
@@ -74,7 +76,7 @@ is( scalar @tree, 2, 'two parses found' );
 
 $tree = $tree[0];
 ok( $tree && $tree->label eq 'S', 'Parse tree is rooted by an S' );
-is( $tree && $tree->frompos, 0, 'from position is 0' ) or diag $tree->frompos;
-is( $tree && $tree->topos, 12, 'to position is 12' ) or diag $tree->topos;
+is( $tree && $tree->frompos, 0, 'from position is 0' ) or diag Data::Printer::p $tree;
+is( $tree && $tree->topos, 12, 'to position is 12' ) or diag Data::Printer::p $tree;
 
-done_testing( 14 );
+done_testing( 15 );

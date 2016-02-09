@@ -88,7 +88,7 @@ SET @this_term_id = LAST_INSERT_ID();
 
 INSERT INTO factor ( term_id,       position, cat_id,            optional, rpt )
             VALUES ( @this_term_id, '1',      @adjective_catid,  1,        1 ),
-                   ( @this_term_id, '2',      @noun_catid,       1,        0 );
+                   ( @this_term_id, '2',      @noun_catid,       0,        0 );
 
 /* NOM -> NOM PP */
 INSERT INTO term ( rule_id, fact_count ) VALUES ( @this_rule_id, 2 );

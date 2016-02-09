@@ -61,4 +61,26 @@ $num_tests++;
 
 diag $bnf;
 
+$rule = Syntactic::Practice::Grammar->new->rule( label => 'S' );
+
+my $lexer = Syntactic::Practice::Lexer->new();
+
+ok( $lexer, 'Lexer object instantiated' );
+$num_tests++;
+
+my @paragraph = $lexer->scan( 'The big brown dog with fleas watched the birds beside the hunter' );
+my @sentence   = @{ $paragraph[0] };
+my @token_list = @{ $sentence[0] };
+
+
+my $depth = $rule->terms->[0]->factors->[0]->licenses( $token_list[5] );
+
+ok( defined $depth, 'depth is defined' );
+$num_tests++;
+
+is( $depth, 5, 'depth is correct' );
+$num_tests++;
+
+diag $depth;
+
 done_testing( $num_tests );

@@ -33,10 +33,10 @@ my @tree = $parser->ingest( category => $np_cat,
                             mother => undef
                           );
 
-is( scalar @tree, 1, 'only one parse found' );
+is( scalar @tree, 1, 'one parse found' );
 
 my $tree = $tree[0];
-ok( $tree->label eq 'NP', 'Parse tree is rooted by a NP' );
+ok( $tree && $tree->label eq 'NP', 'Parse tree is rooted by a NP' );
 
 my $s_cat = 'Syntactic::Practice::Grammar::Category::Start'->new;
 
@@ -54,9 +54,9 @@ ok( $parser, 'Parser instantiated with short S' );
 is( scalar @tree, 1, 'only one parse found' );
 
 $tree = $tree[0];
-ok( $tree->label eq 'S', 'Parse tree is rooted by an S' );
-is( $tree->frompos, 0, 'from position is 0' ) or diag $tree->frompos;
-is( $tree->topos, 3, 'to position is 3' ) or diag $tree->topos;
+ok( $tree && $tree->label eq 'S', 'Parse tree is rooted by an S' );
+is( $tree && $tree->frompos, 0, 'from position is 0' ) or diag $tree->frompos;
+is( $tree && $tree->topos, 3, 'to position is 3' ) or diag $tree->topos;
 my @daughters = $tree->daughters;
 
 @paragraph = $lexer->scan( 'The big brown dog with fleas watched the birds beside the hunter' );
@@ -73,8 +73,8 @@ ok( $parser, 'Parser instantiated with ambiguous S' );
 is( scalar @tree, 2, 'two parses found' );
 
 $tree = $tree[0];
-ok( $tree->label eq 'S', 'Parse tree is rooted by an S' );
-is( $tree->frompos, 0, 'from position is 0' ) or diag $tree->frompos;
-is( $tree->topos, 12, 'to position is 12' ) or diag $tree->topos;
+ok( $tree && $tree->label eq 'S', 'Parse tree is rooted by an S' );
+is( $tree && $tree->frompos, 0, 'from position is 0' ) or diag $tree->frompos;
+is( $tree && $tree->topos, 12, 'to position is 12' ) or diag $tree->topos;
 
 done_testing( 14 );

@@ -1,5 +1,12 @@
 package Syntactic::Practice::Util;
 
+use Syntactic::Practice::Schema;
+use Log::Log4perl;
+
+Log::Log4perl->init( 'log4perl.conf' ) or die "couldn't init logger: $!";
+
+Log::Log4perl->get_logger()->info( "Syntactic::Practice startup..." );
+
 use MooseX::Singleton;
 
 my $hostname = 'localhost';

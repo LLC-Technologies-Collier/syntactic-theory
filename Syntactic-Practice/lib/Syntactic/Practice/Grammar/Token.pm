@@ -107,5 +107,7 @@ sub _set_prev {
   return $prev;
 }
 
+method BEGIN () { push @{ $self->set->tokens }, $self }
+
 __PACKAGE__->meta->make_immutable();
 

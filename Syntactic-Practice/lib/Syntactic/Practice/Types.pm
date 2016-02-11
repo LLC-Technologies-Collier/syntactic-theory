@@ -30,9 +30,10 @@ my %type_class = ( Tree         => 'Tree',
                    Lexicon      => 'Lexicon',
                    Homograph    => 'Lexicon::Homograph',
                    Lexeme       => 'Lexicon::Lexeme',
-                   Token        => 'Lexer::Token',
                    Analysis     => 'Lexer::Analysis',
                    Lexer        => 'Lexer',
+                   Token        => 'Grammar::Token',
+                   TokenSet     => 'Grammar::TokenSet',
                    Parser       => 'Parser', );
 my %type_role = ( CategoryRole => 'Roles::Category' );
 
@@ -48,6 +49,7 @@ subtype 'Undefined', as 'Undef', where { !defined $_ },
   message { "The value you provided, $_, was not undefined" };
 
 maybe_type 'Tree';
+maybe_type 'Token';
 maybe_type 'NonTerminalAbstractTree';
 
 my %categoryLabel = ( Start       => [ "${ns}::Util"->get_start_labels ],

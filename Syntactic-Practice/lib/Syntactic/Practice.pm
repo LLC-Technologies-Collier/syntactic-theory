@@ -7,23 +7,28 @@ use warnings FATAL => 'all';
 use Data::Printer;
 
 BEGIN {
-  use Log::Log4perl;
-
-  Log::Log4perl->init( 'log4perl.conf' ) or die "couldn't init logger: $!";
-
-  Log::Log4perl->get_logger()->info( "Syntactic::Practice startup..." );
-
-  use Syntactic::Practice::Schema;
   use Syntactic::Practice::Util;
 
   my $ns = 'Syntactic::Practice';
 
   my $declared = [
     ( map { "${ns}::$_" }
-        qw ( Grammar Grammar::Category Grammar::Rule Grammar::Term
-        Grammar::Factor Roles::Category Tree Tree::Abstract Lexicon
-        Lexicon::Homograph Lexicon::Lexeme Lexer::Token Lexer::Analysis
-        Lexer Parser
+        qw ( Grammar
+             Lexicon
+             Lexer
+             Parser
+             Tree
+             Tree::Abstract
+             Grammar::Category
+             Grammar::Rule
+             Grammar::Term
+             Grammar::Factor
+             Grammar::Token
+             Grammar::TokenSet
+             Roles::Category
+             Lexicon::Homograph
+             Lexicon::Lexeme
+             Lexer::Analysis
         )
     ), (
       map {
@@ -34,7 +39,8 @@ BEGIN {
 
   eval 'use Syntactic::Practice::Types -declare => $declared';
   eval 'use Syntactic::Practice::Grammar -declare =>
-        [ qw( Syntactic::Practice::Grammar::Rule Syntactic::Practice::Grammar::Category ) ]';
+        [ qw( Syntactic::Practice::Grammar::Rule
+              Syntactic::Practice::Grammar::Category ) ]';
 
   die $@ if $@;
 }
@@ -48,7 +54,8 @@ use Syntactic::Practice::Tree;
 use Syntactic::Practice::Lexicon;
 use Syntactic::Practice::Lexicon::Homograph;
 use Syntactic::Practice::Lexicon::Lexeme;
-use Syntactic::Practice::Lexer::Token;
+use Syntactic::Practice::Grammar::Token;
+use Syntactic::Practice::Grammar::TokenSet;
 use Syntactic::Practice::Lexer::Analysis;
 use Syntactic::Practice::Lexer;
 use Syntactic::Practice::Parser;

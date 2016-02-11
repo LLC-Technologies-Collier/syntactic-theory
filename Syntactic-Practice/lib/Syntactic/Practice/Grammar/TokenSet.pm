@@ -23,17 +23,19 @@ has tokens => ( is      => 'rw',
                 lazy    => 1,
                 builder => '_build_tokens', );
 
-has first => ( is      => 'rw',
-               isa     => 'Maybe[Token]',
-               lazy    => 1,
-               builder => '_build_first',
-               trigger => \&_set_first, );
+has first => ( is       => 'rw',
+               isa      => 'Maybe[Token]',
+               lazy     => 1,
+               builder  => '_build_first',
+               trigger  => \&_set_first,
+               init_arg => undef, );
 
-has last => ( is      => 'rw',
-              isa     => 'Maybe[Token]',
-              lazy    => 1,
-              builder => '_build_last',
-              trigger => \&_set_last, );
+has last => ( is       => 'rw',
+              isa      => 'Maybe[Token]',
+              lazy     => 1,
+              builder  => '_build_last',
+              trigger  => \&_set_last,
+              init_arg => undef, );
 
 sub _build_tokens {
   return [];
@@ -53,7 +55,10 @@ sub copy {
 
 method _build_last () { $self->tokens ? $self->tokens->[-1] : undef }
 
-method _set_last ( Token $last!, Maybe[Token] $old_last! ) {
+#method _set_last ( Token $last!, Maybe[Token] $old_last! ) {
+sub _set_last {
+  my ( $last, $old_last ) =
+    validate_pos( @_, { type => 'Token' }, { type => 'Maybe[Token]' } );
   return $last unless $old_last;
   my $cursor = $last;
   while ( $cursor->prev ) { $cursor = $cursor->prev }
@@ -63,7 +68,7 @@ method _set_last ( Token $last!, Maybe[Token] $old_last! ) {
 
 #method append ( 'TokenSet|Token' $more! ) {
 sub append {
-my($self,$more) = @_;
+  my ( $self, $more ) = @_;
   if ( $more->isa( 'Syntactic::Practice::Grammar::TokenSet' ) ) {
     $self->last( $more->copy->last );
   } elsif ( $more->isa( 'Syntactic::Practice::Grammar::Token' ) ) {
@@ -85,7 +90,7 @@ method _set_first ( Token $first!, Maybe[Token] $old_first! ) {
 
 #method prepend ( 'TokenSet|Token' $more! ) {
 sub prepend {
-my($self,$more) = @_;
+  my ( $self, $more ) = @_;
   if ( $more->isa( 'Syntactic::Practice::Grammar::TokenSet' ) ) {
     $self->first( $more->copy->first );
   } elsif ( $more->isa( 'Syntactic::Practice::Grammar::Token' ) ) {

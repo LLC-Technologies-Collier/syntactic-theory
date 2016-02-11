@@ -444,6 +444,7 @@ has '+daughters' => ( isa => 'Undefined' );
 sub _build_daughters { undef }
 sub _build_topos     { $_[0]->frompos }
 sub _build_name      { $_[0]->label . '0' }
+sub _build_string    { '(undef)' }
 
 __PACKAGE__->meta->make_immutable;
 

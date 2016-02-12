@@ -38,9 +38,7 @@ my $n_cat = $grammar->category( label => 'N' );
 
 my $tree = $sentence->[0];
 
-my $tk = Syntactic::Practice::Grammar::Token->new( set  => $tset,
-                                                   tree => $tree
-                                                 );
+$tset->append_new( $tree );
 
 is( $tset->count, 1, 'token set now has count of one' );
 isnt( $tset->first, undef, 'first element of token set is no longer undef' );

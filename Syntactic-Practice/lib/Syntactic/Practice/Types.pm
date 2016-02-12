@@ -17,8 +17,7 @@ subtype 'False', as 'Bool', where { !$_ },
 
 Log::Log4perl->get_logger()->debug( "False type has been defined" );
 
-my %type_class = ( Tree         => 'Tree',
-                   AbstractTree => 'Tree::Abstract',
+my %type_class = ( AbstractTree => 'Tree::Abstract',
                    Category     => 'Grammar::Category',
                    Grammar      => 'Grammar',
                    Category     => 'Grammar::Category',

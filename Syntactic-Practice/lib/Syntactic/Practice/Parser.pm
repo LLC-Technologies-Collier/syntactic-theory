@@ -83,13 +83,14 @@ sub process_factor {
       }
     }
 
-    my @non_opt_trees =
+    my @non_opt_trees = grep { scalar @$_ > 0 }
       $self->process_factor( frompos     => $frompos,
                              factor      => $factor,
                              do_optional => 0, );
 
-    $self->log->debug( map  { " @$_ " }
-                       grep { ref $_ eq 'ARRAY' } @non_opt_trees );
+    my $num_results = scalar @non_opt_trees;
+    $self->log->debug( "number of results: [$num_results]; array ref values: [",
+                       ( map { " @$_ " } @non_opt_trees ), ']' );
 
     return ( @non_opt_trees ) unless $next_licenses;
 
@@ -278,8 +279,8 @@ sub process_term {
 
       my $msg =
         (   'Factor data at position '
-          . "[pos=$frompos,dep=$self->{current_depth},fact=$f_label($f_id)]"
-          . ' %s fetched from cache' );
+          . "[pos=$frompos,dep=$self->{current_depth},fact=$f_label($f_id)] was "
+          . 'fetched %s from cache' );
 
       if (    exists $analysis->{$f_id}
            && ref $analysis->{$f_id} eq 'ARRAY'
@@ -287,7 +288,7 @@ sub process_term {
       {
         @factor_daughters = @{ $analysis->{$f_id} };
 
-        $self->log->debug( sprintf( $msg, 'was' ) );
+        $self->log->debug( sprintf( $msg, '-' ) );
 
       } else {
         @factor_daughters =
@@ -295,14 +296,14 @@ sub process_term {
                                  factor  => $factor,
                                  target  => $target );
 
-        $self->log->debug( sprintf( $msg, 'was not' ) );
+        $self->log->debug( sprintf( $msg, '- not -' ) );
 
-
-        if ( $self->prune_nulls ){
+        if ( $self->prune_nulls ) {
           my $null_class = 'Syntactic::Practice::Tree::Abstract::Null';
           my @filtered_factor_daughters;
-          foreach my $f_d_list ( @factor_daughters ){
-            my @filtered_f_d_list = grep { ! ( $_->isa( $null_class ) ) } @$f_d_list;
+          foreach my $f_d_list ( @factor_daughters ) {
+            my @filtered_f_d_list =
+              grep { !( $_->isa( $null_class ) ) } @$f_d_list;
             next unless @filtered_f_d_list;
             push( @filtered_factor_daughters, \@filtered_f_d_list );
           }
@@ -326,7 +327,7 @@ sub process_term {
   my $analysis =
     $self->{analysis}->[$frompos]->{depth}->[ $self->{current_depth} ]->{term};
 
-  $self->log->info("Daughters list: [@$daughters_list]");
+  $self->log->info( "Daughters list: [@$daughters_list]" );
 
   $analysis->{$t_id} = $daughters_list;
 

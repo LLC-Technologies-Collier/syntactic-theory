@@ -80,36 +80,56 @@ method _set_last ( Token $last!, Maybe[Token] $old_last! ) {
 sub append {
   my ( $self, $more, $do_copy ) = @_;
 
+  $do_copy //= 1;
+
   #  my ( $self, @arg ) = @_;
   #  my ( $more, $do_copy ) =
   #    pos_validated_list( \@arg,
   #                        { type => 'Token|TokenSet' },
   #                        { type => 'Bool', default => 1 } );
-  my $old_last = $self->last;
+  my( $tokens, $old_last ) = ( $self->tokens, $self->last );
+  my $num_tokens = scalar @$tokens;
 
   if ( $more->isa( 'Syntactic::Practice::Grammar::TokenSet' ) ) {
     my $copy = $do_copy ? $more->copy : $more;
-    $self->last( $copy->last );
-    $old_last->next( $copy->first );
-    if ( $do_copy ) {
-      delete $copy->{tokens};
-      undef $copy;
+    if( $num_tokens == 0 ){
+      $self->tokens( $copy->tokens );
+      $self->first( $copy->first );
+      $self->last( $copy->last );
+    }else{
+      $self->last( $copy->last );
+      $old_last->next( $copy->first ) if defined $old_last;;
+      $self->first( $copy->first ) unless $self->first;
+      if ( $do_copy ) {
+        delete $copy->{tokens};
+        undef $copy;
+      }
     }
   } elsif ( $more->isa( 'Syntactic::Practice::Grammar::Token' ) ) {
     my $copy = $do_copy ? $more->copy( set => $self ) : $more;
-    $self->last( $copy );
-    undef $copy if $do_copy;
+    if( $num_tokens == 0 ){
+      $self->first( $copy );
+      $copy->next(undef);
+      $copy->prev(undef);
+      $self->last($copy);
+      $self->tokens([$copy]);
+    }else{
+      $self->first( $copy );
+      $self->last( $copy );
+      $self->tokens( [$copy] );
+      undef $copy if $do_copy;
+    }
   }
+
 
   my ( $tokens, $cursor, $i ) = ( $self->tokens, $self->first, 0 );
 
   $cursor->prev( undef ) if defined $cursor;
 
-  return $self unless scalar @$tokens > 0;
-
   $tokens->[$i] = $self->first;
   while ( $tokens->[ ++$i ] = $cursor->next ) {
     $tokens->[$i]->prev( $cursor );
+    last unless $cursor;
     $cursor = $cursor->next;
   }
   pop @$tokens;

@@ -38,10 +38,23 @@ my $n_cat = $grammar->category( label => 'N' );
 
 my $tree = $sentence->[0];
 
+my $token =
+  Syntactic::Practice::Grammar::Token->new( tree => $tree,
+                                            set  => $tset );
+
+#$tset->append( $token );
+
+#$copy->append_new( $tree );
+$copy->append( $token, 0 );
 $tset->append_new( $tree );
 
 is( $tset->count, 1, 'token set now has count of one' );
 isnt( $tset->first, undef, 'first element of token set is no longer undef' );
 isnt( $tset->last, undef, 'last element of token set is no longer undef' );
 
-done_testing( 14 );
+is( $copy->count, 1, 'copy of token set now has count of one' );
+isnt( $copy->first, undef, 'first element of copy of token set is no longer undef' );
+isnt( $copy->last, undef, 'last element of copy of token set is no longer undef' );
+
+
+done_testing( 17 );

@@ -444,6 +444,8 @@ sub scan {
 
   chomp $input;
 
+  my $tree_class = 'Syntactic::Practice::Tree::Abstract::Lexical';
+
   my @paragraph;
   foreach my $paragraph ( split( /\n\n+/, $input ) ) {
     my @sentence;
@@ -453,19 +455,25 @@ sub scan {
       # TODO: account for abbreviations such as Mt., Mr., Mrs., etc.
       my @word = split( /\s+/, $sentence );
       my @tree;
+      my $tokenSet = Syntactic::Practice::Grammar::TokenSet->new();
       for ( my $i = 0; $i < scalar( @word ); $i++ ) {
 
         my $homograph =
           Syntactic::Practice::Lexicon::Homograph->new( word => $word[$i] );
         foreach my $lexeme ( @{ $homograph->lexemes } ) {
 
-          my $lexTree =
-            Syntactic::Practice::Tree::Abstract::Lexical->new(
-                                                { daughters => $lexeme,
-                                                  frompos   => $i,
-                                                  category => $lexeme->category,
-                                                  label    => $lexeme->label,
-                                                } );
+          my $lexTree = $tree_class->new(
+                                          { daughters => $lexeme,
+                                            frompos   => $i,
+                                            category  => $lexeme->category,
+                                            label     => $lexeme->label,
+                                          } );
+
+          my $token =
+            Syntactic::Practice::Grammar::Token->new( tree => $lexTree,
+                                                      set  => $tokenSet );
+
+          #$tokenSet->append_new( $lexTree );
 
           push( @tree, $lexTree );
         }

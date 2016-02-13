@@ -40,8 +40,9 @@ ok( defined $token, 'token constructor returns a true value' );
 like( $token->string, qr/dog/i, 'Token string renders correctly' );
 
 is( $tset->first, $token, 'First token of token set is $token' );
+is( $tset->last, $token, 'Last token of token set is $token' );
 
-#is( $token->next, undef, 'next token is undefined' );
-#is( $token->prev, undef, 'previous token is undefined' );
+is( $token->next, undef, 'next token is undefined' );
+is( $token->prev, undef, 'previous token is undefined' );
 
-done_testing( 4 );
+done_testing( 7 );

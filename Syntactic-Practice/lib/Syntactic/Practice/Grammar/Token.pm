@@ -46,8 +46,10 @@ has prev => ( is      => 'rw',
 has '_guid' => ( is       => 'ro',
                  isa      => 'Data::GUID',
                  lazy     => 1,
-                 builder  => '_guid',
+                 builder  => '_build_guid',
                  init_arg => undef, );
+
+sub _build_guid { new Data::GUID }
 
 sub copy {
   my ( $self, %attr ) = @_;
@@ -69,7 +71,7 @@ sub position {
       $self->log->error( $msg );
       confess $msg;
     }
-    return $i if $self->cmp( $tokens->[$i] ) == 0;
+    return $i if ( ( $self <=> $tokens->[$i] ) == 0 );
   }
   my $msg = 'Did not find self in TokenSet';
   $self->log->error( $msg );
@@ -78,11 +80,16 @@ sub position {
 
 method string () { $self->tree->string };
 
-method cmp ( Token $other! ) { $self->_guid cmp $other->_guid }
+sub cmp {
+  my( $self, $other );
+  return undef unless defined $other;
+  return undef unless $other->can('_guid');
+  $self->_guid cmp $other->_guid
+}
 
 use overload
-  q{""} => 'string',
-  '<=>' => sub { ($_[2] ? -1 : 1) * $_[0]->cmp($_[1]) },
+  q{""} => sub { $_[0]->string },
+  '<=>' => sub { ( $_[2] ? -1 : 1 ) * $_[0]->cmp( $_[1] ) },
   fallback => 1;
 
 #method _build_next () {
@@ -141,8 +148,15 @@ sub _set_prev {
 sub BUILD {
   my ( $self ) = @_;
 
+  my $tset = $self->set;
+
+  if ( scalar @{ $tset->tokens } == 0 ) {
+    $tset->first( $self );
+    $tset->last( $self );
+  }
+
   #method BUILD () {
-#  $self->set->append( $self, 0 );
+  #  $self->set->append( $self, 0 );
 }
 
 __PACKAGE__->meta->make_immutable();

@@ -2,7 +2,7 @@ perl-doc perl-base perltidy
 libtest-exception-perl libtest-differences-perl libtest-most-perl
 libmoose-perl libmoosex-method-signatures-perl libmoosex-params-validate-perl libmoosex-log-log4perl-perl libmoosex-singleton-perl
 libdbix-class-perl libdbix-class-schema-loader-perl
-libgetopt-long-descriptive-perl libconfig-any-perl libdata-printer-perl
+libgetopt-long-descriptive-perl libconfig-any-perl libdata-printer-perl libdata-guid-perl
 libdatetime-perl
 liblog-log4perl-perl libdbd-mysql-perl
 mariadb-server

@@ -14,6 +14,30 @@ diag(
 "Testing Syntactic::Practice::Grammar::Token $Syntactic::Practice::Grammar::Token::VERSION, Perl $], $^X"
 );
 
-my $lexer = Syntactic::Practice::Lexer->new();
+my $homograph =
+  Syntactic::Practice::Lexicon::Homograph->new( word => 'Dog' );
 
-done_testing( 1 );
+my $lexeme = $homograph->lexemes->[0];
+
+my $sentence = [];
+
+my $tree_class = 'Syntactic::Practice::Tree::Abstract::Lexical';
+
+my $lexTree = $tree_class->new(
+                               { daughters => $lexeme,
+                                 frompos   => 0,
+                                 category  => $lexeme->category,
+                                 sentence  => $sentence,
+                               } );
+
+my $tset = Syntactic::Practice::Grammar::TokenSet->new();
+
+my $token =
+  Syntactic::Practice::Grammar::Token->new( tree => $lexTree,
+                                            set  => $tset );
+
+
+ok( $token, 'token constructor returns a true value' );
+
+
+done_testing( 2 );

@@ -35,6 +35,8 @@ my $token =
   Syntactic::Practice::Grammar::Token->new( tree => $lexTree,
                                             set  => $tset );
 
+is( $token->set <=> $tset, 0, q{token's set is $tset} );
+
 ok( defined $token, 'token constructor returns a true value' );
 
 like( $token->string, qr/dog/i, 'Token string renders correctly' );
@@ -45,4 +47,4 @@ is( $tset->last, $token, 'Last token of token set is $token' );
 is( $token->next, undef, 'next token is undefined' );
 is( $token->prev, undef, 'previous token is undefined' );
 
-done_testing( 7 );
+done_testing( 8 );

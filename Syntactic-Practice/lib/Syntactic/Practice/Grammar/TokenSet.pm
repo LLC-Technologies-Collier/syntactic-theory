@@ -47,10 +47,18 @@ has last => ( is        => 'rw',
 has '_guid' => ( is       => 'ro',
                  isa      => 'Data::GUID',
                  lazy     => 1,
-                 builder  => '_guid',
+                 builder  => '_build_guid',
                  init_arg => undef, );
 
-method cmp ( TokenSet $other! ) { $self->_guid cmp $other->_guid };
+sub _build_guid { new Data::GUID }
+
+sub cmp {
+  my( $self, $other );
+  return undef unless defined $other;
+  return undef unless $other->can('_guid');
+  $self->_guid cmp $other->_guid
+}
+
 
 method string () {
   join ' ', map { $_->string } @{ $self->tokens };

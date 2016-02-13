@@ -12,6 +12,8 @@ Version 0.01
 
 our $VERSION = '0.01';
 
+use Data::GUID;
+
 use Moose;
 use namespace::autoclean;
 
@@ -40,6 +42,19 @@ has depth => ( is       => 'ro',
                lazy     => 1,
                builder  => '_build_depth',
                init_arg => undef, );
+
+has '_guid' => ( is       => 'ro',
+                 isa      => 'Data::GUID',
+                 lazy     => 1,
+                 builder  => '_build_guid',
+                 init_arg => undef, );
+
+sub _build_guid { new Data::GUID }
+
+use overload
+  q{""} => sub { $_[0]->string },
+  '<=>' => sub { ( $_[2] ? -1 : 1 ) * $_[0]->cmp( $_[1] ) },
+  fallback => 1;
 
 sub _build_label    { $_[0]->factor->label }
 sub _build_category { $_[0]->factor->category }
@@ -123,6 +138,9 @@ sub BUILD {
 
 sub cmp {
   my ( $self, $other ) = @_;
+
+  return undef unless defined $other;
+
   my $result;
   foreach my $attribute ( qw(label frompos topos ) ) {
     $result = $self->$attribute cmp $other->$attribute;
@@ -140,7 +158,9 @@ sub cmp {
     return $result unless $result == 0;
   }
 
-  return 0;
+  return 0 unless $other->can( '_guid' );
+
+  return $self->_guid cmp $other->_guid;
 }
 
 sub as_forest {

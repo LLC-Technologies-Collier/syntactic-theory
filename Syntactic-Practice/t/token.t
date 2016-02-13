@@ -35,11 +35,17 @@ my $token =
   Syntactic::Practice::Grammar::Token->new( tree => $lexTree,
                                             set  => $tset );
 
+ok( defined $token->tree, q{Token's tree is defined} );
+
+is( $token->tree <=> $lexTree, 0, q{Token's tree is $lexTree} );
+
 is( $token->set <=> $tset, 0, q{token's set is $tset} );
 
 ok( defined $token, 'token constructor returns a true value' );
 
 like( $token->string, qr/dog/i, 'Token string renders correctly' );
+
+like( "$token", qr/dog/i, 'Token string renders correctly' );
 
 is( $tset->first, $token, 'First token of token set is $token' );
 is( $tset->last, $token, 'Last token of token set is $token' );
@@ -47,4 +53,5 @@ is( $tset->last, $token, 'Last token of token set is $token' );
 is( $token->next, undef, 'next token is undefined' );
 is( $token->prev, undef, 'previous token is undefined' );
 
-done_testing( 8 );
+
+done_testing( 11 );

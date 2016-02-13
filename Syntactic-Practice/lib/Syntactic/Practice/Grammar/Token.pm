@@ -78,18 +78,21 @@ sub position {
   confess $msg;
 }
 
-method string () { $self->tree->string };
+method string () { $self->tree->string }
 
 sub cmp {
-  my( $self, $other );
-  return undef unless defined $other;
-  return undef unless $other->can('_guid');
-  $self->_guid cmp $other->_guid
+  my ( $self, $other );
+  return undef unless defined $other && $other->can( '_guid' );
+  $self->_guid cmp $other->_guid;
 }
 
 use overload
   q{""} => sub { $_[0]->string },
-  '<=>' => sub { ( $_[2] ? -1 : 1 ) * $_[0]->cmp( $_[1] ) },
+  '<=>' => sub {
+  my $r = $_[0]->cmp( $_[1] );
+  $r = 1 unless defined $r;
+  ( $_[2] ? -1 : 1 ) * $r;
+  },
   fallback => 1;
 
 #method _build_next () {
@@ -155,8 +158,12 @@ sub BUILD {
     $tset->last( $self );
   }
 
+  $self->log->debug( 'tset GUID is [' . $self->set->_guid . ']' );
+
   #method BUILD () {
   #  $self->set->append( $self, 0 );
+
+  return $self;
 }
 
 __PACKAGE__->meta->make_immutable();

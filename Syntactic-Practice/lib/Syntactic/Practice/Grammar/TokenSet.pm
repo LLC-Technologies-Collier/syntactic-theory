@@ -53,20 +53,22 @@ has '_guid' => ( is       => 'ro',
 sub _build_guid { new Data::GUID }
 
 sub cmp {
-  my( $self, $other );
-  return undef unless defined $other;
-  return undef unless $other->can('_guid');
-  $self->_guid cmp $other->_guid
+  my ( $self, $other ) = @_;
+  return undef unless defined $other && $other->can( '_guid' );
+  $self->_guid cmp $other->_guid;
 }
-
 
 method string () {
   join ' ', map { $_->string } @{ $self->tokens };
-};
+}
 
 use overload
-  q{""}    => sub { $_[0]->string },
-  '<=>'    => sub { ( $_[2] ? -1 : 1 ) * $_[0]->cmp( $_[1] ) },
+  q{""} => sub { $_[0]->string },
+  '<=>' => sub {
+  my $r = $_[0]->cmp( $_[1] );
+  $r = 1 unless defined $r;
+  ( $_[2] ? -1 : 1 ) * $r;
+  },
   fallback => 1;
 
 sub _build_tokens { [] }
@@ -83,7 +85,7 @@ sub copy {
   return $copy;
 }
 
-method _build_last () { $self->tokens ? $self->tokens->[-1] : undef };
+method _build_last () { $self->tokens ? $self->tokens->[-1] : undef }
 
 #method _set_last ( Token $last!, Maybe[Token] $old_last! ) {
 sub _set_last {
@@ -104,7 +106,7 @@ method _set_last ( Token $last!, Token $old_last? ) {
   $cursor->prev( undef );
 
   return $last;
-};
+}
 
 #method append ( 'TokenSet|Token' $more!, 'Bool' $copy? ) {
 sub append {
@@ -190,7 +192,7 @@ sub append_new {
   return $self;
 }
 
-method _build_first () { $self->count > 0 ? $self->tokens->[0] : undef };
+method _build_first () { $self->count > 0 ? $self->tokens->[0] : undef }
 
 method _set_first ( Token $first!, Token $old_first? ) {
 
@@ -211,7 +213,7 @@ method _set_first ( Token $first!, Token $old_first? ) {
   pop @$tokens;
 
   return $first;
-};
+}
 
 #method prepend ( 'TokenSet|Token' $more!, 'Bool' $do_copy = 1 ) {
 sub prepend {
@@ -239,6 +241,6 @@ sub prepend {
   return $self;
 }
 
-method count () { $self->tokens ? scalar @{ $self->tokens } : 0 };
+method count () { $self->tokens ? scalar @{ $self->tokens } : 0 }
 
 __PACKAGE__->meta->make_immutable();

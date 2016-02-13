@@ -14,10 +14,14 @@ our $VERSION = '0.01';
 
 use Syntactic::Practice::Types -declare => [qw(Token TokenSet Tree)];
 
+use Data::GUID;
+
 use Moose;
 use namespace::autoclean;
 use MooseX::Method::Signatures;
 use MooseX::Params::Validate;
+
+with 'MooseX::Log::Log4perl';
 
 has set => ( is       => 'ro',
              isa      => 'TokenSet',
@@ -28,16 +32,22 @@ has tree => ( is       => 'ro',
               required => 1 );
 
 has next => ( is      => 'rw',
-              isa     => 'Maybe[Tree]',
+              isa     => 'Maybe[Token]',
               lazy    => 1,
               builder => '_build_next',
               trigger => \&_set_next, );
 
 has prev => ( is      => 'rw',
-              isa     => 'Maybe[Tree]',
+              isa     => 'Maybe[Token]',
               lazy    => 1,
               builder => '_build_prev',
               trigger => \&_set_prev, );
+
+has '_guid' => ( is       => 'ro',
+                 isa      => 'Data::GUID',
+                 lazy     => 1,
+                 builder  => '_guid',
+                 init_arg => undef, );
 
 sub copy {
   my ( $self, %attr ) = @_;
@@ -48,41 +58,32 @@ sub copy {
 
 #method position () {
 sub position {
-  my ( $self ) = @_;
+  my ( $self )  = @_;
   my $token_set = $self->set;
-  my $tokens = $token_set->tokens;
-  my $count = $token_set->count;
+  my $tokens    = $token_set->tokens;
+  my $count     = $token_set->count;
 
   for ( my $i = 0; $i < $count; $i++ ) {
-    return $i if $tokens->[$i]->cmp( $self ) == 0;
+    unless ( defined $tokens->[$i] ) {
+      my $msg = "Position [$i] of token set is undefined!";
+      $self->log->error( $msg );
+      confess $msg;
+    }
+    return $i if $self->cmp( $tokens->[$i] ) == 0;
   }
   my $msg = 'Did not find self in TokenSet';
   $self->log->error( $msg );
-  die $msg;
+  confess $msg;
 }
 
-#method cmp ( Token $other! ){
-sub cmp {
-  my ( $self, $other ) = @_;
-  return undef unless $self->set eq $other->set;
-  my $result = $self->tree->name() cmp $other->tree->name();
-  return $result unless $result == 0;
-  if( !defined $self->prev() ){
-    return 0 if !defined $other->prev()
-  }else{
-    return 1 if !defined $other->prev();
-    $result = $self->prev() eq $other->prev();
-    return 0 if $result == 0;
-  }
-  if( !defined $self->next() ){
-    return 0 if !defined $other->next()
-  }else{
-    return 1 if !defined $other->next();
-    $result = $self->next() eq $other->next();
-    return 0 if $result == 0;
-  }
-  return $result;
-}
+method string () { $self->tree->string };
+
+method cmp ( Token $other! ) { $self->_guid cmp $other->_guid }
+
+use overload
+  q{""} => 'string',
+  '<=>' => sub { ($_[2] ? -1 : 1) * $_[0]->cmp($_[1]) },
+  fallback => 1;
 
 #method _build_next () {
 sub _build_next {
@@ -111,12 +112,15 @@ sub _set_next {
 sub _build_prev {
   my ( $self ) = @_;
   my $tokens = $self->set->tokens;
-  $tokens->[0]->prev(undef);
-  for( my $cursor = $tokens->[0]; defined $cursor->next; $cursor = $cursor->next ){
+  $tokens->[0]->prev( undef );
+  for ( my $cursor = $tokens->[0];
+        defined $cursor->next;
+        $cursor = $cursor->next )
+  {
     return $cursor if $cursor->next eq $self;
     $cursor = $cursor->next;
   }
-  die 'could not find self in list of tokens!';
+  confess 'could not find self in list of tokens!';
 }
 
 #method _set_prev ( Token $prev!, Token $old_prev! ) {
@@ -135,10 +139,11 @@ sub _set_prev {
 }
 
 sub BUILD {
-my($self) = @_;
-#method BUILD () {
-# $self->set->append( $self )
-};
+  my ( $self ) = @_;
+
+  #method BUILD () {
+#  $self->set->append( $self, 0 );
+}
 
 __PACKAGE__->meta->make_immutable();
 

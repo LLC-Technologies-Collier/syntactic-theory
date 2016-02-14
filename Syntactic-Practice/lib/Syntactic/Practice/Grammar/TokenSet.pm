@@ -30,7 +30,7 @@ has first => ( is        => 'rw',
                isa       => 'Maybe[Token]',
                lazy      => 1,
                builder   => '_build_first',
-               trigger   => \&_set_first,
+               trigger   => \&_set_extrema,
                clearer   => '_clear_first',
                predicate => '_has_first',
                init_arg  => undef, );
@@ -39,7 +39,7 @@ has last => ( is        => 'rw',
               isa       => 'Maybe[Token]',
               lazy      => 1,
               builder   => '_build_last',
-              trigger   => \&_set_last,
+              trigger   => \&_set_extrema,
               clearer   => '_clear_last',
               predicate => '_has_last',
               init_arg  => undef, );
@@ -79,40 +79,50 @@ sub copy {
 
 method _build_last () { $self->tokens ? $self->tokens->[-1] : undef }
 
-method _set_last ( Token $last!, Maybe[Token] $old_last? ) {
+method _set_extrema ( Token $new!, Maybe[Token] $old? ) {
 
-  my $count = $self->count;
-  unless( 0 == ( $old_last ~~ $self->tokens->[-1] ) ){
-    $self->log->error( 'Element specified as old last is not last element in token set' );
-  }
-  if ( 0 ~~ ( $last ~~ $old_last ) ) {
-    $self->log->error( 'Element specified as last is already last' );
-  }else{
-    $last->prev( $old_last );
+  my ( $extrema ) = ( ( caller( 1 ) )[3] =~ /TokenSet::(\S+)/ );
+  my ( $tbool, $count ) = ( $extrema eq 'first', $self->count );
+  my ( $forward, $back ) = ( $tbool ? qw(next prev) : qw(prev next) );
+
+  if ( 0 ~~ ( $new ~~ $old ) ) {
+    $self->log->error( qq{Token specified as $extrema is already $extrema} );
+  } else {
+    $new->$forward( $old );
     $count++;
   }
 
-  my ( $tokens, $cursor, $i, $next ) = ( $self->tokens, $last, $count, undef );
+  my ( $end, $start ) = $tbool ? ( $count, 0 ) : ( 0, $count );
+
+  $self->log->error( "Token specified as old $extrema is not $extrema token" )
+    unless ( 0 ~~ ( $old ~~ $self->tokens->[$start] ) );
+
+  my ( $tokens, $cursor, $i, $prior ) = ( $self->tokens, $new, $start, undef );
+
+  my ( $breach, $iterate ) =
+    $tbool
+    ? ( sub { $i > $end }, sub { $i++ } )
+    : ( sub { $i < $end }, sub { $i-- } );
 
   while ( defined $cursor ) {
-    if( $i < 0 ){
+    if ( $breach->() ) {
       my $msg = "cursor has iterated more than [$count] times";
       $self->log->error( $msg );
       confess $msg;
     }
-    $cursor->next( $next );
-    $tokens->[ $i-- ] = $next = $cursor;
-    $cursor = $cursor->prev;
-    if( 0 ~~ ( $cursor ~~ $last ) ){
-      my $msg = "Token sepcified as last is already in token set at index [$i]";
+    $cursor->$back( $prior );
+    $tokens->[$iterate->()] = $prior = $cursor;
+    $cursor = $cursor->$forward;
+    if ( 0 ~~ ( $cursor ~~ $new ) ) {
+      my $msg = qq{Token sepcified as $extrema is in token set at index [$i]};
       $self->log->error( $msg );
       confess $msg;
     }
   }
 
-  $self->first( $next ) unless 0 == ( $self->first ~~ $next );
+  $self->$extrema( $prior ) unless 0 ~~ ( $self->$extrema ~~ $prior );
 
-  return $last;
+  return $new;
 }
 
 sub _assert_set_consistency {
@@ -271,44 +281,6 @@ sub append_new {
 }
 
 method _build_first () { $self->count > 0 ? $self->tokens->[0] : undef }
-
-method _set_first ( Token $first!, Maybe[Token] $old_first? ) {
-
-  my $count = $self->count;
-
-  unless( 0 == ( $old_first ~~ $self->tokens->[0] ) ){
-    $self->log->error( 'Element specified as old first is not first element in token set' );
-  }
-
-  if ( 0 == ( $first ~~ $old_first ) ) {
-    $self->log->error( 'Token specified as first is already first' );
-  }else{
-    $first->next( $old_first );
-    $count++;
-  }
-
-  my ( $tokens, $cursor, $i, $prev ) = ( $self->tokens, $first, 0, undef );
-
-  while ( defined $cursor ) {
-    if( $i > $count ){
-      my $msg = "cursor has iterated more than [$count] times";
-      $self->log->error( $msg );
-      confess $msg;
-    }
-    $cursor->prev( $prev );
-    $tokens->[ $i++ ] = $prev = $cursor;
-    $cursor = $cursor->next;
-    if( 0 ~~ ( $cursor ~~ $first ) ){
-      my $msg = "Token sepcified as first is already in token set at index [$i]";
-      $self->log->error( $msg );
-      confess $msg;
-    }
-  }
-
-  $self->last( $prev ) unless 0 == ( $self->last ~~ $prev );
-
-  return $first;
-}
 
 #method prepend ( 'TokenSet|Token' $more!, 'Bool' $do_copy = 1 ) {
 sub prepend {

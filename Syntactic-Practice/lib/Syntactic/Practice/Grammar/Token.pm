@@ -129,7 +129,7 @@ sub _build_prev {
         defined $cursor->next;
         $cursor = $cursor->next )
   {
-    return $cursor if $cursor->next eq $self;
+    return $cursor if $self <=> $cursor->next;
     $cursor = $cursor->next;
   }
   confess 'could not find self in list of tokens!';
@@ -165,10 +165,7 @@ sub BUILD {
   my $tset   = $self->set;
   my $tokens = $tset->tokens;
 
-  if ( $tset->count == 0 ) {
-    $tset->first( $self );
-    $tset->last( $self );
-  }
+  $tset->first( $self ) if $tset->count == 0;
 
   $self->log->debug( 'tset GUID is [' . $self->set->_guid . ']' );
 

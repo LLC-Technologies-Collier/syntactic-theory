@@ -31,9 +31,13 @@ my $lexTree = $tree_class->new(
 
 my $tset = Syntactic::Practice::Grammar::TokenSet->new();
 
+is( $tset->count, 0, 'token set is empty' );
+
 my $token =
   Syntactic::Practice::Grammar::Token->new( tree => $lexTree,
                                             set  => $tset );
+
+is( $tset->count, 1, 'token set has one element' );
 
 ok( defined $token->tree, q{Token's tree is defined} );
 
@@ -54,4 +58,4 @@ is( $token->next, undef, 'next token is undefined' );
 is( $token->prev, undef, 'previous token is undefined' );
 
 
-done_testing( 11 );
+done_testing( 13 );

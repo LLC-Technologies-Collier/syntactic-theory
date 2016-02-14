@@ -88,6 +88,7 @@ method _set_extrema ( Token $new!, Maybe[Token] $old? ) {
   if ( 0 ~~ ( $new ~~ $old ) ) {
     $self->log->error( qq{Token specified as $extrema is already $extrema} );
   } else {
+    $new->set( $self );
     $new->$forward( $old );
     $count++;
   }
@@ -196,11 +197,11 @@ sub _assert_set_consistency {
   push( @{ $self->tokens }, @correct );
 }
 
-#method append ( 'TokenSet|Token' $more!, 'Bool' $copy? ) {
-sub append {
-  my ( $self, $more, $do_copy ) = @_;
+method append ( TokenSet|Token $more!, Bool $do_copy=1 ) {
+#sub append {
+#  my ( $self, $more, $do_copy ) = @_;
 
-  $do_copy //= 1;
+#  $do_copy //= 1;
 
   #  my ( $self, @arg ) = @_;
   #  my ( $more, $do_copy ) =
@@ -212,47 +213,17 @@ sub append {
 
   if ( $more->isa( 'Syntactic::Practice::Grammar::TokenSet' ) ) {
     my $copy = $do_copy ? $more->copy : $more;
-    if ( $num_tokens == 0 ) {
-      $self->tokens( $copy->tokens );
-      $self->first( $copy->first );
-      $self->last( $copy->last );
-    } else {
-      $self->last( $copy->last );
-      $old_last->next( $copy->first ) if defined $old_last;
-      $self->first( $copy->first ) unless $self->first;
-      if ( $do_copy ) {
-        delete $copy->{tokens};
-        undef $copy;
-      }
+    foreach my $new_token ( @{ $copy->tokens } ){
+      $self->last( $new_token );
+    }
+    if ( $do_copy ) {
+      delete $copy->{tokens};
+      undef $copy;
     }
   } elsif ( $more->isa( 'Syntactic::Practice::Grammar::Token' ) ) {
     my $copy = $do_copy ? $more->copy( set => $self ) : $more;
-    if ( $num_tokens == 0 ) {
-      $self->first( $copy );
-      $copy->next( undef );
-      $copy->prev( undef );
-      $self->last( $copy );
-      $self->tokens( [$copy] );
-    } else {
-      $self->first( $copy );
-      $self->last( $copy );
-      $self->tokens( [$copy] );
-      undef $copy if $do_copy;
-    }
+    $self->last( $copy );
   }
-
-  my ( $cursor, $i ) = ( $self->first, 0 );
-
-  $cursor->prev( undef ) if defined $cursor;
-
-  $tokens->[$i] = $self->first;
-  while ( $tokens->[ ++$i ] = $cursor->next ) {
-    $tokens->[$i]->prev( $cursor );
-    last unless $cursor;
-    $cursor = $cursor->next;
-  }
-  pop @$tokens;
-  $cursor->next( undef );
 
   return $self;
 }

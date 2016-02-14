@@ -14,14 +14,12 @@ our $VERSION = '0.01';
 
 use Syntactic::Practice::Types -declare => [qw(Token TokenSet Tree)];
 
-use Data::GUID;
-
 use Moose;
 use namespace::autoclean;
 use MooseX::Method::Signatures;
 use MooseX::Params::Validate;
 
-with 'MooseX::Log::Log4perl';
+with( 'MooseX::Log::Log4perl', 'Syntactic::Practice::Roles::Unique' );
 
 has set => ( is       => 'ro',
              isa      => 'TokenSet',
@@ -42,14 +40,6 @@ has prev => ( is      => 'rw',
               lazy    => 1,
               builder => '_build_prev',
               trigger => \&_set_prev, );
-
-has '_guid' => ( is       => 'ro',
-                 isa      => 'Data::GUID',
-                 lazy     => 1,
-                 builder  => '_build_guid',
-                 init_arg => undef, );
-
-sub _build_guid { new Data::GUID }
 
 sub copy {
   my ( $self, %attr ) = @_;
@@ -78,21 +68,26 @@ sub position {
   confess $msg;
 }
 
-method string () { $self->tree->string }
+sub string { $_[0]->tree->string }
 
-sub cmp {
-  my ( $self, $other );
-  return undef unless defined $other && $other->can( '_guid' );
-  $self->_guid cmp $other->_guid;
+sub cmp { $_[0]->_guid cmp $_[1]->_guid }
+
+sub _ovld_cmp {
+  my ( $a, $b, $swap ) = @_;
+
+  return undef unless defined $a       && defined $b;
+  return undef unless ref $a eq ref $b;
+  return undef unless $a->can( 'cmp' ) && $b->can( 'cmp' );
+
+  if ( $swap ) { my $tmp = $b; $b = $a; $a = $tmp; }
+
+  $a->cmp( $b );
 }
 
 use overload
-  q{""} => sub { $_[0]->string },
-  '<=>' => sub {
-  my $r = $_[0]->cmp( $_[1] );
-  $r = 1 unless defined $r;
-  ( $_[2] ? -1 : 1 ) * $r;
-  },
+  q{~~}    => \&_ovld_cmp,
+  q{""}    => sub { $_[0]->string },
+  '<=>'    => \&_ovld_cmp,
   fallback => 1;
 
 #method _build_next () {
@@ -103,19 +98,30 @@ sub _build_next {
   return $set->tokens->[$position_n];
 }
 
-#method _set_next ( Token $next!, Token $old_next! ) {
-sub _set_next {
-  my ( $self, $next, $old_next ) = @_;
+method _set_next ( Maybe[Token] $next!, Maybe[Token] $old_next? ) {
+#sub _set_next {
+  #my ( $next, $old_next ) =
+  #  pos_validated_list( \@_,
+  #                      { type => 'Maybe[Token]' },
+  #                      { type => 'Maybe[Token]' } );
   return unless defined $next;
-  my ( $position_n, $set ) = ( $self->position + 1, $self->set );
-  if ( $position_n < $set->count ) {
-    splice( @${ $self->set->tokens }, $position_n, 0, $next );
-    $next->next( $old_next );
-  } else {
-    push( @${ $self->set->tokens }, $next );
+
+  my $tset = $next->set;
+
+  if ( $tset->count == 0 ) {
+    my $msg = '$token->set was empty before calling $token->next($prev)';
+    $tset->log->error( $msg );
+    confess $msg;
   }
+
+  my $self = defined $old_next ? $old_next->prev : $tset->last;
+
+  $old_next->prev( $next ) if defined $old_next;
+  $next->next( $old_next );
   $next->prev( $self );
+
   return $next;
+
 }
 
 #method _build_prev () {
@@ -133,27 +139,40 @@ sub _build_prev {
   confess 'could not find self in list of tokens!';
 }
 
-#method _set_prev ( Token $prev!, Token $old_prev! ) {
-sub _set_prev {
-  my ( $self, $prev, $old_prev ) = @_;
+method _set_prev ( Maybe[Token] $prev!, Maybe[Token] $old_prev? ) {
+#sub _set_prev {
+#  my ( $prev, $old_prev ) =
+#    pos_validated_list( \@_,
+#                        { type => 'Maybe[Token]' },
+#                        { type => 'Maybe[Token]' } );
+
   return unless defined $prev;
-  my ( $position_p, $set ) = ( $self->position - 1, $self->set );
-  if ( $position_p > 0 ) {
-    splice( @${ $self->set->tokens }, $position_p, 0, $prev );
-    $old_prev->next( $prev );
-  } else {
-    unshift( @{ $self->set->tokens }, $prev );
+
+  my $tset = $prev->set;
+
+  if ( $tset->count == 0 ) {
+    my $msg = '$token->set was empty before calling $token->prev($prev)';
+    $tset->log->error( $msg );
+    confess $msg;
   }
+
+  my $self = defined $old_prev ? $old_prev->next : $tset->first;
+
+  $old_prev->next( $prev ) if defined $old_prev;
+  $prev->prev( $old_prev );
   $prev->next( $self );
+
   return $prev;
 }
 
 sub BUILD {
   my ( $self ) = @_;
 
-  my $tset = $self->set;
+  my $tset   = $self->set;
+  my $tokens = $tset->tokens;
 
-  if ( scalar @{ $tset->tokens } == 0 ) {
+  if ( $tset->count == 0 ) {
+    push( @$tokens, $self );
     $tset->first( $self );
     $tset->last( $self );
   }

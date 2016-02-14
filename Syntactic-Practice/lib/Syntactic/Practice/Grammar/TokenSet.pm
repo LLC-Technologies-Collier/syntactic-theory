@@ -19,7 +19,7 @@ use namespace::autoclean;
 use MooseX::Method::Signatures;
 use MooseX::Params::Validate;
 
-with 'MooseX::Log::Log4perl';
+with( 'MooseX::Log::Log4perl', 'Syntactic::Practice::Roles::Unique' );
 
 has tokens => ( is      => 'rw',
                 isa     => 'ArrayRef[Token]',
@@ -43,14 +43,6 @@ has last => ( is        => 'rw',
               clearer   => '_clear_last',
               predicate => '_has_last',
               init_arg  => undef, );
-
-has '_guid' => ( is       => 'ro',
-                 isa      => 'Data::GUID',
-                 lazy     => 1,
-                 builder  => '_build_guid',
-                 init_arg => undef, );
-
-sub _build_guid { new Data::GUID }
 
 sub cmp {
   my ( $self, $other ) = @_;
@@ -87,25 +79,91 @@ sub copy {
 
 method _build_last () { $self->tokens ? $self->tokens->[-1] : undef }
 
-#method _set_last ( Token $last!, Maybe[Token] $old_last! ) {
-sub _set_last {
-  my ( $last, $old_last ) =
-    pos_validated_list( \@_, { type => 'Token' }, { type => 'Maybe[Token]' } );
-}
+method _set_last ( Token $last!, Maybe[Token] $old_last? ) {
+#sub _set_last {
 
-method _set_last ( Token $last!, Token $old_last? ) {
+  #  my ( $self, $last, $old_last ) = @_;
+#  my ( $last, $old_last ) =
+#    pos_validated_list( \@_, { type => 'Token' }, { type => 'Maybe[Token]' } );
+
+  my $self = $last->set;
+
   my ( $tokens, $cursor, $i ) = ( $self->tokens, $last, $self->count + 1 );
 
   $last->next( undef );
   $tokens->[ $i-- ] = $last;
   $last->prev( $old_last );
 
-  while ( ( $i > 0 ) && ( $tokens->[ $i-- ] = $cursor->prev() ) ) {
-    $cursor = $cursor->prev();
-  }
-  $cursor->prev( undef );
-
   return $last;
+}
+
+sub _assert_set_consistency {
+  my ( $self ) = @_;
+
+  $self->log->debug( "Performing token set consistency check." );
+  my $tokens        = $self->tokenset;
+  my $initial_count = $self->count;
+  $self->log->debug( "Initial token count: [$initial_count]" );
+
+  my @expected =
+    ( undef, ( map { $tokens->[$_] } ( 0 .. $#{$tokens} ) ), undef );
+  my ( @valid, @invalid, @correct );
+
+  my ( $cursor, $i ) = ( $self->first, 0 );
+  my $prev = undef;
+  while ( defined $cursor or $i < $initial_count ) {
+    my ( $prev_expected, $cur_expected, $next_expected ) =
+      @expected[ $i, $i + 1, $i + 2 ];
+
+    my ( $prev_token, $cur_token, $next_token ) =
+      ( $cursor->prev, $cursor, $cursor->next );
+
+    if ( $cur_token ~~ $cur_expected ) {
+      push( @valid, $cur_token );
+    } else {
+      $self->log->debug( "Incorrect token at index [$i]" );
+      push( @invalid,
+            { position => $i,
+              token    => $prev_token,
+              expected => $prev_expected
+            } );
+    }
+
+    if ( $prev_token ~~ $prev_expected ) {
+      push( @valid, $prev_token );
+    } else {
+      $self->log->debug( "Incorrect previous token at index [$i]" );
+      push( @invalid,
+            { position => $i - 1,
+              token    => $prev_token,
+              expected => $prev_expected
+            } );
+    }
+
+    if ( $next_token ~~ $next_expected ) {
+      push( @valid, $next_token );
+    } else {
+      $self->log->debug( "Incorrect previous token at index [$i]" );
+      push( @invalid,
+            { position => $i + 1,
+              token    => $next_token,
+              expected => $next_expected
+            } );
+    }
+
+    push( @correct, $cursor );
+    $prev   = $cursor;
+    $cursor = $cursor->next;
+    $i++;
+  }
+  my ( $num_valid, $num_invalid, $num_tokens ) =
+    ( scalar @valid, scalar @invalid, scalar @correct );
+
+  $self->log->debug("Number of valid positions:   [$num_valid] of [$num_tokens]");
+  $self->log->debug("Number of invalid positions: [$num_invalid] of [$num_tokens]");
+
+  $#{ $self->tokens } = -1;
+  push( @{ $self->tokens }, @correct );
 }
 
 #method append ( 'TokenSet|Token' $more!, 'Bool' $copy? ) {
@@ -194,7 +252,7 @@ sub append_new {
 
 method _build_first () { $self->count > 0 ? $self->tokens->[0] : undef }
 
-method _set_first ( Token $first!, Token $old_first? ) {
+method _set_first ( Token $first!, Maybe[Token] $old_first? ) {
 
   #sub _set_first {
   #  my( $first, $old_first ) =

@@ -4,9 +4,14 @@ use 5.006;
 use strict;
 use warnings FATAL => 'all';
 
+use Log::Log4perl;
 use Data::Printer;
 
 BEGIN {
+  Log::Log4perl->init( 'log4perl.conf' ) or die "couldn't init logger: $!";
+
+  Log::Log4perl->get_logger()->info( "Syntactic::Practice startup..." );
+
   use Syntactic::Practice::Util;
 
   my $ns = 'Syntactic::Practice';

@@ -17,7 +17,8 @@ use Data::GUID;
 use Moose;
 use namespace::autoclean;
 
-with 'Syntactic::Practice::Roles::Category';
+with( 'Syntactic::Practice::Roles::Category',
+      'Syntactic::Practice::Roles::Unique' );
 
 has topos => ( is       => 'ro',
                isa      => 'PositiveInt',
@@ -42,14 +43,6 @@ has depth => ( is       => 'ro',
                lazy     => 1,
                builder  => '_build_depth',
                init_arg => undef, );
-
-has '_guid' => ( is       => 'ro',
-                 isa      => 'Data::GUID',
-                 lazy     => 1,
-                 builder  => '_build_guid',
-                 init_arg => undef, );
-
-sub _build_guid { new Data::GUID }
 
 use overload
   q{""} => sub { $_[0]->string },

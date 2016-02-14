@@ -166,7 +166,6 @@ sub BUILD {
   my $tokens = $tset->tokens;
 
   if ( $tset->count == 0 ) {
-    push( @$tokens, $self );
     $tset->first( $self );
     $tset->last( $self );
   }

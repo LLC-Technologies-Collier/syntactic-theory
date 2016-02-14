@@ -80,19 +80,37 @@ sub copy {
 method _build_last () { $self->tokens ? $self->tokens->[-1] : undef }
 
 method _set_last ( Token $last!, Maybe[Token] $old_last? ) {
-#sub _set_last {
 
-  #  my ( $self, $last, $old_last ) = @_;
-#  my ( $last, $old_last ) =
-#    pos_validated_list( \@_, { type => 'Token' }, { type => 'Maybe[Token]' } );
+  my $count = $self->count;
+  unless( 0 == ( $old_last ~~ $self->tokens->[-1] ) ){
+    $self->log->error( 'Element specified as old last is not last element in token set' );
+  }
+  if ( 0 ~~ ( $last ~~ $old_last ) ) {
+    $self->log->error( 'Element specified as last is already last' );
+  }else{
+    $last->prev( $old_last );
+    $count++;
+  }
 
-  my $self = $last->set;
+  my ( $tokens, $cursor, $i, $next ) = ( $self->tokens, $last, $count, undef );
 
-  my ( $tokens, $cursor, $i ) = ( $self->tokens, $last, $self->count + 1 );
+  while ( defined $cursor ) {
+    if( $i < 0 ){
+      my $msg = "cursor has iterated more than [$count] times";
+      $self->log->error( $msg );
+      confess $msg;
+    }
+    $cursor->next( $next );
+    $tokens->[ $i-- ] = $next = $cursor;
+    $cursor = $cursor->prev;
+    if( 0 ~~ ( $cursor ~~ $last ) ){
+      my $msg = "Token sepcified as last is already in token set at index [$i]";
+      $self->log->error( $msg );
+      confess $msg;
+    }
+  }
 
-  $last->next( undef );
-  $tokens->[ $i-- ] = $last;
-  $last->prev( $old_last );
+  $self->first( $next ) unless 0 == ( $self->first ~~ $next );
 
   return $last;
 }
@@ -159,8 +177,10 @@ sub _assert_set_consistency {
   my ( $num_valid, $num_invalid, $num_tokens ) =
     ( scalar @valid, scalar @invalid, scalar @correct );
 
-  $self->log->debug("Number of valid positions:   [$num_valid] of [$num_tokens]");
-  $self->log->debug("Number of invalid positions: [$num_invalid] of [$num_tokens]");
+  $self->log->debug(
+                 "Number of valid positions:   [$num_valid] of [$num_tokens]" );
+  $self->log->debug(
+               "Number of invalid positions: [$num_invalid] of [$num_tokens]" );
 
   $#{ $self->tokens } = -1;
   push( @{ $self->tokens }, @correct );
@@ -237,7 +257,7 @@ sub append_new {
     Syntactic::Practice::Grammar::Token->new( set  => $self,
                                               tree => $tree );
 
-  if ( scalar @$tokens ) {
+  if ( scalar @$tokens > 1 ) {
     push( @$tokens, $token );
     $self->last->next( $token );
   } else {
@@ -254,21 +274,38 @@ method _build_first () { $self->count > 0 ? $self->tokens->[0] : undef }
 
 method _set_first ( Token $first!, Maybe[Token] $old_first? ) {
 
-  #sub _set_first {
-  #  my( $first, $old_first ) =
-  #    pos_validated_list( \@_,
-  #                        { type => 'Token' },
-  #                        { type => 'Maybe[Token]' } );
+  my $count = $self->count;
 
-  #  my $self = $first->set;
+  unless( 0 == ( $old_first ~~ $self->tokens->[0] ) ){
+    $self->log->error( 'Element specified as old first is not first element in token set' );
+  }
 
-  my ( $tokens, $cursor, $i ) = ( $self->tokens, $first, 0 );
+  if ( 0 == ( $first ~~ $old_first ) ) {
+    $self->log->error( 'Token specified as first is already first' );
+  }else{
+    $first->next( $old_first );
+    $count++;
+  }
 
-  $first->prev( undef );
-  $first->next( $old_first );
-  $tokens->[ $i++ ] = $first;
-  while ( $tokens->[ $i++ ] = $cursor->next ) { $cursor = $cursor->next }
-  pop @$tokens;
+  my ( $tokens, $cursor, $i, $prev ) = ( $self->tokens, $first, 0, undef );
+
+  while ( defined $cursor ) {
+    if( $i > $count ){
+      my $msg = "cursor has iterated more than [$count] times";
+      $self->log->error( $msg );
+      confess $msg;
+    }
+    $cursor->prev( $prev );
+    $tokens->[ $i++ ] = $prev = $cursor;
+    $cursor = $cursor->next;
+    if( 0 ~~ ( $cursor ~~ $first ) ){
+      my $msg = "Token sepcified as first is already in token set at index [$i]";
+      $self->log->error( $msg );
+      confess $msg;
+    }
+  }
+
+  $self->last( $prev ) unless 0 == ( $self->last ~~ $prev );
 
   return $first;
 }

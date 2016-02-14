@@ -99,29 +99,25 @@ sub _build_next {
 }
 
 method _set_next ( Maybe[Token] $next!, Maybe[Token] $old_next? ) {
-#sub _set_next {
+
+  #sub _set_next {
   #my ( $next, $old_next ) =
   #  pos_validated_list( \@_,
   #                      { type => 'Maybe[Token]' },
   #                      { type => 'Maybe[Token]' } );
   return unless defined $next;
 
-  my $tset = $next->set;
+  my $tset = $self->set;
 
   if ( $tset->count == 0 ) {
     my $msg = '$token->set was empty before calling $token->next($prev)';
-    $tset->log->error( $msg );
+    $self->log->error( $msg );
     confess $msg;
   }
 
-  my $self = defined $old_next ? $old_next->prev : $tset->last;
-
-  $old_next->prev( $next ) if defined $old_next;
   $next->next( $old_next );
-  $next->prev( $self );
 
   return $next;
-
 }
 
 #method _build_prev () {
@@ -140,26 +136,24 @@ sub _build_prev {
 }
 
 method _set_prev ( Maybe[Token] $prev!, Maybe[Token] $old_prev? ) {
-#sub _set_prev {
-#  my ( $prev, $old_prev ) =
-#    pos_validated_list( \@_,
-#                        { type => 'Maybe[Token]' },
-#                        { type => 'Maybe[Token]' } );
+
+  #sub _set_prev {
+  #  my ( $prev, $old_prev ) =
+  #    pos_validated_list( \@_,
+  #                        { type => 'Maybe[Token]' },
+  #                        { type => 'Maybe[Token]' } );
 
   return unless defined $prev;
 
-  my $tset = $prev->set;
+  my $tset = $self->set;
 
   if ( $tset->count == 0 ) {
     my $msg = '$token->set was empty before calling $token->prev($prev)';
-    $tset->log->error( $msg );
+    $self->log->error( $msg );
     confess $msg;
   }
 
-  my $self = defined $old_prev ? $old_prev->next : $tset->first;
-
   $old_prev->next( $prev ) if defined $old_prev;
-  $prev->prev( $old_prev );
   $prev->next( $self );
 
   return $prev;

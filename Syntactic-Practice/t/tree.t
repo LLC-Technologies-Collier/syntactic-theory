@@ -55,16 +55,45 @@ foreach my $word ( qw( The dog watched ) ) {
   $treeByWord{$word} = $l_tree;
 }
 
+is( $sentence->[0]->label, 'D', 'First word recognized as a determiner' );
+is( $sentence->[1]->label, 'N', 'Second word recognized as a noun' );
+is( $sentence->[2]->label, 'V', 'Third word recognized as a verb' );
+
 dies_ok( sub { "${tree_ns}::Abstract::Phrasal"->new( category => $np_cat ) },
          'dies when instantiated without a sentence' );
 
-my $np_tree =
-  "${tree_ns}::Abstract::Phrasal"->new( category => $np_cat,
-                                        sentence => $sentence, );
-ok( $np_tree, 'Abstract Noun Phrase tree instantiated' );
+my $nom_tree =
+  "${tree_ns}::Abstract::Phrasal"->new( category  => $nom_cat,
+                                        sentence  => $sentence,
+                                        daughters => [ $treeByWord{'dog'} ], );
 
-my $s_tree = "${tree_ns}::Abstract::Start"->new( sentence => $sentence );
+ok( $nom_tree, 'Abstract NOM tree instantiated' );
+is( $nom_tree->label, 'NOM', 'NOM tree has NOM label' );
+
+# TODO: ensure that trees' daughters are a valid combination for this category
+
+my $np_tree =
+  "${tree_ns}::Abstract::Phrasal"->new(
+                                  category  => $np_cat,
+                                  sentence  => $sentence,
+                                  daughters => [ $treeByWord{'The'}, $nom_tree ]
+  );
+ok( $np_tree, 'Abstract NP tree instantiated' );
+is( $np_tree->label, 'NP', 'NP tree has NP label' );
+
+my $vp_tree =
+  "${tree_ns}::Abstract::Phrasal"->new( category  => $vp_cat,
+                                        sentence  => $sentence,
+                                        daughters => [ $treeByWord{'watched'} ],
+  );
+ok( $vp_tree, 'Abstract VP tree instantiated' );
+is( $vp_tree->label, 'VP', 'VP tree has VP label' );
+
+my $s_tree =
+  "${tree_ns}::Abstract::Start"->new( sentence  => $sentence,
+                                      daughters => [ $np_tree, $vp_tree ], );
 ok( $s_tree, 'Abstract Start tree instantiated' );
+is( $s_tree->label, 'S', 'S tree has S label' );
 
 my $null_tree =
   "${tree_ns}::Abstract::Null"->new( category => $n_cat,
@@ -72,4 +101,4 @@ my $null_tree =
 
 ok( $null_tree, 'null tree instantiated' );
 
-done_testing( 11 );
+done_testing( 20 );

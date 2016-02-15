@@ -14,6 +14,8 @@ diag(
 "Testing Syntactic::Practice::Grammar::TokenSet $Syntactic::Practice::Grammar::TokenSet::VERSION, Perl $], $^X"
 );
 
+my $logger = Log::Log4perl->get_logger();
+
 my $grammar = Syntactic::Practice::Grammar->new( locale => 'en_US.UTF-8' );
 
 my $lexer = Syntactic::Practice::Lexer->new();
@@ -41,7 +43,9 @@ is( $tset->count, 0, 'empty set has count of zero' );
 is( $tset->first, undef, 'first element of empty set is undef' );
 is( $tset->last, undef, 'last element of empty set is undef' );
 
+$logger->debug('appending token now');
 $tset->append( $token );
+$logger->debug('token now appended');
 
 is( $tset->count, 1, 'token set now has count of one' );
 

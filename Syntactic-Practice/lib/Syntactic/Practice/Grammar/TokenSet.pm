@@ -56,6 +56,8 @@ method string () {
 }
 
 use overload
+  q{.}  => sub { $_[0]->copy->append( $_[1]->copy ) },
+  q{.=} => sub { $_[0]->append( $_[1] ) },
   q{""} => sub { $_[0]->string },
   '<=>' => sub {
   my $r = $_[0]->cmp( $_[1] );

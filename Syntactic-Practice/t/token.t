@@ -37,6 +37,8 @@ my $token =
   Syntactic::Practice::Grammar::Token->new( tree => $lexTree,
                                             set  => $tset );
 
+push(@{$tset->tokens}, $token);
+
 is( $tset->count, 1, 'token set has one element' )
   or diag join( ',', map { "$_" } @{ $tset->tokens } );
 

@@ -76,11 +76,11 @@ sub _permit_elements {
       next;
     }
 
-    die 'attempted to push a non-token element'
+    die 'attempted to append a non-token element'
       unless $element->isa( 'Syntactic::Practice::Grammar::Token' );
 
-    die( 'attempted to push a token element with incorrect set' )
-      unless $element->set <=> $self->{set};
+    die( 'attempted to append a token element with incorrect set' )
+      unless ( ( $element->set <=> $self->{set} ) == 0 );
 
     $element->prev( $prev );
     $prev->next( $element ) if defined $prev;
@@ -107,12 +107,12 @@ sub PUSH {
     $dst->[-1]->next( $tokens[0] );
     $tokens[0]->prev( $dst->[-1] );
   } else {
-    $self->set->first( $tokens[0] );
+    $self->{set}->first( $tokens[0] );
   }
 
   push( @$dst, @tokens );
 
-  $self->set->last( $tokens[-1] );
+  $self->{set}->last( $tokens[-1] );
 }
 
 sub UNSHIFT {
@@ -128,7 +128,7 @@ sub UNSHIFT {
     $dst->[0]->prev( $tokens[-1] );
     $tokens[-1]->next( $dst->[0] );
   } else {
-    $self->set->last( $tokens[-1] );
+    $self->{set}->last( $tokens[-1] );
   }
 
   unshift( @$dst, @tokens );
@@ -138,10 +138,10 @@ sub UNSHIFT {
 sub SPLICE {
   my ( $self, $from, $length, @input ) = @_;
 
-  my $dst       = $self->{array};
-  my $to        = $from + $length;
+  my $dst = $self->{array};
+  my $to  = $from + $length;
 
-  my $prev = $from == 0 ? undef : $dst->[ $from - 1 ];
+  my $prev = $from == 0      ? undef : $dst->[ $from - 1 ];
   my $next = $to >= $#{$dst} ? undef : $dst->[ $to + 1 ];
 
   my @deleted = $dst->[ $from .. $to ];
@@ -149,7 +149,7 @@ sub SPLICE {
   if ( @input ) {
     my @tokens = $self->_permit_elements( @input );
 
-    $prev->next( $tokens[0] ) if defined $prev;
+    $prev->next( $tokens[0] )  if defined $prev;
     $next->prev( $tokens[-1] ) if defined $next;
     $tokens[0]->prev( $prev );
     $tokens[-1]->next( $next );
@@ -160,8 +160,8 @@ sub SPLICE {
     splice @$dst, $from, $length;
   }
 
-  $self->set->first( $dst->[0] );
-  $self->set->last( $dst->[-1] );
+  $self->{set}->first( $dst->[0] );
+  $self->{set}->last( $dst->[-1] );
 }
 
 sub FETCHSIZE { scalar @{ $_[0]->{array} } }

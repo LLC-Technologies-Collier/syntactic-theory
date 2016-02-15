@@ -19,6 +19,8 @@ use namespace::autoclean;
 use MooseX::Method::Signatures;
 use MooseX::Params::Validate;
 
+use experimental qw(smartmatch);
+
 with( 'MooseX::Log::Log4perl', 'Syntactic::Practice::Roles::Unique' );
 
 has set => ( is       => 'ro',
@@ -157,22 +159,6 @@ method _set_prev ( Maybe[Token] $prev!, Maybe[Token] $old_prev? ) {
   $prev->next( $self );
 
   return $prev;
-}
-
-sub BUILD {
-  my ( $self ) = @_;
-
-  my $tset   = $self->set;
-  my $tokens = $tset->tokens;
-
-  $tset->first( $self ) if $tset->count == 0;
-
-  $self->log->debug( 'tset GUID is [' . $self->set->_guid . ']' );
-
-  #method BUILD () {
-  #  $self->set->append( $self, 0 );
-
-  return $self;
 }
 
 __PACKAGE__->meta->make_immutable();

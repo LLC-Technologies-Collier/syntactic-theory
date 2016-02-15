@@ -19,6 +19,9 @@ diag(
 "Testing ${grammar_ns}::TokenList $Syntactic::Practice::Grammar::TokenList::VERSION, Perl $], $^X"
 );
 
+Log::Log4perl->init( 'log4perl.conf' ) or die "couldn't init logger: $!";
+my $logger = Log::Log4perl->get_logger();
+
 my $tset = "${grammar_ns}::TokenSet"->new();
 
 my @array;
@@ -35,4 +38,29 @@ dies_ok( sub { tie my @a, "${grammar_ns}::TokenList", undef },
 dies_ok( sub { tie my @a, "${grammar_ns}::TokenList" },
          'dies when called without set' );
 
-done_testing( 5 );
+dies_ok( sub { push( @array, undef ) } , 'dies when a non-token is pushed' );
+
+my $homograph = Syntactic::Practice::Lexicon::Homograph->new( word => 'Dog' );
+
+my $lexeme = $homograph->lexemes->[0];
+
+my $sentence = [];
+
+my $tree_class = 'Syntactic::Practice::Tree::Abstract::Lexical';
+
+my $lexTree = $tree_class->new(
+                                { daughters => $lexeme,
+                                  frompos   => 0,
+                                  category  => $lexeme->category,
+                                  sentence  => $sentence,
+                                } );
+
+my $token =
+  Syntactic::Practice::Grammar::Token->new( tree => $lexTree,
+                                            set  => $tset );
+
+ok( push( @array, $token ), 'can push token on to array' );
+
+is( scalar @array, 1, 'one element in array' );
+
+done_testing( 8 );

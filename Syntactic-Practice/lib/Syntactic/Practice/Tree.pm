@@ -16,6 +16,7 @@ use Data::GUID;
 
 use Moose;
 use namespace::autoclean;
+use MooseX::Method::Signatures;
 
 with( 'Syntactic::Practice::Roles::Category',
       'Syntactic::Practice::Roles::Unique' );
@@ -318,10 +319,9 @@ has frompos => ( is      => 'rw',
                  lazy    => 1,
                  builder => '_build_frompos', );
 
-has sentence => ( is      => 'rw',
-                  isa     => 'ArrayRef[Tree]',
-                  lazy    => 1,
-                  builder => '_build_sentence', );
+has sentence => ( is       => 'rw',
+                  isa      => 'ArrayRef[Tree]',
+                  required => 1 );
 
 has sisters => ( is      => 'rw',
                  isa     => 'ArrayRef[Tree]',
@@ -340,6 +340,8 @@ has prune_nulls => ( is      => 'ro',
                      isa     => 'False',
                      default => 0 );
 
+sub _build_frompos { 0 }
+
 around daughters => sub {
   my ( $orig, $self ) = @_;
 
@@ -348,6 +350,7 @@ around daughters => sub {
            : ( $self->{daughters} ) );
 };
 
+#method _build_depth { exists $self->{mother} ? $self->{mother}->depth + 1 : 0 };
 sub _build_depth {
   my ( $self ) = @_;
   exists $self->{mother} ? $self->{mother}->depth + 1 : 0;
@@ -494,10 +497,14 @@ has mother => ( is       => 'ro',
                 isa      => ( 'Maybe[ConcreteTree]' ),
                 required => 0 );
 
-has sentence => ( is      => 'ro',
-                  isa     => 'ArrayRef[Tree]',
-                  lazy    => 1,
-                  builder => '_build_sentence', );
+has sentence => ( is       => 'ro',
+                  isa      => 'ArrayRef[Tree]',
+                  required => 1, );
+
+has constituents => ( is      => 'ro',
+                      isa     => 'TokenSet',
+                      lazy    => 1,
+                      builder => '_build_constituents', );
 
 has sisters => ( is       => 'ro',
                  isa      => ( 'ArrayRef[ConcreteTree]' ),
@@ -527,12 +534,15 @@ sub _build_depth {
   exists $self->{mother} ? $self->{mother}->depth + 1 : 0;
 }
 
+#method _build_depth { exists $self->{mother} ? $self->{mother}->depth + 1 : 0 };
+
 my %concreteTreeByName;
 my %concreteTreeByLabel;
 
 sub _treeExists {
   my ( $self, $arg ) = @_;
 
+  #method _treeExists ( HashRef $arg ) {
   return $concreteTreeByName{ $arg->{name} }
     if ( exists $concreteTreeByName{ $arg->{name} } );
   return 0;

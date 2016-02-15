@@ -35,20 +35,21 @@ sub STORE {
                   { isa   => 'Syntactic::Practice::Grammar::Token' } );
 
   die 'This token does not belong to the correct set'
-    unless $self->{set} <=> $token->set;
+    unless ( ( $self->{set} <=> $token->set ) == 0 );
+  my $dst = $self->{array};
 
-  my ( $old, $prev, $next ) = $self->{array}->[$i];
+  my ( $old, $prev, $next ) = $dst->[$i];
   if ( $i == 0 ) {
     $prev = undef;
   } else {
-    $prev = $self->{array}->[ $i - 1 ];
-    $prev->next( $token );
+    $prev = $dst->[ $i - 1 ];
+    $prev->next( $token ) if defined $prev;
   }
-  if ( $i == $#{ $self->{array} } ) {
+  if ( $i >= $#{$dst} ) {
     $next = undef;
   } else {
-    $next = $self->{array}->[ $i + 1 ];
-    $next->prev( $token );
+    $next = $dst->[ $i + 1 ];
+    $next->prev( $token ) if defined $next;
   }
 
   # TODO: clean up $old
@@ -56,7 +57,7 @@ sub STORE {
   $token->next( $next );
   $token->prev( $prev );
 
-  $self->{array}->[$i] = $token;
+  $dst->[$i] = $token;
 }
 
 sub _permit_elements {

@@ -313,9 +313,16 @@ qq{Daughter(s) [@daughter_labels] could not have been licensed by term [$term]} 
     push( @possible_term,    $term );
   }
 
-  die
-    qq{Rule [$rule] cannot license daughter(s) with label(s) [@daughter_labels]}
-    unless scalar @possible_term > 0;
+  my @factor_list;
+  if( scalar @possible_term > 0 ){
+    @factor_list = @{ shift( @possible_factors ) }
+  }else{
+    my $msg = qq{Rule [$rule] cannot license daughter(s) with label(s) [@daughter_labels]};
+
+    die $msg unless( $self->isa('Syntactic::Practice::Tree::Abstract') );
+
+    warn $msg;
+  }
 
   $self->log->info(
        qq{Daughter(s) [@daughter_labels] could have been licensed by rule [$rule]} );
@@ -325,9 +332,11 @@ qq{Daughter(s) [@daughter_labels] could not have been licensed by term [$term]} 
                  'These daughters could have been licensed by multiple terms' );
   }
 
-  my @factor_list = @{ shift( @possible_factors ) };
   foreach my $daughter ( $self->daughters ) {
     $daughter->mother( $self );
+
+    next unless scalar @possible_term > 0;
+
     my $factor = shift( @factor_list );
     $daughter->factor( $factor ) unless defined $daughter->factor;
   }
@@ -448,6 +457,7 @@ around daughters => sub {
   my ( $orig, $self ) = @_;
 
   return $self->{daughters} if $self->is_terminal;
+  return () unless defined $self->{daughters};
 
   return @{ $self->{daughters} };
 };

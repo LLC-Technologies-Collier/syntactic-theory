@@ -2,7 +2,7 @@ package Syntactic::Practice::Grammar::Token;
 
 =head1 NAME
 
-Syntactic::Practice::Grammar::Token - An atomic unit of grammar
+Syntactic::Practice::Grammar::Token - A unit of grammar
 
 =head1 VERSION
 
@@ -21,7 +21,9 @@ use MooseX::Params::Validate;
 
 use experimental qw(smartmatch);
 
-with( 'MooseX::Log::Log4perl', 'Syntactic::Practice::Roles::Unique' );
+with( 'MooseX::Log::Log4perl',
+      'Syntactic::Practice::Roles::Unique',
+      'Syntactic::Practice::Roles::Category', );
 
 has set => ( is       => 'ro',
              isa      => 'TokenSet',
@@ -42,6 +44,9 @@ has prev => ( is      => 'rw',
               lazy    => 1,
               builder => '_build_prev',
               trigger => \&_set_prev, );
+
+sub _build_label    { $_[0]->tree->label }
+sub _build_category { $_[0]->tree->category }
 
 sub copy {
   my ( $self, %attr ) = @_;

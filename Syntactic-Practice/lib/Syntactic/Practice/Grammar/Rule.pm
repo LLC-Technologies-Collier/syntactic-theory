@@ -64,6 +64,10 @@ has expression => ( is       => 'ro',
                     init_arg => undef,
                     builder  => '_build_expression' );
 
+use overload
+  q{""}    => sub { $_[0]->label },
+  fallback => 1;
+
 sub _build_identifier { '<' . $_[0]->label . '>' }
 
 sub _build_expression {

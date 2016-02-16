@@ -276,10 +276,12 @@ sub BUILD {
        qq{Now testing whether term [$term] licenses daughters[@daughter_labels]}
     );
     my $factors_match = 1;
-    my $cursor        = $self->constituents->first;
+    my $tset          = $self->constituents;
+    my $cursor        = $tset->count ? $tset->first : '';
     my @factor_list;
     foreach my $factor ( @{ $term->factors } ) {
-      my $cursor_label = defined $cursor ? $cursor->label : '(undefined)';
+      my $cursor_label = $cursor && $cursor ne '(undefined)' ? $cursor->label : '(undefined)';
+      $cursor = '(undefined)' unless defined $cursor;
       my $factor_label = $factor->label;
       if ( $factor->label ne $cursor_label ) {
         next if $factor->optional;
@@ -295,7 +297,7 @@ qq{Constituent [$cursor] has label [$cursor_label], matching [$factor_label]} );
       $cursor = $cursor->next;
       next unless $factor->repeat;
       while ( defined $cursor
-              && $cursor->label eq $factor->label )
+              && $cursor_label eq $factor->label )
       {
         push( @factor_list, $factor );
         $cursor = $cursor->next;
@@ -307,25 +309,25 @@ qq{Daughter(s) [@daughter_labels] could not have been licensed by term [$term]} 
       next;
     }
     $self->log->debug(
-       qq{Daughter(s) [@daughter_labels] could have been licensed by term [$term]} );
+qq{Daughter(s) [@daughter_labels] could have been licensed by term [$term]} );
 
     push( @possible_factors, \@factor_list );
     push( @possible_term,    $term );
   }
 
   my @factor_list;
-  if( scalar @possible_term > 0 ){
+  if ( scalar @possible_term > 0 ) {
     @factor_list = @{ shift( @possible_factors ) }
-  }else{
+  } else {
     my $msg = qq{Rule [$rule] cannot license daughter(s) with label(s) [@daughter_labels]};
 
-    die $msg unless( $self->isa('Syntactic::Practice::Tree::Abstract') );
+    die $msg unless ( $self->isa( 'Syntactic::Practice::Tree::Abstract' ) );
 
-    warn $msg;
+    $self->log->debug( $msg );
   }
 
   $self->log->info(
-       qq{Daughter(s) [@daughter_labels] could have been licensed by rule [$rule]} );
+     qq{Daughter(s) [@daughter_labels] could have been licensed by rule [$rule]} );
 
   if ( @possible_term > 1 ) {
     $self->log->info(

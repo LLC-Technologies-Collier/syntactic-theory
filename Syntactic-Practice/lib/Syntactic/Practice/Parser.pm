@@ -41,6 +41,84 @@ has sentence => ( is       => 'ro',
 
 my $grammar = Syntactic::Practice::Grammar->new;
 
+# method ingest ( PositiveInt :$frompos,
+#                Category :$category,
+#                Maybe[Tree] :$mother
+#              ) {
+
+sub ingest {
+  my ( $self, %args ) = @_;
+  my ( $frompos, $category, $mother ) = @args{qw( frompos category mother )};
+
+  my $num_words = scalar( @{ $self->sentence } );
+  if ( $frompos >= $num_words ) {
+    $self->log->error( "insufficient words to license phrase" );
+    return ();
+  }
+
+  # avoid excessive recursion
+  return ()
+    if ( $mother && $category && $mother->label eq $category->label );
+
+  my $msg = '%2d: %-2s %s [%s]';
+
+  my $rule = $grammar->rule( label => $category->label );
+
+  unless ( $rule ) {
+    $self->log->debug(
+                    sprintf( 'bad rule identifier: [%s]!', $category->label ) );
+    return ();
+  }
+
+  my $analysis =
+    $self->{analysis}->[$frompos]->{depth}->[ $self->{current_depth} ];
+
+  my @trees = ();
+  my $terms = $rule->terms;
+  foreach my $term ( @$terms ) {    # TODO: support multiple terms
+    my $t_label = $term->label;
+    my $t_id    = $term->id;
+
+    if ( exists $analysis->{term}->{ $term->id } ) {
+      push( @trees, @{ $analysis->{term}->{ $term->id } } );
+      next;
+    }
+
+    my @daughters_list =
+      $self->process_term( term     => $term,
+                           frompos  => $frompos,
+                           category => $category,
+                           mother   => $mother );
+
+    my $num_daughters = scalar @daughters_list;
+    $self->log->debug(
+        "Process_term returned $num_daughters parses for term [$t_label($t_id)]"
+    );
+
+    my @term_trees;
+    while ( my $d = shift( @daughters_list ) ) {
+      my @daughters;
+      $self->log->debug( "Daughters: [ @$d ]" );
+      my $num_daughters = scalar @daughters;
+      next unless $num_daughters >= 1;
+
+      my $tree = $self->build_tree( frompos   => $frompos,
+                                    category  => $category,
+                                    mother    => $mother,
+                                    daughters => \@daughters, );
+
+      if ( grep { $tree->cmp( $_ ) == 0 } @trees, @term_trees ) {
+        next unless $self->allow_duplicates;
+      }
+      push( @term_trees, $tree );
+    }
+    $analysis->{term}->{ $term->id } = \@term_trees;
+    push( @trees, @term_trees );
+  }
+
+  return ( @trees );
+}
+
 #   method process_factors ( PositiveInt             :$frompos!,
 #                            Factor                  :$factor!,
 #                            NonTerminalAbstractTree :$target!,
@@ -58,7 +136,7 @@ sub process_factor {
   my $msg      = '%2d: %-2s %s [%s]';
   my $sentence = $self->sentence;
 
-  if ( $frompos >= $self->sentence->[-1]->topos ) {
+  if ( $frompos >= $sentence->[-1]->topos ) {
     $self->log->debug( "Opting not to process factors past end of sentence" );
     return;
   }
@@ -104,6 +182,9 @@ sub process_factor {
                                   sentence => $sentence,
                                   label    => $f_label );
 
+    my $tset = Syntactic::Practice::Grammar::TokenSet->new();
+    $tset->append_new( $tree );
+
     return ( [$tree], @non_opt_trees );
   }
 
@@ -123,12 +204,18 @@ sub process_factor {
                          mother   => $target, );
 
   my @daughter_list;
+  my @tokenset_list;
   foreach my $tree ( @tree ) {
 
     $self->log->debug(
 "Matched factor [$f_label($f_id)] at depth [$self->{current_depth}]: $tree" );
     my @data = ( $tree->frompos, $tree->label, ' ->', $tree->string );
     $self->log->info( sprintf( $msg, @data ) );
+
+    my $tset = Syntactic::Practice::Grammar::TokenSet->new();
+    $tset->append_new( $tree );
+
+    push( @tokenset_list, $tset );
 
     push( @daughter_list, [$tree] );
     next unless $factor->repeat;
@@ -278,9 +365,9 @@ sub process_term {
       my @factor_daughters;
 
       my $msg =
-        (   'Factor data at position '
-          . "[pos=$frompos,dep=$self->{current_depth},fact=$f_label($f_id)] was "
-          . 'fetched %s from cache' );
+        (  'Factor data at position '
+         . "[pos=$frompos,dep=$self->{current_depth},fact=$f_label($f_id)] was "
+         . 'fetched %s from cache' );
 
       if (    exists $analysis->{$f_id}
            && ref $analysis->{$f_id} eq 'ARRAY'
@@ -400,6 +487,14 @@ sub build_tree {
     $options{term} = $term = $factor->term;
   }
 
+  my $tset = Syntactic::Practice::Grammar::TokenSet->new();
+  $options{constituents} = $tset;
+  if( defined $daughters ){
+    foreach my $daughter (  @$daughters ) {
+      $tset->append_new( $daughter );
+    }
+  }
+
   my $tree = $class->new( %options );
 
   if ( defined $daughters ) {
@@ -415,87 +510,11 @@ sub build_tree {
   my $msg = '%2d: %-2s %s [%s]';
 
   $self->log->info( sprintf( $msg, @data ) );
-  $self->log->info( $tree->factor->as_string )
-    if !$tree->is_start && $tree->can( 'factor' );
+  $self->log->info( "$factor" ) if defined $factor;
 
   return $tree;
 }
 
-# method ingest ( PositiveInt :$frompos,
-#                Category :$category,
-#                Maybe[Tree] :$mother
-#              ) {
-
-sub ingest {
-  my ( $self, %args ) = @_;
-  my ( $frompos, $category, $mother ) = @args{qw( frompos category mother )};
-
-  my $num_words = scalar( @{ $self->sentence } );
-  if ( $frompos >= $num_words ) {
-    $self->log->error( "insufficient words to license phrase" );
-    return ();
-  }
-
-  # avoid excessive recursion
-  return ()
-    if ( $mother && $category && $mother->label eq $category->label );
-
-  my $msg = '%2d: %-2s %s [%s]';
-
-  my $rule = $grammar->rule( label => $category->label );
-
-  unless ( $rule ) {
-    $self->log->debug(
-                    sprintf( 'bad rule identifier: [%s]!', $category->label ) );
-    return ();
-  }
-
-  my $analysis =
-    $self->{analysis}->[$frompos]->{depth}->[ $self->{current_depth} ];
-
-  my @trees = ();
-  my $terms = $rule->terms;
-  foreach my $term ( @$terms ) {    # TODO: support multiple terms
-    my $t_label = $term->label;
-    my $t_id    = $term->id;
-
-    if ( exists $analysis->{term}->{ $term->id } ) {
-      push( @trees, @{ $analysis->{term}->{ $term->id } } );
-      next;
-    }
-
-    my @daughters_list =
-      $self->process_term( term     => $term,
-                           frompos  => $frompos,
-                           category => $category,
-                           mother   => $mother );
-    my $num_daughters = scalar @daughters_list;
-    $self->log->debug(
-        "Process_term returned $num_daughters parses for term [$t_label($t_id)]"
-    );
-    my @term_trees;
-    while ( my $d = shift( @daughters_list ) ) {
-      my @daughters;
-      $self->log->debug( "Daughters: [ @$d ]" );
-      my $num_daughters = scalar @daughters;
-      next unless $num_daughters >= 1;
-
-      my $tree = $self->build_tree( frompos   => $frompos,
-                                    category  => $category,
-                                    mother    => $mother,
-                                    daughters => \@daughters, );
-
-      if ( grep { $tree->cmp( $_ ) == 0 } @trees, @term_trees ) {
-        next unless $self->allow_duplicates;
-      }
-      push( @term_trees, $tree );
-    }
-    $analysis->{term}->{ $term->id } = \@term_trees;
-    push( @trees, @term_trees );
-  }
-
-  return ( @trees );
-}
 
 sub BUILD {
   my ( $self ) = @_;

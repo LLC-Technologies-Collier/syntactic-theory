@@ -93,6 +93,7 @@ sub _ovld_cmp {
 
 use overload
   q{~~}    => \&_ovld_cmp,
+  q{==}    => sub { $_[0]->guid eq $_[1]->guid },
   q{""}    => sub { $_[0]->string },
   '<=>'    => \&_ovld_cmp,
   fallback => 1;

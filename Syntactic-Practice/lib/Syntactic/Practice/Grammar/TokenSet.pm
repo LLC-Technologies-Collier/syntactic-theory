@@ -96,12 +96,21 @@ sub BUILD {
 sub copy {
   my ( $self, %attr ) = @_;
   %attr = ( %$self, %attr );
-  map { delete $attr{$_} } ( qw( tokens first last ) );
+
+  delete $attr{qw( tokens first last _current _token_array )};
 
   my $copy = $self->new( %attr );
   return $copy unless $self->count;
 
-  $copy->tokens( [ map { $_->copy( set => $copy ) } @{ $self->tokens } ] );
+  my ( $tokens_copy, $current ) = ( [], $self->current );
+
+  foreach my $token ( @{ $self->tokens } ) {
+    my $token_copy = $token->copy( set => $copy );
+    $copy->{_current} = $token_copy if $token == $current;
+    push( @$tokens_copy, $token_copy );
+  }
+  $copy->tokens( $tokens_copy );
+
   return $copy;
 }
 

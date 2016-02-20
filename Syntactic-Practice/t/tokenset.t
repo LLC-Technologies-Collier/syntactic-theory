@@ -49,6 +49,8 @@ $logger->debug('token now appended');
 
 is( $tset->count, 1, 'token set now has count of one' );
 
+is( $tset->first, $tset->current, 'current token is first token' );
+
 ok( defined $copy, 'copy method returns a true value' );
 is( "$copy", '', 'empty token set stringifies to empty string');
 isa_ok( $copy, 'Syntactic::Practice::Grammar::TokenSet', 'token set copy' );
@@ -75,4 +77,4 @@ is( $tset->count, 1, 'token set now has count of one' );
 #isnt( $copy, undef, 'appending token set B to token set A with second argument 0 does not undefine B' );
 
 
-done_testing( 15 );
+done_testing( 16 );

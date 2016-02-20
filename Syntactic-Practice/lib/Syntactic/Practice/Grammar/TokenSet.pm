@@ -45,6 +45,24 @@ has last => ( is        => 'rw',
               predicate => '_has_last',
               init_arg  => undef, );
 
+sub current {
+  my ( $self ) = @_;
+  $self->{_current} = $self->first unless ( exists $self->{_current} );
+  return $self->{_current};
+}
+
+sub next {
+  my ( $self ) = @_;
+  my $self->{_current} = $self->current->next;
+}
+
+sub prev {
+  my ( $self ) = @_;
+  my $self->{_current} = $self->current->prev;
+}
+
+sub all { @{ $_[0]->tokens } }
+
 sub cmp {
   my ( $self, $other ) = @_;
   return undef unless defined $other && $other->can( '_guid' );

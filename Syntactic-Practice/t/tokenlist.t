@@ -33,10 +33,10 @@ is( $aref, tied @array,
     'value returned from tied() is the value returned from tie()' );
 
 dies_ok( sub { tie my @a, "${grammar_ns}::TokenList", undef },
-         'dies when called with undefined set' );
+         'dies when tied with undefined set' );
 
 dies_ok( sub { tie my @a, "${grammar_ns}::TokenList" },
-         'dies when called without set' );
+         'dies when tied without set' );
 
 dies_ok( sub { push( @array, undef ) } , 'dies when a non-token is pushed' );
 

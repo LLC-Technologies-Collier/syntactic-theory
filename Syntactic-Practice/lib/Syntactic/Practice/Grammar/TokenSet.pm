@@ -53,12 +53,12 @@ sub current {
 
 sub next {
   my ( $self ) = @_;
-  my $self->{_current} = $self->current->next;
+  $self->{_current} = $self->current->next;
 }
 
 sub prev {
   my ( $self ) = @_;
-  my $self->{_current} = $self->current->prev;
+  $self->{_current} = $self->current->prev;
 }
 
 sub all { @{ $_[0]->tokens } }

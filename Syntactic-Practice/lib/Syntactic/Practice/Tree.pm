@@ -567,8 +567,12 @@ extends( 'Syntactic::Practice::Tree::Terminal',
 with 'Syntactic::Practice::Roles::Category::Terminal';
 
 has '+daughters' => ( is       => 'rw',
-                      isa      => 'Syntactic::Practice::Lexicon::Lexeme',
+                      isa      => 'Lexeme',
                       required => 1 );
+
+has 'factor' => ( is       => 'rw',
+                  isa      => 'Factor',
+                  required => 0 );
 
 __PACKAGE__->meta->make_immutable;
 
@@ -760,6 +764,11 @@ with 'Syntactic::Practice::Roles::Category::Terminal';
 has '+daughters' => ( is       => 'ro',
                       isa      => 'Syntactic::Practice::Lexicon::Lexeme',
                       required => 1 );
+
+has 'factor' => ( is       => 'ro',
+                  isa      => 'Factor',
+                  required => 1 );
+
 
 __PACKAGE__->meta->make_immutable;
 

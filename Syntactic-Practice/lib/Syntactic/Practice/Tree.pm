@@ -253,6 +253,10 @@ use namespace::autoclean;
 extends 'Syntactic::Practice::Tree';
 with 'Syntactic::Practice::Roles::Category::NonTerminal';
 
+has term => ( is       => 'ro',
+              isa      => 'Term',
+              required => 1 );
+
 __PACKAGE__->meta->make_immutable;
 
 package Syntactic::Practice::Tree::Phrasal;
@@ -280,7 +284,8 @@ sub BUILD {
     my $cursor        = $tset->count ? $tset->first : '';
     my @factor_list;
     foreach my $factor ( @{ $term->factors } ) {
-      my $cursor_label = $cursor && $cursor ne '(undefined)' ? $cursor->label : '(undefined)';
+      my $cursor_label =
+        $cursor && $cursor ne '(undefined)' ? $cursor->label : '(undefined)';
       $cursor = '(undefined)' unless defined $cursor;
       my $factor_label = $factor->label;
       if ( $factor->label ne $cursor_label ) {
@@ -305,7 +310,8 @@ qq{Constituent [$cursor] has label [$cursor_label], matching [$factor_label]} );
     }
     unless ( $factors_match ) {
       $self->log->debug(
-qq{Daughter(s) [@daughter_labels] could not have been licensed by term [$term]} );
+qq{Daughter(s) [@daughter_labels] could not have been licensed by term [$term]}
+      );
       next;
     }
     $self->log->debug(
@@ -317,9 +323,10 @@ qq{Daughter(s) [@daughter_labels] could have been licensed by term [$term]} );
 
   my @factor_list;
   if ( scalar @possible_term > 0 ) {
-    @factor_list = @{ shift( @possible_factors ) }
+    @factor_list = @{ shift( @possible_factors ) };
   } else {
-    my $msg = qq{Rule [$rule] cannot license daughter(s) with label(s) [@daughter_labels]};
+    my $msg =
+qq{Rule [$rule] cannot license daughter(s) with label(s) [@daughter_labels]};
 
     die $msg unless ( $self->isa( 'Syntactic::Practice::Tree::Abstract' ) );
 
@@ -327,7 +334,8 @@ qq{Daughter(s) [@daughter_labels] could have been licensed by term [$term]} );
   }
 
   $self->log->info(
-     qq{Daughter(s) [@daughter_labels] could have been licensed by rule [$rule]} );
+     qq{Daughter(s) [@daughter_labels] could have been licensed by rule [$rule]}
+  );
 
   if ( @possible_term > 1 ) {
     $self->log->info(
@@ -508,6 +516,10 @@ use namespace::autoclean;
 with 'Syntactic::Practice::Roles::Category::NonTerminal';
 extends( 'Syntactic::Practice::Tree::Abstract',
          'Syntactic::Practice::Tree::NonTerminal' );
+
+has term => ( is       => 'rw',
+              isa      => 'Maybe[Term]',
+              required => 0 );
 
 __PACKAGE__->meta->make_immutable;
 

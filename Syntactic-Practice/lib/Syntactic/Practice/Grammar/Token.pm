@@ -50,8 +50,10 @@ sub _build_category { $_[0]->tree->category }
 
 sub copy {
   my ( $self, %attr ) = @_;
+  $self->log->debug("passed set guid: " . $attr{set}->_guid) if exists $attr{set};
   $attr{set} //= Syntactic::Practice::Grammar::TokenSet->new();
   %attr = ( %$self, %attr );
+  $self->log->debug("computed set guid: " . $attr{set}->_guid);
   my $copy = $self->new( %attr );
 }
 
@@ -93,7 +95,7 @@ sub _ovld_cmp {
 
 use overload
   q{~~}    => \&_ovld_cmp,
-  q{==}    => sub { $_[0]->guid eq $_[1]->guid },
+  q{==}    => sub { $_[0]->_guid eq $_[1]->_guid },
   q{""}    => sub { $_[0]->string },
   '<=>'    => \&_ovld_cmp,
   fallback => 1;
@@ -118,6 +120,7 @@ method _set_next ( Maybe[Token] $next!, Maybe[Token] $old_next? ) {
   my $tset = $self->set;
 
   if ( $tset->count == 0 ) {
+    $self->log->debug("empty set guid: " . $tset->_guid);
     my $msg = '$token->set was empty before calling $token->next($prev)';
     $self->log->error( $msg );
     confess $msg;

@@ -76,20 +76,6 @@ sub evaluate {
   if ( $self->optional && $do_optional ) {
 
     $self->log->debug( "Factor [$self], position [$position] is optional" );
-    my $next_licenses = 0;
-
-    for ( my $f = $self->next; defined $f; $f = $f->next ) {
-      my $next_position = $f->position;
-
-      if ( defined $f->licenses( $current_token ) ) {
-        $self->log->debug(
-           "Factor [$f], position [$next_position] licenses [$current_token]" );
-        $next_licenses = 1;
-        last;
-      } else {
-        $self->log->debug( "Factor [$f] does not license [$current_token]" );
-      }
-    }
 
     my ( @non_opt_tsets ) = (
                               $self->evaluate( tokenset    => $tokenset,
@@ -100,15 +86,11 @@ sub evaluate {
     $self->log->debug(
       "number of results: [$num_results]; array ref values: [@non_opt_tsets]" );
 
-    # Fast path past generating the optional tree below
-    # if the following factor would fail anyway
-    return ( @non_opt_tsets ) unless $next_licenses;
-
     my $class = 'Syntactic::Practice::Tree::Abstract::Null';
 
     my $tset = Syntactic::Practice::Grammar::TokenSet->new();
     my $tree = $class->new(
-                  depth        => $self->{current_depth} + 1,
+                  sentence     => [],
                   term         => $self->term,
                   category     => $self->category,
                   constituents => Syntactic::Practice::Grammar::TokenSet->new(),
@@ -160,11 +142,15 @@ sub evaluate {
     $self->log->debug( "Repeat factor [$self]" );
 
     my @tokensets;
-    if ( defined $tokenset->next ) {
+    if ( $tokenset->current != $tokenset->last ) {
+      my $tokenset_copy = $tokenset->copy();
+      $tokenset_copy->next;
+
       push( @tokenset_list,
-            $self->evaluate( tokenset    => $tokenset,
-                             do_optional => 0,
-            ) );
+            map { $_->prepend_new( $token->tree ) }
+              $self->evaluate( tokenset    => $tokenset_copy,
+                               do_optional => 0
+              ) );
     }
   }
 
@@ -286,7 +272,8 @@ sub position {
 
 sub next {
   my ( $self ) = @_;
-  return undef if $self->position >= $self->term->num_factors;  # indexed from 1
+  return undef
+    if $self->position >= $self->term->num_factors;    # indexed from 1
   return $self->term->factors->[ $self->position ];
 }
 

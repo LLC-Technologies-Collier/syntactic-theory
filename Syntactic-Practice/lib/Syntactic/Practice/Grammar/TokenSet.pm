@@ -65,9 +65,9 @@ sub all { @{ $_[0]->tokens } }
 
 sub remainder {
   my ( $self ) = @_;
-  my $i = $self->current->position;
-  my $n = $#{$self->tokens};
-  @{ $self->tokens->[ $i .. $n ] }
+  my $i        = $self->current->position;
+  my $n        = $#{ $self->tokens };
+  @{ $self->tokens->[ $i .. $n ] };
 }
 
 sub cmp {
@@ -113,18 +113,11 @@ sub copy {
   my $copy = $self->new( %attr );
   return $copy unless $self->count;
 
-  my ( $tokens_copy ) = ( [] );
-
   my $push_token = 0;
   foreach my $token ( @$tokens ) {
-    my $token_copy = $token->copy( set => $copy );
-    if ( $token == $current ) {
-      $copy->{_current} = $token_copy;
-      $push_token = 1;
-    }
-    push( @$tokens_copy, $token_copy ) if $push_token;
+    $copy->append_new( $token->tree );
+    $copy->{_current} = $copy->last if ( $token == $current );
   }
-  $copy->tokens( $tokens_copy );
 
   return $copy;
 }
@@ -168,6 +161,17 @@ method prepend ( TokenSet|Token $more!, Bool $do_copy = 1 ) {
     $copy = $do_copy ? $more->copy( set => $self ) : $more;
   }
   unshift( @{ $self->tokens }, $copy );
+  return $self;
+}
+
+method prepend_new ( Tree $tree ) {
+
+  my $token =
+    Syntactic::Practice::Grammar::Token->new( set  => $self,
+                                              tree => $tree );
+
+  unshift( @{ $self->tokens }, $token );
+
   return $self;
 }
 

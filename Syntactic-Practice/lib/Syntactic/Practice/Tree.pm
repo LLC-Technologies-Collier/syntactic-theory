@@ -434,7 +434,7 @@ has frompos => ( is      => 'rw',
 
 has sentence => ( is       => 'rw',
                   isa      => 'ArrayRef[Tree]',
-                  required => 1 );
+                  required => 0 );
 
 has sisters => ( is      => 'rw',
                  isa     => 'ArrayRef[Tree]',

@@ -133,7 +133,7 @@ sub UNSHIFT {
   }
 
   unshift( @$dst, @tokens );
-  $self->first( $tokens[0] );
+  $self->{set}->first( $tokens[0] );
 }
 
 sub SPLICE {

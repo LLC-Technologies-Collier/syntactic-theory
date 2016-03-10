@@ -63,6 +63,13 @@ sub prev {
 
 sub all { @{ $_[0]->tokens } }
 
+sub remainder {
+  my ( $self ) = @_;
+  my $i = $self->current->position;
+  my $n = $#{$self->tokens};
+  @{ $self->tokens->[ $i .. $n ] }
+}
+
 sub cmp {
   my ( $self, $other ) = @_;
   return undef unless defined $other && $other->can( '_guid' );
@@ -97,17 +104,25 @@ sub copy {
   my ( $self, %attr ) = @_;
   %attr = ( %$self, %attr );
 
-  delete $attr{qw( tokens first last _current _token_array )};
+  my ( $prune_prev, $current, $tokens ) = ( delete( $attr{prune_prev} ),
+                                            delete( $attr{_current}, ),
+                                            delete( $attr{_token_array} ), );
+
+  delete $attr{qw( tokens first last )};
 
   my $copy = $self->new( %attr );
   return $copy unless $self->count;
 
-  my ( $tokens_copy, $current ) = ( [], $self->current );
+  my ( $tokens_copy ) = ( [] );
 
-  foreach my $token ( @{ $self->tokens } ) {
+  my $push_token = 0;
+  foreach my $token ( @$tokens ) {
     my $token_copy = $token->copy( set => $copy );
-    $copy->{_current} = $token_copy if $token == $current;
-    push( @$tokens_copy, $token_copy );
+    if ( $token == $current ) {
+      $copy->{_current} = $token_copy;
+      $push_token = 1;
+    }
+    push( @$tokens_copy, $token_copy ) if $push_token;
   }
   $copy->tokens( $tokens_copy );
 

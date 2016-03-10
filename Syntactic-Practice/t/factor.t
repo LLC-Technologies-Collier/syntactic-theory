@@ -16,26 +16,39 @@ diag(
 "Testing Syntactic::Practice::Grammar::Factor $Syntactic::Practice::Grammar::Factor::VERSION, Perl $], $^X"
 );
 
-my $rule = Syntactic::Practice::Grammar::Rule->new( label => 'NP' );
+my $rule = Syntactic::Practice::Grammar::Rule->new( label => 'NOM' );
 
 my $terms = $rule->terms;
 
-my $term = $terms->[0];
+my( $term ) = ( grep { $_->factors->[0]->label eq 'A' } @$terms );
 
-my @factors = @{ $term->factors };
+my( @factors ) = @{ $term->factors };
 
-ok( scalar @factors, q{factors returned for rule 'NP'} );
+ok( scalar @factors, q{factors returned for rule 'NOM'} );
 
-my $factor = $factors[0];
+my $adjective_factor = $factors[0];
 
-ok( $factor, 'first factor is defined' ) or diag Data::Printer::p @factors;
+ok( $adjective_factor, 'first factor is defined' ) or diag Data::Printer::p @factors;
 
-my $sym_term = $factor->term;
+my $sym_term = $adjective_factor->term;
 
 isa_ok( $sym_term, 'Syntactic::Practice::Grammar::Term' );
 
-my $label = $factor->label;
+my $label = $adjective_factor->label;
+
+is( $label, 'A', 'Adjective fator label is correct' );
 
 ok( $sym_term->cmp( $term ) == 0, q{factor's term is as expected} );
 
-done_testing( 5 );
+my $lexer = Syntactic::Practice::Lexer->new();
+my @paragraph = $lexer->scan( 'big brown noisy old' );
+my @tset = @{ $paragraph[0] };
+my $tokenset = $tset[0];
+
+my( @tokenset ) = ( $adjective_factor->evaluate( tokenset => $tokenset ) );
+
+is( scalar @tokenset, 4, 'four tokensets were found' );
+
+is( $tokenset[0]->count, 1, 'first tokenset count is 1' );
+
+done_testing( 8 );

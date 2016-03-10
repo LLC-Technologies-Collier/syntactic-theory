@@ -60,6 +60,10 @@ has 'is_start' => ( is      => 'ro',
                     lazy    => 1,
                     builder => '_build_is_start' );
 
+use overload
+  q{==}    => sub { $_[0]->label eq $_[1]->label },
+  q{""}    => sub { $_[0]->label },
+  fallback => 1;
 
 sub _build_label {
   my ( $self ) = @_;

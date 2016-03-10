@@ -39,7 +39,29 @@ has sentence => ( is       => 'ro',
                   isa      => 'ArrayRef[TerminalAbstractTree]',
                   required => 1, );
 
+has tokenset => ( is       => 'ro',
+                  isa      => 'TokenSet',
+                  required => 1 );
+
 my $grammar = Syntactic::Practice::Grammar->new;
+
+sub ingestToken {
+  my ( $self,     %args )   = @_;
+  my ( $category, $mother ) = @args{qw( category mother )};
+  unless( defined $self->tokenset->current->next ){
+    $self->log->error( "insufficient words to license phrasal category [$category]" );
+    return ();
+  }
+  my $rule = $grammar->rule( label => "$category" );
+
+
+  my $tree = [];
+  foreach my $term ( @{ $rule->terms } ){
+    push( @$tree, $term->evaluate( $self->tokenset->current ) );
+  }
+
+  return Syntactic::Practice::Parser->Parse->new( result => $tree );
+}
 
 # method ingest ( PositiveInt :$frompos,
 #                Category :$category,
@@ -50,7 +72,7 @@ sub ingest {
   my ( $self, %args ) = @_;
   my ( $frompos, $category, $mother ) = @args{qw( frompos category mother )};
 
-  my $num_words = scalar( @{ $self->sentence } );
+  my $num_words = $self->tokenset->count;
   if ( $frompos >= $num_words ) {
     $self->log->error( "insufficient words to license phrase" );
     return ();
@@ -136,11 +158,11 @@ sub process_factor {
   my $msg      = '%2d: %-2s %s [%s]';
   my $sentence = $self->sentence;
 
-  if ( $frompos >= $sentence->[-1]->topos ) {
+  if ( $frompos >= $self->tokenset->last->tree->topos ) {
     $self->log->debug( "Opting not to process factors past end of sentence" );
     return;
   }
-  my $lex_label = $sentence->[0]->label;
+  my $lex_label = $self->tokenset->first->tree->label;
 
   if ( $factor->optional && $do_optional ) {
     $self->log->debug(
@@ -179,7 +201,6 @@ sub process_factor {
                                   category => $factor->category,
                                   factor   => $factor,
                                   frompos  => $frompos,
-                                  sentence => $sentence,
                                   label    => $f_label );
 
     my $tset = Syntactic::Practice::Grammar::TokenSet->new();
@@ -294,21 +315,19 @@ sub append_factor_daughters {
 #                     ) {
 sub process_term {
   my ( $self, %args ) = @_;
-  my ( $frompos, $term, $category ) = @args{qw( frompos term category )};
+  my ( $frompos, $term, $category ) = @args{qw( frompos term category  )};
 
   my $t_label = $term->label;
   my $t_id    = $term->id;
   my $t_bnf   = $term->bnf;
 
-  $self->log->debug( "Processing term [$t_label($t_id)]: $t_bnf" );
+  $self->log->debug( "Processing term [$term]: $t_bnf" );
 
   my %tree_params = ( frompos  => $frompos,
                       depth    => $self->{current_depth},
-                      sentence => $self->sentence,
                       label    => $category->label,
+                      category => $category,
                       term     => $term, );
-
-  $tree_params{category} = $category if $category;
 
   my ( $target );
   if ( $term->is_start ) {
@@ -340,8 +359,7 @@ sub process_term {
     $self->log->debug(
           "Pre term daughters count: [$num_term_daughters]: @$daughters_list" );
 
-    my @s       = @{ $self->sentence };
-    my $lastpos = $s[-1]->topos;
+    my $lastpos = $self->tokenset->last->tree->topos;
 
     foreach my $d ( @{$daughters_list} ) {
 
@@ -447,7 +465,7 @@ sub build_tree {
     $self->log->debug( "Building tree with label [$label] of class [$class]" );
   }
 
-  my %options = ( sentence => $self->sentence,
+  my %options = ( tokenset => $self->tokenset,
                   category => $category, );
 
   if ( $category->is_start ) {
@@ -489,8 +507,8 @@ sub build_tree {
 
   my $tset = Syntactic::Practice::Grammar::TokenSet->new();
   $options{constituents} = $tset;
-  if( defined $daughters ){
-    foreach my $daughter (  @$daughters ) {
+  if ( defined $daughters ) {
+    foreach my $daughter ( @$daughters ) {
       $tset->append_new( $daughter );
     }
   }
@@ -514,7 +532,6 @@ sub build_tree {
 
   return $tree;
 }
-
 
 sub BUILD {
   my ( $self ) = @_;

@@ -445,17 +445,19 @@ sub scan {
   chomp $input;
 
   my $tree_class = 'Syntactic::Practice::Tree::Abstract::Lexical';
+  my $tkset_class = 'Syntactic::Practice::Grammar::TokenSet';
 
   my @paragraph;
   foreach my $paragraph ( split( /\n\n+/, $input ) ) {
     my @sentence;
     foreach my $sentence ( split( /\.\s+/, $paragraph ) ) {
       chomp $sentence;
+      my $tokenSet = $tkset_class->new();
 
       # TODO: account for abbreviations such as Mt., Mr., Mrs., etc.
       my @word = split( /\s+/, $sentence );
       my @tree;
-      my $tokenSet = Syntactic::Practice::Grammar::TokenSet->new();
+
       for ( my $i = 0; $i < scalar( @word ); $i++ ) {
 
         my $homograph =
@@ -463,21 +465,66 @@ sub scan {
         foreach my $lexeme ( @{ $homograph->lexemes } ) {
 
           my $lexTree = $tree_class->new(
-                                          { daughters => $lexeme,
-                                            frompos   => $i,
-                                            category  => $lexeme->category,
-                                            label     => $lexeme->label,
+                                          { daughters    => $lexeme,
+                                            frompos      => $i,
+                                            category     => $lexeme->category,
+                                            label        => $lexeme->label,
+                                            sentence     => \@tree,
+                                            constituents => $tkset_class->new(),
                                           } );
 
-          my $token =
-            Syntactic::Practice::Grammar::Token->new( tree => $lexTree,
-                                                      set  => $tokenSet );
+          push( @tree, $lexTree );
+          $tokenSet->append_new( $lexTree );
+        }
+      }
+      push( @sentence, $tokenSet );
+    }
+    push( @paragraph, \@sentence );
+  }
+  return @paragraph;
+}
 
-          #$tokenSet->append_new( $lexTree );
+sub scan_with_analysis {
+  my ( $self, $input ) = @_;
+
+  chomp $input;
+
+  my $tree_class = 'Syntactic::Practice::Tree::Abstract::Lexical';
+  my $tkset_class = 'Syntactic::Practice::Grammar::TokenSet';
+
+  my @paragraph;
+  foreach my $paragraph ( split( /\n\n+/, $input ) ) {
+    my @sentence;
+    my $tokenSet = $tkset_class->new();
+    foreach my $sentence ( split( /\.\s+/, $paragraph ) ) {
+      chomp $sentence;
+
+      # TODO: account for abbreviations such as Mt., Mr., Mrs., etc.
+      my @word = split( /\s+/, $sentence );
+      my @tree;
+
+      for ( my $i = 0; $i < scalar( @word ); $i++ ) {
+
+        my $homograph =
+          Syntactic::Practice::Lexicon::Homograph->new( word => $word[$i] );
+        foreach my $lexeme ( @{ $homograph->lexemes } ) {
+
+          my $lexTree = $tree_class->new(
+                                          { daughters    => $lexeme,
+                                            frompos      => $i,
+                                            category     => $lexeme->category,
+                                            label        => $lexeme->label,
+                                            sentence     => \@tree,
+                                            constituents => $tkset_class->new(),
+                                          } );
 
           push( @tree, $lexTree );
+          $tokenSet->append_new( $lexTree );
         }
-        map { $_->sentence( \@tree ) } @tree;
+
+        #map { $_->sentence( $tokenSet->tokens ) } @tree;
+
+        #map { $_->sentence( \@tree ) } @tree;
       }
 
       my @analysis;
@@ -489,13 +536,19 @@ sub scan {
         my $column  = $analysis[ $lextree->frompos ];
         if ( scalar @factors == 1 ) {
 
+          my $tokenSet = $tkset_class->new();
+          $tokenSet->append_new( $lextree );
+
      # If this terminal node can only be licensed by one factor, pre-populate it
           my $f = $factors[0];
           my $t = $f->term;
           my $abstree =
             Syntactic::Practice::Tree::Abstract::Phrasal->new(
-                                                       category => $t->category,
-                                                       sentence => \@tree );
+                                                      category => $t->category,
+                                                      sentence => \@tree,
+                                                      constituents => $tokenSet,
+                                                      daughters    => [$lextree],
+            );
           $f_set->{ $f->id } = $lextree;
           $t_set->{ $t->id } = $lextree;
 
@@ -525,5 +578,6 @@ sub scan {
   }
   return @paragraph;
 }
+
 
 __PACKAGE__->meta->make_immutable;

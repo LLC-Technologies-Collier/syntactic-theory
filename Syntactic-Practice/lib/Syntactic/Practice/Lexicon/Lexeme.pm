@@ -3,13 +3,14 @@ package Syntactic::Practice::Lexicon::Lexeme;
 use Moose;
 use namespace::autoclean;
 
-with 'Syntactic::Practice::Roles::Category::Lexical';
-with 'MooseX::Log::Log4perl';
-
+with( 'Syntactic::Practice::Roles::Category::Lexical',
+      'MooseX::Log::Log4perl' );
 
 my $rs_namespace = Syntactic::Practice::Util->get_rs_namespace();
 
 my $rs_class = 'Lexeme';
+
+my $grammar = Syntactic::Practice::Grammar->new();
 
 has 'word' => ( is      => 'ro',
                 isa     => 'Word',
@@ -20,6 +21,10 @@ has 'resultset' => ( is      => 'ro',
                      isa     => $rs_namespace . '::' . $rs_class,
                      lazy    => 1,
                      builder => '_build_resultset' );
+
+use overload
+  q{""}    => sub { $_[0]->word },
+  fallback => 1;
 
 sub _build_word {
   my ( $self ) = @_;
@@ -32,9 +37,8 @@ sub _build_word {
 sub _build_label { $_[0]->category->label }
 
 sub _build_category {
-  my $c =
-    Syntactic::Practice::Grammar->new()
-    ->category( label => $_[0]->resultset->cat->label );
+  my $c = $grammar->category( label => $_[0]->resultset->cat->label );
+
   unless ( $c->isa( 'Syntactic::Practice::Grammar::Category::Lexical' ) ) {
     my $msg = 'Category for lexeme is not Lexical!';
     $_[0]->log->error( $msg );

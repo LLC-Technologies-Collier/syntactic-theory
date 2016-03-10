@@ -54,6 +54,125 @@ has expression => ( is       => 'ro',
                     init_arg => undef,
                     builder  => '_build_expression' );
 
+use overload
+  q{""}    => sub { $_[0]->as_string },
+  fallback => 1;
+
+# Test whether this factor licenses the token sets passed
+sub evaluate {
+  my ( $self,     %args )        = @_;
+  my ( $tokenset, $do_optional ) = @args{qw( tokenset do_optional )};
+
+  my $position = $self->position;
+
+  $do_optional //= 1;
+
+  my $current_token = $tokenset->current;
+
+  return () unless defined $current_token;
+
+  my $license_depth = $self->licenses( $current_token );
+
+  if ( $self->optional && $do_optional ) {
+
+    $self->log->debug( "Factor [$self], position [$position] is optional" );
+    my $next_licenses = 0;
+
+    for ( my $f = $self->next; defined $f; $f = $f->next ) {
+      my $next_position = $f->position;
+
+      if ( defined $f->licenses( $current_token ) ) {
+        $self->log->debug(
+           "Factor [$f], position [$next_position] licenses [$current_token]" );
+        $next_licenses = 1;
+        last;
+      } else {
+        $self->log->debug( "Factor [$f] does not license [$current_token]" );
+      }
+    }
+
+    my ( @non_opt_tsets ) = (
+                              $self->evaluate( tokenset    => $tokenset,
+                                               do_optional => 0,
+                              ) );
+
+    my $num_results = scalar @non_opt_tsets;
+    $self->log->debug(
+      "number of results: [$num_results]; array ref values: [@non_opt_tsets]" );
+
+    # Fast path past generating the optional tree below
+    # if the following factor would fail anyway
+    return ( @non_opt_tsets ) unless $next_licenses;
+
+    my $class = 'Syntactic::Practice::Tree::Abstract::Null';
+
+    my $tset = Syntactic::Practice::Grammar::TokenSet->new();
+    my $tree = $class->new(
+                  depth        => $self->{current_depth} + 1,
+                  term         => $self->term,
+                  category     => $self->category,
+                  constituents => Syntactic::Practice::Grammar::TokenSet->new(),
+                  factor       => $self,
+                  frompos      => $current_token->tree->frompos,
+                  label        => $self->label );
+
+    $tset->append_new( $tree );
+
+    return ( $tset, @non_opt_tsets );
+  }
+
+  my $msg = '%2d: %-2s %s [%s]';
+  unless ( defined $license_depth ) {
+    $self->log->debug( "Factor [$self] does not license [$current_token]" );
+    my $string = join( ' ', map { "$_" } $tokenset->remainder );
+    my @data = ( $current_token->position, $self->label, ' ->', $string );
+    $self->log->info( sprintf( $msg, @data ) );
+
+    return ();
+  }
+
+  $self->log->debug(
+             "Factor [$self], position [$position] licenses [$current_token]" );
+
+  my @token = ();
+  if ( $license_depth == 0 ) {
+    push( @token, $current_token );
+  } else {
+    my $parser = Syntactic::Practice::Parser->new( tokenset => $tokenset );
+    push( @token, $parser->ingestToken( $tokenset->current_token ) );
+  }
+
+  my @tokenset_list;
+  foreach my $token ( @token ) {
+    $self->log->debug( "Matched factor [$self]: $token" );
+
+    my @data =
+      ( $token->tree->frompos, $token->label, ' ->', $token->tree->string );
+    $self->log->info( sprintf( $msg, @data ) );
+
+    my $tset = Syntactic::Practice::Grammar::TokenSet->new();
+    $tset->append_new( $token->tree );
+
+    push( @tokenset_list, $tset );
+
+    next unless $self->repeat;
+
+    $self->log->debug( "Repeat factor [$self]" );
+
+    my @tokensets;
+    if ( defined $tokenset->next ) {
+      push( @tokenset_list,
+            $self->evaluate( tokenset    => $tokenset,
+                             do_optional => 0,
+            ) );
+    }
+  }
+
+  $self->log->debug( "Number of token sets: " . scalar @tokenset_list );
+
+  return @tokenset_list;
+}
+
 sub _build_identifier {
   my ( $self ) = @_;
   my $identifier = $self->label;
@@ -62,14 +181,14 @@ sub _build_identifier {
 }
 
 sub _build_expression {
-  my( $self ) = @_;
+  my ( $self ) = @_;
   my $f = $self->identifier;
   if ( $self->repeat ) {
     $f = "{ $f }";
   } elsif ( $self->optional ) {
     $f = "[ $f ]";
   }
-  return $f
+  return $f;
 }
 
 sub _build_bnf {
@@ -116,10 +235,13 @@ sub _build_term {
 sub BUILD {
   my ( $self ) = @_;
 
-  if( grep { $self->label eq $_ } Syntactic::Practice::Util->get_recursive_labels ){
+  if ( grep { $self->label eq $_ }
+       Syntactic::Practice::Util->get_recursive_labels )
+  {
     apply_all_roles( $self, 'Syntactic::Practice::Roles::Category::Recursive' );
-  }else{
-    apply_all_roles( $self, 'Syntactic::Practice::Roles::Category::NonRecursive' );
+  } else {
+    apply_all_roles( $self,
+                     'Syntactic::Practice::Roles::Category::NonRecursive' );
   }
   return $self;
 }
@@ -127,21 +249,22 @@ sub BUILD {
 my $max_depth = 5;
 
 sub licenses {
-  my( $self, $type, $depth ) = @_;
+  my ( $self, $type, $depth ) = @_;
   $depth //= 0;
   return undef if $depth >= $max_depth;
-  return undef unless $type->can('label');
+  return undef unless $type->can( 'label' );
   return $depth if $self->label eq $type->label;
-  return undef if $self->is_terminal;
-  my $rule = Syntactic::Practice::Grammar->new->rule(label => $self->label);
+  return undef  if $self->is_terminal;
+  my $rule = Syntactic::Practice::Grammar->new->rule( label => $self->label );
   my $min = undef;
-  foreach my $term ( @{ $rule->terms } ){
-    foreach my $factor ( @{ $term->factors } ){
+  foreach my $term ( @{ $rule->terms } ) {
+
+    foreach my $factor ( @{ $term->factors } ) {
       my $d = $factor->licenses( $type, $depth + 1 );
       next unless defined $d;
-      unless( defined $min ){
+      unless ( defined $min ) {
         $min = $d;
-        next
+        next;
       }
       $min = $d if $d < $min;
     }
@@ -162,9 +285,9 @@ sub position {
 }
 
 sub next {
-  my( $self ) = @_;
-  return undef if $self->position >= $self->term->num_factors; # indexed from 1
-  return $self->term->factors->[$self->position];
+  my ( $self ) = @_;
+  return undef if $self->position >= $self->term->num_factors;  # indexed from 1
+  return $self->term->factors->[ $self->position ];
 }
 
 sub as_string {

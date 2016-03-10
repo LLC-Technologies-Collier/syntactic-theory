@@ -24,9 +24,8 @@ use experimental qw(smartmatch);
 with( 'MooseX::Log::Log4perl', 'Syntactic::Practice::Roles::Unique' );
 
 has tokens => ( is       => 'rw',
-                isa      => 'ArrayRef[Token]',
+                isa      => 'ArrayRef[Token|Tree]',
                 lazy     => 1,
-                init_arg => undef,
                 builder  => '_build_tokens', );
 
 has first => ( is        => 'rw',
@@ -45,21 +44,11 @@ has last => ( is        => 'rw',
               predicate => '_has_last',
               init_arg  => undef, );
 
-sub current {
-  my ( $self ) = @_;
-  $self->{_current} = $self->first unless ( exists $self->{_current} );
-  return $self->{_current};
-}
+sub current { $_[0]->{_current} //= $_[0]->first }
 
-sub next {
-  my ( $self ) = @_;
-  $self->{_current} = $self->current->next;
-}
+sub next { $_[0]->{_current} = $_[0]->current->next }
 
-sub prev {
-  my ( $self ) = @_;
-  $self->{_current} = $self->current->prev;
-}
+sub prev { $_[0]->{_current} = $_[0]->current->prev }
 
 sub all { @{ $_[0]->tokens } }
 
@@ -94,10 +83,17 @@ use overload
 sub _build_tokens { $_[0]->{_token_array} }
 
 sub BUILD {
-  my ( $self ) = @_;
+  my ( $self, $args ) = @_;
   my @array;
   my $aref = tie @array, "Syntactic::Practice::Grammar::TokenList", $self;
-  $self->{_token_array} = \@array;
+  my $tokens = delete $self->{tokens};
+  $self->{tokens} = $self->{_token_array} = \@array;
+
+  return unless ref $tokens eq 'ARRAY';
+  foreach my $tk ( @$tokens ){
+    my $tree = $tk->isa('Syntactic::Practice::Tree') ? $tk : $tk->tree;
+    $self->append_new( $tree );
+  }
 }
 
 sub copy {

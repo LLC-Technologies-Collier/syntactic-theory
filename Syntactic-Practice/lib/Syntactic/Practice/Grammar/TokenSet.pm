@@ -44,7 +44,32 @@ has last => ( is        => 'rw',
               predicate => '_has_last',
               init_arg  => undef, );
 
-sub current { $_[0]->{_current} //= $_[0]->tokens->[0] }
+has frompos => ( is       => 'ro',
+                 isa      => 'PositiveInt',
+                 lazy     => 1,
+                 builder  => '_build_frompos',
+                 init_arg => undef );
+
+has topos => ( is       => 'ro',
+               isa      => 'PositiveInt',
+               lazy     => 1,
+               builder  => '_build_topos',
+               init_arg => undef );
+
+sub current {
+  my ( $self, $position ) = @_;
+  if ( defined $position ) {
+    if ( $position < scalar @{ $self->tokens } ) {
+      $self->{_current} = $self->tokens->[$position];
+    } else {
+      my $msg = 'Attempt to set index of token set to value outside of range';
+      $self->log->error( $msg );
+      confess( $msg );
+    }
+  } else {
+    $self->{_current} //= $self->tokens->[0];
+  }
+}
 
 sub next { $_[0]->{_current} = $_[0]->current->next }
 
@@ -80,7 +105,9 @@ use overload
   },
   fallback => 1;
 
-sub _build_tokens { $_[0]->{_token_array} }
+sub _build_tokens  { $_[0]->{_token_array} }
+sub _build_frompos { $_[0]->first->tree->frompos }
+sub _build_topos   { $_[0]->first->tree->topos }
 
 sub BUILD {
   my ( $self, $args ) = @_;
@@ -91,14 +118,15 @@ sub BUILD {
 
   return unless defined $tkarg;
   my $tr_class = 'Syntactic::Practice::Tree';
-  if( ref $tkarg eq 'ARRAY' ){
+  if ( ref $tkarg eq 'ARRAY' ) {
     foreach my $tree ( map { $_->isa( $tr_class ) ? $_ : $_->tree } @$tkarg ) {
       $self->append_new( $tree );
     }
-  }elsif( $tkarg->isa( 'Syntactic::Practice::Grammar::TokenSet' ) ){
+  } elsif ( $tkarg->isa( 'Syntactic::Practice::Grammar::TokenSet' ) ) {
     $#array = -1;
-    push(@array, map { $_->copy(set=>$self) } @{ $tkarg->{_token_array} });
-  }else{
+    push( @array,
+          map { $_->copy( set => $self ) } @{ $tkarg->{_token_array} } );
+  } else {
     my $msg = 'unknown token representation: ' . ref $tkarg;
     $self->log->error( $msg );
     die( $msg );
@@ -122,7 +150,7 @@ sub copy {
   my $push_token = 0;
   foreach my $token ( @$tokens ) {
     $copy->append_new( $token->tree );
-    $copy->{_current} = $copy->tokens->[-1] if ( $token == $current );
+    $copy->{_current} = $copy->tokens->[-1] if ( ( $token ~~ $current ) == 0 );
   }
 
   return $copy;

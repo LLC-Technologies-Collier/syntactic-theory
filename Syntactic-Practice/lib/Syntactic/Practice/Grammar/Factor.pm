@@ -85,7 +85,7 @@ sub evaluate {
                   frompos      => $current_token->tree->frompos,
                   label        => $self->label );
 
-    return ( [$tree],
+    return ( Syntactic::Practice::Grammar::TokenSet->new( tokens => [$tree] ),
              $self->evaluate( parser      => $parser,
                               do_optional => 0
              ) );
@@ -114,7 +114,8 @@ sub evaluate {
   foreach my $token ( @token ) {
     $self->log->debug( "Matched factor [$self]: $token" );
 
-    push( @tokenset_list, [$token] );
+    push( @tokenset_list,
+          Syntactic::Practice::Grammar::TokenSet->new( tokens => [$token] ) );
 
     next unless $self->repeat;
 
@@ -124,7 +125,7 @@ sub evaluate {
       $parser->sentence->next;
 
       push( @tokenset_list,
-            map { [ $token, @$_ ] }
+            map { $_->prepend( $token ); $_ }
               $self->evaluate( parser      => $parser,
                                do_optional => 0
               ) );

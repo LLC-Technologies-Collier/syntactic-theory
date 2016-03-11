@@ -53,17 +53,17 @@ my ( @tokenset_list ) =
 
 is( scalar @tokenset_list, 5, 'four tokensets were found' );
 
-is( scalar @{$tokenset_list[0]}, 1, 'first tokenset count is 1' );
+is( scalar $tokenset_list[0]->count, 1, 'first tokenset count is 1' );
 
-isa_ok( $tokenset_list[0]->[0],
+isa_ok( $tokenset_list[0]->first->tree,
         'Syntactic::Practice::Tree::Abstract::Null',
         'tree of first token is a placeholder'
 ) or diag ref $tokenset_list[0]->current->tree;
 
-is( scalar @{$tokenset_list[1]}, 1, 'second tokenset count is 1' );
+is( scalar $tokenset_list[1]->count, 1, 'second tokenset count is 1' );
 
-is( scalar @{$tokenset_list[2]}, 2, 'third tokenset count is 2' );
-is( scalar @{$tokenset_list[3]}, 3, 'fourth tokenset count is 3' );
-is( scalar @{$tokenset_list[4]}, 4, 'fifth tokenset count is 4' );
+is( scalar $tokenset_list[2]->count, 2, 'third tokenset count is 2' );
+is( scalar $tokenset_list[3]->count, 3, 'fourth tokenset count is 3' );
+is( scalar $tokenset_list[4]->count, 4, 'fifth tokenset count is 4' );
 
 done_testing( 13 );

@@ -24,7 +24,10 @@ my $vp_cat  = "${cat_ns}::Phrasal"->new( label => 'VP' );
 my $nom_cat = "${cat_ns}::Phrasal"->new( label => 'NOM' );
 my $n_cat   = "${cat_ns}::Lexical"->new( label => 'N' );
 
-my $sentence = [];
+my $lexer     = Syntactic::Practice::Lexer->new();
+my @paragraph = $lexer->scan( 'big brown noisy old' );
+my @sentence  = @{ $paragraph[0] };
+my $sentence  = $sentence[0];
 
 my $tset = Syntactic::Practice::Grammar::TokenSet->new();
 
@@ -42,7 +45,7 @@ foreach my $word ( qw( The dog watched ) ) {
                  daughters    => $lexemes->[0],
                  constituents => $tset->copy, );
 
-  dies_ok( sub { "${tree_ns}::Abstract::Lexical"->new( %params ) },
+  dies_ok( sub { "${tree_ns}::Concrete::Lexical"->new( %params ) },
            'dies when instantiated without a sentence' );
 
   my $l_tree =
@@ -57,7 +60,7 @@ foreach my $word ( qw( The dog watched ) ) {
   my @daughters = $l_tree->daughters;
   is( scalar @daughters, 1, 'one daughter of lexical tree' );
 
-  push( @$sentence, $l_tree );
+  $tset->append_new( $l_tree );
 
   my $copy = $l_tree->copy;
   ok( $copy, 'copy of lexical tree is defined' );
@@ -69,15 +72,18 @@ foreach my $word ( qw( The dog watched ) ) {
   $treeByWord{$word} = $l_tree;
 }
 
-is( $sentence->[0]->label, 'D', 'First word recognized as a determiner' );
-is( $sentence->[1]->label, 'N', 'Second word recognized as a noun' );
-is( $sentence->[2]->label, 'V', 'Third word recognized as a verb' );
+is( $tset->tokens->[0]->label, 'D', 'First word recognized as a determiner' );
+is( $tset->tokens->[1]->label, 'N', 'Second word recognized as a noun' );
+is( $tset->tokens->[2]->label, 'V', 'Third word recognized as a verb' );
 
 dies_ok( sub { "${tree_ns}::Abstract::Phrasal"->new( category => $np_cat ) },
          'dies when instantiated without a sentence' );
 
 my $nom_tset = $tset->copy();
 $nom_tset->append_new( $treeByWord{'dog'} );
+
+$sentence = $tset->copy;
+bless( $sentence, 'Syntactic::Practice::Grammar::Sentence' );
 
 my $nom_tree =
   "${tree_ns}::Abstract::Phrasal"->new( category     => $nom_cat,
@@ -153,7 +159,7 @@ my $null_tree =
 
 ok( $null_tree, 'null tree instantiated' );
 
-foreach my $tree ( @$sentence ) {
+foreach my $tree ( map { $_->tree } @{ $sentence->tokens } ) {
   my $concrete_lex_tree;
   lives_ok( sub { $concrete_lex_tree = $tree->to_concrete() },
             'to_concrete does not throw exception' );

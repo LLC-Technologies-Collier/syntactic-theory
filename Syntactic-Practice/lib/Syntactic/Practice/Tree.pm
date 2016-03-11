@@ -48,9 +48,8 @@ has depth => ( is       => 'ro',
                builder  => '_build_depth',
                init_arg => undef, );
 
-has sentence => ( is       => 'ro',
-                  isa      => 'ArrayRef[Tree]',
-                  required => 1 );
+has sentence => ( is       => 'rw',
+                  isa      => 'Sentence');
 
 sub copy {
   my ( $self, %attr ) = @_;
@@ -86,7 +85,7 @@ sub _build_topos {
 
 sub _build_string {
   my ( $self ) = @_;
-  my @s = @{ $self->sentence };
+  my @s = @{ $self->sentence->tokens };
   join( ' ', map { $_->string } @s[ $self->frompos .. ( $self->topos - 1 ) ] );
 }
 
@@ -143,7 +142,6 @@ sub _numTrees {
 sub BUILD {
   my ( $self ) = @_;
 
-  $self->log->info( 'tree has been built.  Now registering' );
   $self->_registerTree();
 
   return $self;
@@ -433,8 +431,7 @@ has frompos => ( is      => 'rw',
                  builder => '_build_frompos', );
 
 has sentence => ( is       => 'rw',
-                  isa      => 'ArrayRef[Tree]',
-                  required => 0 );
+                  isa      => 'Sentence' );
 
 has sisters => ( is      => 'rw',
                  isa     => 'ArrayRef[Tree]',
@@ -631,7 +628,7 @@ has mother => ( is       => 'ro',
                 required => 1 );
 
 has sentence => ( is       => 'ro',
-                  isa      => 'ArrayRef[Tree]',
+                  isa      => 'Sentence',
                   required => 1, );
 
 has constituents => ( is      => 'ro',

@@ -18,6 +18,7 @@ subtype 'False', as 'Bool', where { !$_ },
 Log::Log4perl->get_logger()->debug( "False type has been defined" );
 
 my %type_class = ( AbstractTree => 'Tree::Abstract',
+                   ConcreteTree => 'Tree::Concrete',
                    Category     => 'Grammar::Category',
                    Grammar      => 'Grammar',
                    Category     => 'Grammar::Category',
@@ -31,9 +32,11 @@ my %type_class = ( AbstractTree => 'Tree::Abstract',
                    Lexeme       => 'Lexicon::Lexeme',
                    Analysis     => 'Lexer::Analysis',
                    Lexer        => 'Lexer',
+                   Parser       => 'Parser',
+                   Sentence     => 'Grammar::Sentence',
                    Token        => 'Grammar::Token',
                    TokenSet     => 'Grammar::TokenSet',
-                   Parser       => 'Parser', );
+                   TokenList    => 'Grammar::TokenList', );
 my %type_role = ( CategoryRole => 'Roles::Category' );
 
 while ( my ( $type, $class ) = each %type_class ) {
@@ -155,8 +158,8 @@ coerce 'PhrCatLabelList', from 'PhrasalCategoryLabel', via { [$_] };
 subtype 'WordList', as 'ArrayRef[Word]';
 coerce 'WordList', from 'Word', via { [$_] };
 
-subtype 'FactorList', as 'ArrayRef[Factor]',
-  where { scalar @$_ > 0 },
+subtype 'FactorList' => as
+  'ArrayRef[Factor]' => where { scalar @$_ > 0 },
   message { "The Factor list you provided, [@$_], was empty" };
 
 __PACKAGE__->meta->make_immutable;

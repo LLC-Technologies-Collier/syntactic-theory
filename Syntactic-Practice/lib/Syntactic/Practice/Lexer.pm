@@ -446,6 +446,7 @@ sub scan {
 
   my $tree_class = 'Syntactic::Practice::Tree::Abstract::Lexical';
   my $tkset_class = 'Syntactic::Practice::Grammar::TokenSet';
+  my $sentence_class = 'Syntactic::Practice::Grammar::Sentence';
 
   my @paragraph;
   foreach my $paragraph ( split( /\n\n+/, $input ) ) {
@@ -469,7 +470,6 @@ sub scan {
                                             frompos      => $i,
                                             category     => $lexeme->category,
                                             label        => $lexeme->label,
-                                            sentence     => \@tree,
                                             constituents => $tkset_class->new(),
                                           } );
 
@@ -477,7 +477,12 @@ sub scan {
           $tokenSet->append_new( $lexTree );
         }
       }
-      push( @sentence, $tokenSet );
+      my $sentence = $sentence_class->new( tokens => $tokenSet );
+      foreach my $tree ( @tree ) {
+        $tree->sentence( $sentence );
+      }
+      $self->log('Sentence first token: ' . $sentence->first);
+      push( @sentence, $sentence );
     }
     push( @paragraph, \@sentence );
   }

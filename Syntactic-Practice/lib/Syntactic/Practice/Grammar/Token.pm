@@ -50,10 +50,8 @@ sub _build_category { $_[0]->tree->category }
 
 sub copy {
   my ( $self, %attr ) = @_;
-  $self->log->debug("passed set guid: " . $attr{set}->_guid) if exists $attr{set};
   $attr{set} //= Syntactic::Practice::Grammar::TokenSet->new();
   %attr = ( %$self, %attr );
-  $self->log->debug("computed set guid: " . $attr{set}->_guid);
   my $copy = $self->new( %attr );
 }
 
@@ -117,16 +115,7 @@ method _set_next ( Maybe[Token] $next!, Maybe[Token] $old_next? ) {
   #                      { type => 'Maybe[Token]' } );
   return unless defined $next;
 
-  my $tset = $self->set;
-
-  if ( $tset->count == 0 ) {
-    $self->log->debug("empty set guid: " . $tset->_guid);
-    my $msg = '$token->set was empty before calling $token->next($prev)';
-    $self->log->error( $msg );
-    confess $msg;
-  }
-
-  $next->next( $old_next );
+  $next->next( $old_next ) if defined $next;
 
   return $next;
 }
@@ -156,16 +145,8 @@ method _set_prev ( Maybe[Token] $prev!, Maybe[Token] $old_prev? ) {
 
   return unless defined $prev;
 
-  my $tset = $self->set;
-
-  if ( $tset->count == 0 ) {
-    my $msg = '$token->set was empty before calling $token->prev($prev)';
-    $self->log->error( $msg );
-    confess $msg;
-  }
-
   $old_prev->next( $prev ) if defined $old_prev;
-  $prev->next( $self );
+  $prev->next( $self ) if defined $prev;
 
   return $prev;
 }

@@ -60,37 +60,24 @@ use overload
 
 # Test whether this factor licenses the token sets passed
 sub evaluate {
-  my ( $self,     %args )        = @_;
-  my ( $tokenset, $do_optional ) = @args{qw( tokenset do_optional )};
+  my ( $self,   %args )        = @_;
+  my ( $parser, $do_optional ) = @args{qw( parser do_optional )};
 
   my $position = $self->position;
 
   $do_optional //= 1;
 
-  my $current_token = $tokenset->current;
+  my $current_token = $parser->sentence->current;
 
   return () unless defined $current_token;
-
-  my $license_depth = $self->licenses( $current_token );
 
   if ( $self->optional && $do_optional ) {
 
     $self->log->debug( "Factor [$self], position [$position] is optional" );
 
-    my ( @non_opt_tsets ) = (
-                              $self->evaluate( tokenset    => $tokenset,
-                                               do_optional => 0,
-                              ) );
-
-    my $num_results = scalar @non_opt_tsets;
-    $self->log->debug(
-      "number of results: [$num_results]; array ref values: [@non_opt_tsets]" );
-
-    my $class = 'Syntactic::Practice::Tree::Abstract::Null';
-
-    my $tset = Syntactic::Practice::Grammar::TokenSet->new();
-    my $tree = $class->new(
-                  sentence     => [],
+    my $tree =
+      Syntactic::Practice::Tree::Abstract::Null->new(
+                  sentence     => $parser->sentence,
                   term         => $self->term,
                   category     => $self->category,
                   constituents => Syntactic::Practice::Grammar::TokenSet->new(),
@@ -98,17 +85,17 @@ sub evaluate {
                   frompos      => $current_token->tree->frompos,
                   label        => $self->label );
 
-    $tset->append_new( $tree );
-
-    return ( $tset, @non_opt_tsets );
+    return ( [$tree],
+             $self->evaluate( parser      => $parser,
+                              do_optional => 0
+             ) );
   }
 
-  my $msg = '%2d: %-2s %s [%s]';
+  my $license_depth = $self->licenses( $current_token );
   unless ( defined $license_depth ) {
-    $self->log->debug( "Factor [$self] does not license [$current_token]" );
-    my $string = join( ' ', map { "$_" } $tokenset->remainder );
-    my @data = ( $current_token->position, $self->label, ' ->', $string );
-    $self->log->info( sprintf( $msg, @data ) );
+    $self->log->debug(
+        "Factor [$self], position [$position] does not license [$current_token]"
+    );
 
     return ();
   }
@@ -120,35 +107,25 @@ sub evaluate {
   if ( $license_depth == 0 ) {
     push( @token, $current_token );
   } else {
-    my $parser = Syntactic::Practice::Parser->new( tokenset => $tokenset );
-    push( @token, $parser->ingestToken( $tokenset->current_token ) );
+    push( @token, $parser->ingestToken( token => $parser->sentence->current ) );
   }
 
   my @tokenset_list;
   foreach my $token ( @token ) {
     $self->log->debug( "Matched factor [$self]: $token" );
 
-    my @data =
-      ( $token->tree->frompos, $token->label, ' ->', $token->tree->string );
-    $self->log->info( sprintf( $msg, @data ) );
-
-    my $tset = Syntactic::Practice::Grammar::TokenSet->new();
-    $tset->append_new( $token->tree );
-
-    push( @tokenset_list, $tset );
+    push( @tokenset_list, [$token] );
 
     next unless $self->repeat;
 
     $self->log->debug( "Repeat factor [$self]" );
 
-    my @tokensets;
-    if ( $tokenset->current != $tokenset->last ) {
-      my $tokenset_copy = $tokenset->copy();
-      $tokenset_copy->next;
+    if ( $current_token != $parser->sentence->last ) {
+      $parser->sentence->next;
 
       push( @tokenset_list,
-            map { $_->prepend_new( $token->tree ) }
-              $self->evaluate( tokenset    => $tokenset_copy,
+            map { [ $token, @$_ ] }
+              $self->evaluate( parser      => $parser,
                                do_optional => 0
               ) );
     }

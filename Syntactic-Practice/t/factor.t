@@ -43,23 +43,27 @@ ok( $sym_term->cmp( $term ) == 0, q{factor's term is as expected} );
 
 my $lexer     = Syntactic::Practice::Lexer->new();
 my @paragraph = $lexer->scan( 'big brown noisy old' );
-my @tset      = @{ $paragraph[0] };
-my $tokenset  = $tset[0];
+my @sentence  = @{ $paragraph[0] };
+my $sentence  = $sentence[0];
 
-my ( @tokenset ) = ( $adjective_factor->evaluate( tokenset => $tokenset ) );
+my $parser = Syntactic::Practice::Parser->new(sentence => $sentence);
 
-is( scalar @tokenset, 5, 'four tokensets were found' );
+my ( @tokenset_list ) =
+  ( $adjective_factor->evaluate( parser => $parser ) );
 
-is( $tokenset[0]->count, 1, 'first tokenset count is 1' );
+is( scalar @tokenset_list, 5, 'four tokensets were found' );
 
-isa_ok( $tokenset[0]->current->tree,
+is( scalar @{$tokenset_list[0]}, 1, 'first tokenset count is 1' );
+
+isa_ok( $tokenset_list[0]->[0],
         'Syntactic::Practice::Tree::Abstract::Null',
-        'tree of first token is a placeholder' ) or diag ref $tokenset[0]->current->tree;
+        'tree of first token is a placeholder'
+) or diag ref $tokenset_list[0]->current->tree;
 
-is( $tokenset[1]->count, 1, 'second tokenset count is 1' );
+is( scalar @{$tokenset_list[1]}, 1, 'second tokenset count is 1' );
 
-is( $tokenset[2]->count, 2, 'third tokenset count is 2' );
-is( $tokenset[3]->count, 3, 'fourth tokenset count is 3' );
-is( $tokenset[4]->count, 4, 'fifth tokenset count is 4' );
+is( scalar @{$tokenset_list[2]}, 2, 'third tokenset count is 2' );
+is( scalar @{$tokenset_list[3]}, 3, 'fourth tokenset count is 3' );
+is( scalar @{$tokenset_list[4]}, 4, 'fifth tokenset count is 4' );
 
 done_testing( 13 );

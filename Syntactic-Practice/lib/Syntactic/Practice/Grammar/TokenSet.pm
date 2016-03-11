@@ -23,10 +23,10 @@ use experimental qw(smartmatch);
 
 with( 'MooseX::Log::Log4perl', 'Syntactic::Practice::Roles::Unique' );
 
-has tokens => ( is       => 'rw',
-                isa      => 'ArrayRef[Token|Tree]',
-                lazy     => 1,
-                builder  => '_build_tokens', );
+has tokens => ( is      => 'rw',
+                isa     => 'ArrayRef[Token|Tree]|TokenSet',
+                lazy    => 1,
+                builder => '_build_tokens', );
 
 has first => ( is        => 'rw',
                isa       => 'Maybe[Token]',
@@ -44,7 +44,7 @@ has last => ( is        => 'rw',
               predicate => '_has_last',
               init_arg  => undef, );
 
-sub current { $_[0]->{_current} //= $_[0]->first }
+sub current { $_[0]->{_current} //= $_[0]->tokens->[0] }
 
 sub next { $_[0]->{_current} = $_[0]->current->next }
 
@@ -86,14 +86,24 @@ sub BUILD {
   my ( $self, $args ) = @_;
   my @array;
   my $aref = tie @array, "Syntactic::Practice::Grammar::TokenList", $self;
-  my $tokens = delete $self->{tokens};
+  my $tkarg = delete $self->{tokens};
   $self->{tokens} = $self->{_token_array} = \@array;
 
-  return unless ref $tokens eq 'ARRAY';
-  foreach my $tk ( @$tokens ){
-    my $tree = $tk->isa('Syntactic::Practice::Tree') ? $tk : $tk->tree;
-    $self->append_new( $tree );
+  return unless defined $tkarg;
+  my $tr_class = 'Syntactic::Practice::Tree';
+  if( ref $tkarg eq 'ARRAY' ){
+    foreach my $tree ( map { $_->isa( $tr_class ) ? $_ : $_->tree } @$tkarg ) {
+      $self->append_new( $tree );
+    }
+  }elsif( $tkarg->isa( 'Syntactic::Practice::Grammar::TokenSet' ) ){
+    $#array = -1;
+    push(@array, map { $_->copy(set=>$self) } @{ $tkarg->{_token_array} });
+  }else{
+    my $msg = 'unknown token representation: ' . ref $tkarg;
+    $self->log->error( $msg );
+    die( $msg );
   }
+  return $self;
 }
 
 sub copy {
@@ -112,7 +122,7 @@ sub copy {
   my $push_token = 0;
   foreach my $token ( @$tokens ) {
     $copy->append_new( $token->tree );
-    $copy->{_current} = $copy->last if ( $token == $current );
+    $copy->{_current} = $copy->tokens->[-1] if ( $token == $current );
   }
 
   return $copy;

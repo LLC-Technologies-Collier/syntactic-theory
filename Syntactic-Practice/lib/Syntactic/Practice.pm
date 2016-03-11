@@ -24,12 +24,15 @@ BEGIN {
              Parser
              Tree
              Tree::Abstract
+             Tree::Concrete
              Grammar::Category
              Grammar::Rule
              Grammar::Term
              Grammar::Factor
+             Grammar::Sentence
              Grammar::Token
              Grammar::TokenSet
+             Grammar::TokenList
              Roles::Category
              Lexicon::Homograph
              Lexicon::Lexeme
@@ -59,7 +62,9 @@ use Syntactic::Practice::Tree;
 use Syntactic::Practice::Lexicon;
 use Syntactic::Practice::Lexicon::Homograph;
 use Syntactic::Practice::Lexicon::Lexeme;
+use Syntactic::Practice::Grammar::Sentence;
 use Syntactic::Practice::Grammar::Token;
+use Syntactic::Practice::Grammar::TokenList;
 use Syntactic::Practice::Grammar::TokenSet;
 use Syntactic::Practice::Lexer::Analysis;
 use Syntactic::Practice::Lexer;

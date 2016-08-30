@@ -5,11 +5,11 @@
 BASEDIR=$CWD
 
 cd sql
-mysql -u root --password=password < create-database.sql
-mysql -u root --password=password < create-user.sql > /dev/null 2>&1
-mysql -u root --password=password grammar < grammar-create.sql
-mysql -u grammaradm --password=password grammar < lexicon-create.sql
+mysql -u root --password=password -f < create-database.sql
+mysql -u root --password=password -f < create-user.sql > /dev/null 2>&1
+mysql -u root --password=password -f grammar < grammar-create.sql
+mysql -u grammaradm --password=password grammar -f < lexicon-create.sql
 
-mysql -u root --password=password < grant-user.sql
-mysql -u grammaradm --password=password grammar < grammar-insert.sql
-mysql -u grammaradm --password=password grammar < lexicon-insert.sql
+mysql -u root --password=password -f  < grant-user.sql
+mysql -u grammaradm --password=password -f grammar < grammar-insert.sql
+mysql -u grammaradm --password=password -f grammar < lexicon-insert.sql

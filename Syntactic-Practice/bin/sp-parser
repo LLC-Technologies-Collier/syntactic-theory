@@ -1,6 +1,8 @@
 #!/usr/bin/perl -w
 use strict;
 
+# PODNAME: parse
+
 my $content = join("", <STDIN>);
 
 use Syntactic::Practice::Schema;

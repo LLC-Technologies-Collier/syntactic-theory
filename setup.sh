@@ -3,6 +3,8 @@
 # Copyright 2015, 2016 Collier Technologies LLC
 # Copyright 2019, Google LLC
 
+# sudo apt-get install mariadb-client mariadb-server
+
 BASEDIR=$CWD
 
 cd sql
